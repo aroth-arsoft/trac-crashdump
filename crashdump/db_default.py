@@ -13,7 +13,7 @@ tables = [
         Column('applicationfile', type='string'),
         Column('clienthostname', type='string'),
         Column('clientusername', type='string'),
-    ],
+    ]
 ]
 
 #def convert_to_int(data):
@@ -22,6 +22,5 @@ tables = [
     #for i, (n1, n2) in enumerate(rows):
         #rows[i] = [int(n1), int(n2)]
 
-#migrations = [
-    #(xrange(1,2), convert_to_int),
+migrations = [
 ]

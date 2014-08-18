@@ -7,7 +7,7 @@ from genshi.builder import tag
 
 from trac.core import *
 from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
-from trac.web.chrome import ITemplateProvider, add_stylesheet, add_script, \
+from trac.web.chrome import ITemplateProvider, INavigationContributor, add_stylesheet, add_script, \
                             add_ctxtnav
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
@@ -15,6 +15,7 @@ from trac.ticket.query import Query
 from trac.config import Option, BoolOption, ChoiceOption
 from trac.resource import ResourceNotFound
 from trac.util import to_unicode
+from trac.util.translation import _ 
 from trac.util.html import html, Markup
 from trac.util.text import shorten_line
 from trac.util.compat import set, sorted, partial
@@ -25,7 +26,7 @@ from model import TicketLinks
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
-    implements(IRequestHandler, IRequestFilter, ITemplateStreamFilter, 
+    implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateStreamFilter,
                ITemplateProvider, ITicketManipulator)
     
     dot_path = Option('crashdump', 'dot_path', default='dot',
@@ -97,7 +98,14 @@ class CrashDumpModule(Component):
                         field_data['rendered'] = elms
 
         return template, data, content_type
-        
+
+    # INavigationContributor methods
+    def get_active_navigation_item(self, req):
+        return 'crashdump'
+
+    def get_navigation_items(self, req):
+        yield 'mainnav', 'crashes', tag.a(_('Crashes'), href=req.href.crashdump())
+
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
         if not data:
@@ -160,114 +168,15 @@ class CrashDumpModule(Component):
 
     def process_request(self, req):
         path_info = req.path_info[10:]
-        
-        if not path_info:
-            raise TracError('No ticket specified')
-        
-        #list of tickets to generate the depgraph for
-        tkt_ids=[]
-        milestone=None
-        split_path = path_info.split('/', 2)
-
-        #Urls to generate the depgraph for a ticket is /depgraph/ticketnum
-        #Urls to generate the depgraph for a milestone is /depgraph/milestone/milestone_name
-        if split_path[0] == 'milestone':
-            #we need to query the list of tickets in the milestone
-            milestone = split_path[1]
-            query=Query(self.env, constraints={'milestone' : [milestone]}, max=0)
-            tkt_ids=[fields['id'] for fields in query.execute()]
+        if path_info == '/list' or not path_info:
+            content = 'Hello World list!'
         else:
-            #the list is a single ticket
-            tkt_ids = [int(split_path[0])]
-
-        #the summary argument defines whether we place the ticket id or
-        #it's summary in the node's label
-        label_summary=0
-        if 'summary' in req.args:
-            label_summary=int(req.args.get('summary'))
-
-        g = self._build_graph(req, tkt_ids, label_summary=label_summary)
-        if path_info.endswith('/depgraph.png') or 'format' in req.args:
-            format = req.args.get('format')
-            if format == 'text':
-                #in case g.__str__ returns unicode, we need to convert it in ascii
-                req.send(to_unicode(g).encode('ascii', 'replace'), 'text/plain')
-            elif format == 'debug':
-                import pprint
-                req.send(
-                    pprint.pformat(
-                        [TicketLinks(self.env, tkt_id) for tkt_id in tkt_ids]
-                        ),
-                    'text/plain')
-            elif format is not None:
-                req.send(g.render(self.dot_path, format), 'text/plain')
-            
-            if self.use_gs:
-                ps = g.render(self.dot_path, 'ps2')
-                gs = subprocess.Popen([self.gs_path, '-q', '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4', '-sDEVICE=png16m', '-sOutputFile=%stdout%', '-'], 
-                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                img, err = gs.communicate(ps)
-                if err:
-                    self.log.debug('MasterTickets: Error from gs: %s', err)
-            else:
-                img = g.render(self.dot_path)
-            req.send(img, 'image/png')
-        else:
-            data = {}
-            
-            #add a context link to enable/disable labels in nodes
-            if label_summary:
-                add_ctxtnav(req, 'Without labels', req.href(req.path_info, summary=0))
-            else:
-                add_ctxtnav(req, 'With labels', req.href(req.path_info, summary=1))
-
-            if milestone is None:
-                tkt = Ticket(self.env, tkt_ids[0])
-                data['tkt'] = tkt
-                add_ctxtnav(req, 'Back to Ticket #%s'%tkt.id, req.href.ticket(tkt.id))
-            else:
-                add_ctxtnav(req, 'Back to Milestone %s'%milestone, req.href.milestone(milestone))
-            data['milestone'] = milestone
-            data['graph'] = g
-            data['graph_render'] = partial(g.render, self.dot_path)
-            data['use_gs'] = self.use_gs
-            
-            return 'depgraph.html', data, None
-
-    def _build_graph(self, req, tkt_ids, label_summary=0):
-        g = graphviz.Graph()
-        g.label_summary = label_summary
-
-        g.attributes['rankdir'] = self.graph_direction
-        
-        node_default = g['node']
-        node_default['style'] = 'filled'
-        
-        edge_default = g['edge']
-        edge_default['style'] = ''
-        
-        # Force this to the top of the graph
-        for id in tkt_ids:
-            g[id] 
-        
-        links = TicketLinks.walk_tickets(self.env, tkt_ids)
-        links = sorted(links, key=lambda link: link.tkt.id)
-        for link in links:
-            tkt = link.tkt
-            node = g[tkt.id]
-            if label_summary:
-                node['label'] = u'#%s %s' % (tkt.id, tkt['summary'])
-            else:
-                node['label'] = u'#%s'%tkt.id
-            node['fillcolor'] = tkt['status'] == 'closed' and self.closed_color or self.opened_color
-            node['URL'] = req.href.ticket(tkt.id)
-            node['alt'] = u'Ticket #%s'%tkt.id
-            node['tooltip'] = tkt['summary']
-            
-            for n in link.blocking:
-                node > g[n]
-        
-        return g
+            content = 'Hello World !'
+        req.send_response(200)
+        req.send_header('Content-Type', 'text/plain')
+        req.send_header('Content-Length', len(content))
+        req.end_headers()
+        req.write(content)
 
     def _link_tickets(self, req, tickets):
         items = []
