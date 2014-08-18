@@ -1,0 +1,19 @@
+Source: trac-mastertickets
+Section: web
+Priority: optional
+Build-Depends: python-setuptools, python-all, debhelper (>= 7), dh-python
+Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
+Uploaders: W. Martin Borgert <debacle@debian.org>
+Standards-Version: 3.9.5
+Homepage: http://trac-hacks.org/wiki/MasterTicketsPlugin
+
+Package: trac-mastertickets
+Architecture: all
+Depends: ${python:Depends}, ${misc:Depends}, trac (>= 0.12)
+Recommends: libjs-jquery, trac-graphviz
+Description: adds inter-ticket dependencies to Trac
+ This Trac plugin adds "blocks" and "blocked by" fields to each
+ ticket, enabling you to express dependencies between tickets. It
+ also provides a GraphvizPlugin-based dependency-graph feature
+ for those tickets having dependencies specified, allowing you to
+ visually understand the dependency tree.

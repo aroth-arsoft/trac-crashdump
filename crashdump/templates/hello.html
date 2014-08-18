@@ -1,0 +1,28 @@
+<!--!
+    depgraph
+    Created by  on 2007-12-21.
+    Copyright (c) 2007 Noah Kantrowitz. All rights reserved.
+-->
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+  <head>
+        <title py:if="not milestone">Dependency Graph</title>
+        <title py:if="milestone">Dependency Graph for milestone $milestone</title>
+  </head>
+  <body>
+    <div id="content">
+      <py:choose test="">
+        <py:when test="milestone">
+          <h1>Dependency Graph for milestone $milestone</h1>
+        </py:when>
+        <py:otherwise>
+          <h1>Dependency Graph for Ticket</h1>
+        </py:otherwise>
+      </py:choose>
+    </div>
+  </body>
+</html>
