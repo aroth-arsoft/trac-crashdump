@@ -1,6 +1,6 @@
 from trac.core import *
 from trac.util.html import html
-from trac.web import IRequestHandler
+from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from pkg_resources import resource_filename
@@ -19,51 +19,30 @@ class _FieldStorage(cgi.FieldStorage):
             self.read_single()
 
 class CrashDumpSubmit(Component):
-    implements(IRequestHandler, ITemplateProvider)
+    implements(IRequestHandler, IRequestFilter, ITemplateProvider)
 
     # IRequestHandler methods
     def match_request(self, req):
-        return req.path_info == '/crashdump/submit' or req.path_info == '/submit';
+        if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
+            #self.log.debug('match_request: %s %s', req.method, req.path_info)
+            return True
+        else:
+            return False
 
     def _error_response(self, req, status, body=None):
         req.send_error(None, template='', content_type='text/plain', status=status, env=None, data=body)
 
-    def _parse_args_for_crashdump(self, req):
-        """Parse the supplied request parameters into a list of
-        `(name, value)` tuples.
-        """
-        fp = req.environ['wsgi.input']
+    def pre_process_request(self, req, handler):
+        self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
+        # copy the requested form token from into the args to pass the CSRF test
+        req.args['__FORM_TOKEN' ] = req.form_token
+        return handler
 
-        # Avoid letting cgi.FieldStorage consume the input stream when the
-        # request does not contain form data
-        ctype = req.get_header('Content-Type')
-        if ctype:
-            ctype, options = cgi.parse_header(ctype)
-        if ctype not in ('application/x-www-form-urlencoded',
-                         'multipart/form-data',
-                         'application/terra3d-crashdump'):
-            fp = StringIO('')
-
-        # Python 2.6 introduced a backwards incompatible change for
-        # FieldStorage where QUERY_STRING is no longer ignored for POST
-        # requests. We'll keep the pre 2.6 behaviour for now...
-        if req.method == 'POST':
-            qs_on_post = req.environ.pop('QUERY_STRING', '')
-        fs = _FieldStorage(fp, environ=req.environ, keep_blank_values=True)
-        if req.method == 'POST':
-            req.environ['QUERY_STRING'] = qs_on_post
-
-        args = []
-        for value in fs.list or ():
-            name = value.name
-            if not value.filename:
-                value = unicode(value.value, 'utf-8')
-            args.append((name, value))
-        args.append(('contenttype', str(ctype)))
-        args.append(('fp', str(fp.name)))
-        return arg_list_to_args(args)
+    def post_process_request(self, req, template, data, content_type, method=None):
+        True
 
     def process_request(self, req):
+        self.log.debug('CrashDumpSubmit process_request: %s %s', req.method, req.path_info)
         if req.method != "POST":
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
         else:
@@ -76,36 +55,34 @@ class CrashDumpSubmit(Component):
                 if user_agent != 'terra3d-crashuploader':
                     return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent)
                 else:
-                    args = self._parse_args_for_crashdump(req)
-
-                    id_str = args.get('id')
+                    id_str = req.args.get('id')
                     if id_str and id_str != '00000000-0000-0000-0000-000000000000' and id_str != '{00000000-0000-0000-0000-000000000000}':
-                        crashid = UUID(id_str)
+                        uuid = UUID(id_str)
                         result = True
                     else:
-                        crashid = UUID('00000000-0000-0000-0000-000000000000')
+                        uuid = UUID('00000000-0000-0000-0000-000000000000')
                         result = False
                     if result:
-                        applicationfile = args.get('applicationfile')
-                        force_str = args.get('force') or 'false'
+                        applicationfile = req.args.get('applicationfile')
+                        force_str = req.args.get('force') or 'false'
                         force = True if force_str.lower() == 'true' else False
-                        timestamp = args.get('timestamp')
+                        timestamp = req.args.get('timestamp')
 
-                        productname = args.get('productname')
-                        productversion = args.get('productversion')
-                        producttargetversion = args.get('producttargetversion')
-                        fqdn = args.get('fqdn')
-                        username = args.get('username')
-                        buildtype = args.get('buildtype')
-                        buildpostfix = args.get('buildpostfix')
-                        machinetype = args.get('machinetype')
-                        systemname = args.get('systemname')
-                        osversion = args.get('osversion')
-                        osrelease = args.get('osrelease')
-                        osmachine = args.get('osmachine')
-                        sysinfo = args.get('sysinfo')
+                        productname = req.args.get('productname')
+                        productversion = req.args.get('productversion')
+                        producttargetversion = req.args.get('producttargetversion')
+                        fqdn = req.args.get('fqdn')
+                        username = req.args.get('username')
+                        buildtype = req.args.get('buildtype')
+                        buildpostfix = req.args.get('buildpostfix')
+                        machinetype = req.args.get('machinetype')
+                        systemname = req.args.get('systemname')
+                        osversion = req.args.get('osversion')
+                        osrelease = req.args.get('osrelease')
+                        osmachine = req.args.get('osmachine')
+                        sysinfo = req.args.get('sysinfo')
 
-                    data = {'uuid': str(args)}
+                    data = {'uuid': str(uuid), 'applicationfile': applicationfile}
                     return 'hello.html', data, None
 
     # ITemplateProvider methods

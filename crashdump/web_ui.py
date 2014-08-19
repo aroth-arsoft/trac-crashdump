@@ -162,6 +162,7 @@ class CrashDumpModule(Component):
         """
         return [resource_filename(__name__, 'templates')]
 
+    # IRequestHandler methods
     def match_request(self, req):
         if not req.path_info.startswith('/crashdump'):
             return False
@@ -174,9 +175,6 @@ class CrashDumpModule(Component):
             if match:
                 req.args['action'] = match.group(1)
         return True
-
-    # IRequestHandler methods
-    def match_request(self, req):
 
     def process_request(self, req):
         path_info = req.path_info[10:]
