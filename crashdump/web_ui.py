@@ -162,9 +162,21 @@ class CrashDumpModule(Component):
         """
         return [resource_filename(__name__, 'templates')]
 
+    def match_request(self, req):
+        if not req.path_info.startswith('/crashdump'):
+            return False
+
+        path_info = req.path_info[10:]
+        if not path_info:
+            req.args['action'] = 'list'
+        else:
+            match = re.match(r'/([A-Za-z]+)/?(.+)$', req.path_info)
+            if match:
+                req.args['action'] = match.group(1)
+        return True
+
     # IRequestHandler methods
     def match_request(self, req):
-        return req.path_info.startswith('/crashdump')
 
     def process_request(self, req):
         path_info = req.path_info[10:]
