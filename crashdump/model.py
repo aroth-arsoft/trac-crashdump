@@ -6,134 +6,96 @@ from datetime import datetime
 from trac.ticket.model import Ticket
 from trac.util.compat import set, sorted
 from trac.util.datefmt import utc, to_utimestamp
+from uuid import UUID
 
-class TicketLinks(object):
-    """A model for the ticket links used MasterTickets."""
-    
-    def __init__(self, env, tkt, db=None):
-        self.env = env
-        if not isinstance(tkt, Ticket):
-            tkt = Ticket(self.env, tkt)
-        self.tkt = tkt
-        
-        db = db or self.env.get_db_cnx()
-        cursor = db.cursor()
-        
-        cursor.execute('SELECT dest FROM mastertickets WHERE source=%s ORDER BY dest', (self.tkt.id,))
-        self.blocking = set([int(num) for num, in cursor])
-        self._old_blocking = copy.copy(self.blocking)
-        
-        cursor.execute('SELECT source FROM mastertickets WHERE dest=%s ORDER BY source', (self.tkt.id,))
-        self.blocked_by = set([int(num) for num, in cursor])
-        self._old_blocked_by = copy.copy(self.blocked_by)
-        
-    def save(self, author, comment='', when=None, db=None):
-        """Save new links."""
-        if when is None:
-            when = datetime.now(utc)
-        when_ts = to_utimestamp(when)
-        
-        handle_commit = False
-        if db is None:
-            db = self.env.get_db_cnx()
-            handle_commit = True
-        cursor = db.cursor()
-        
-        new_blocking = set(int(n) for n in self.blocking)
-        new_blocked_by = set(int(n) for n in self.blocked_by)
-        
-        to_check = [
-            # new, old, field
-            (new_blocking, self._old_blocking, 'blockedby', ('source', 'dest')),
-            (new_blocked_by, self._old_blocked_by, 'blocking', ('dest', 'source')),
+class CrashDump(object):
+
+    __db_fields = [
+        'uuid',
+        'crashtime',
+        'reporttime',
+        'uploadtime',
+        'applicationname',
+        'applicationfile',
+        'uploadhostname',
+        'uploadusername',
+        'crashhostname',
+        'crashusername',
+        'productname',
+        'productcodename',
+        'productversion',
+        'producttargetversion',
+        'buildtype',
+        'buildpostfix',
+        'machinetype',
+        'systemname',
+        'osversion',
+        'osrelease',
+        'osmachine',
+        'minidumpfile',
+        'minidumpreporttextfile',
+        'minidumpreportxmlfile',
+        'minidumpreporthtmlfile',
+        'coredumpfile',
+        'coredumpreporttextfile',
+        'coredumpreportxmlfile',
+        'coredumpreporthtmlfile',
         ]
-        
-        for new_ids, old_ids, field, sourcedest in to_check:
-            for n in new_ids | old_ids:
-                update_field = None
-                if n in new_ids and n not in old_ids:
-                    # New ticket added
-                    cursor.execute('INSERT INTO mastertickets (%s, %s) VALUES (%%s, %%s)'%sourcedest, (self.tkt.id, n))
-                    update_field = lambda lst: lst.append(str(self.tkt.id))
-                elif n not in new_ids and n in old_ids:
-                    # Old ticket removed
-                    cursor.execute('DELETE FROM mastertickets WHERE %s=%%s AND %s=%%s'%sourcedest, (self.tkt.id, n))
-                    update_field = lambda lst: lst.remove(str(self.tkt.id))
-                
-                if update_field is not None:
-                    cursor.execute('SELECT value FROM ticket_custom WHERE ticket=%s AND name=%s',
-                                   (n, str(field)))
-                    old_value = (cursor.fetchone() or ('',))[0]
-                    new_value = [x.strip() for x in old_value.split(',') if x.strip()]
-                    update_field(new_value)
-                    new_value = ', '.join(sorted(new_value, key=lambda x: int(x)))
-            
-                    cursor.execute('INSERT INTO ticket_change (ticket, time, author, field, oldvalue, newvalue) VALUES (%s, %s, %s, %s, %s, %s)', 
-                                   (n, when_ts, author, field, old_value, new_value))
-                                   
-                    if comment:
-                        cursor.execute('INSERT INTO ticket_change (ticket, time, author, field, oldvalue, newvalue) VALUES (%s, %s, %s, %s, %s, %s)', 
-                                       (n, when_ts, author, 'comment', '', '(In #%s) %s'%(self.tkt.id, comment)))
-                                   
-                           
-                    cursor.execute('UPDATE ticket_custom SET value=%s WHERE ticket=%s AND name=%s',
-                                   (new_value, n, field))
 
-                    # refresh the changetime to prevent concurrent edits
-                    cursor.execute('UPDATE ticket SET changetime=%s WHERE id=%s', (when_ts,n))
+    def __init__(self, uuid, env=None):
+        for f in CrashDump.__db_fields:
+            setattr(self, f, None)
+        self.id = None
+        self.uuid = uuid
+        self.env = env
 
-                    if not cursor.rowcount:
-                        cursor.execute('INSERT INTO ticket_custom (ticket, name, value) VALUES (%s, %s, %s)',
-                                       (n, field, new_value))
-        
-        # cursor.execute('DELETE FROM mastertickets WHERE source=%s OR dest=%s', (self.tkt.id, self.tkt.id))
-        # data = []
-        # for tkt in self.blocking:
-        #     if isinstance(tkt, Ticket):
-        #         tkt = tkt.id
-        #     data.append((self.tkt.id, tkt))
-        # for tkt in self.blocked_by:
-        #     if isisntance(tkt, Ticket):
-        #         tkt = tkt.id
-        #     data.append((tkt, self.tkt.id))
-        # 
-        # cursor.executemany('INSERT INTO mastertickets (source, dest) VALUES (%s, %s)', data)
-        
-        if handle_commit:
-            db.commit()
+    def submit(self):
+        ret = None
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            fielddata = []
+            for f in CrashDump.__db_fields:
+                v = getattr(self, f)
+                if v is None:
+                    fielddata.append('NULL')
+                elif isinstance(v, str):
+                    fielddata.append('\'' + v + '\'')
+                elif isinstance(v, UUID):
+                    fielddata.append('\'' + str(v) + '\'')
+                elif isinstance(v, bool):
+                    fielddata.append( '1' if v else '0')
+                elif isinstance(v, int) or isinstance(v, float):
+                    fielddata.append(str(v))
+                else:
+                    fielddata.append('\'' + v + '\'')
+            sql = "INSERT INTO crashdump (%s) VALUES (%s)" % \
+                (','.join(CrashDump.__db_fields), ','.join(fielddata) )
+            self.env.log.info("insert crashdump: %s", sql)
+            cursor.execute(sql)
+            crashid_id = db.get_last_id(cursor, 'crashdump')
+            self.env.log.info("New crashdump: %s id=%i", self.uuid, crashid_id)
+            ret = crashid_id
+        return ret
 
-    def __nonzero__(self):
-        return bool(self.blocking) or bool(self.blocked_by)
-            
-    def __repr__(self):
-        def l(arr):
-            arr2 = []
-            for tkt in arr:
-                if isinstance(tkt, Ticket):
-                    tkt = tkt.id
-                arr2.append(str(tkt))
-            return '[%s]'%','.join(arr2)
-            
-        return '<mastertickets.model.TicketLinks #%s blocking=%s blocked_by=%s>'% \
-               (self.tkt.id, l(getattr(self, 'blocking', [])), l(getattr(self, 'blocked_by', [])))
+    def find_by_uuid(self):
+        ret = None
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            sql = "SELECT id FROM crashdump WHERE uuid='%s'" % self.uuid
+            cursor.execute(sql)
+            for crashid in cursor:
+                ret = crashid
+        return ret
 
-    @staticmethod
-    def walk_tickets(env, tkt_ids):
-        """Return an iterable of all links reachable directly above or below those ones."""
-        def visit(tkt, memo, next_fn):
-            if tkt in memo:
-                return False
-            
-            links = TicketLinks(env, tkt)
-            memo[tkt] = links
-            
-            for n in next_fn(links):
-                visit(n, memo, next_fn)
-        
-        memo1 = {}
-        memo2 = {}
-        for id in tkt_ids:
-            visit(id, memo1, lambda links: links.blocking)
-            visit(id, memo2, lambda links: links.blocked_by)
-        memo1.update(memo2)
-        return memo1.itervalues()
+    def does_exist(self):
+        ret = False
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            sql = "SELECT id FROM crashdump WHERE uuid='%s'" % self.uuid
+            cursor.execute(sql)
+            for crashid in cursor:
+                ret = True
+        return ret
+
+    def query(self):
+        return []

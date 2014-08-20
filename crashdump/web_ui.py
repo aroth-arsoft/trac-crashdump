@@ -6,7 +6,7 @@ from genshi.core import Markup, START, END, TEXT
 from genshi.builder import tag
 
 from trac.core import *
-from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
+from trac.web.api import IRequestHandler, ITemplateStreamFilter
 from trac.web.chrome import ITemplateProvider, INavigationContributor, add_stylesheet, add_script, \
                             add_ctxtnav
 from trac.ticket.api import ITicketManipulator
@@ -21,12 +21,12 @@ from trac.util.text import shorten_line
 from trac.util.compat import set, sorted, partial
 
 import graphviz
-from model import TicketLinks
+from .model import CrashDump
 
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
-    implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateStreamFilter,
+    implements(IRequestHandler, INavigationContributor, ITemplateStreamFilter,
                ITemplateProvider, ITicketManipulator)
     
     dot_path = Option('crashdump', 'dot_path', default='dot',
@@ -45,59 +45,6 @@ class CrashDumpModule(Component):
         doc='Direction of the dependency graph (TD = Top Down, DT = Down Top, LR = Left Right, RL = Right Left)')
 
     fields = set(['blocking', 'blockedby'])
-    
-    # IRequestFilter methods
-    def pre_process_request(self, req, handler):
-        return handler
-        
-    def post_process_request(self, req, template, data, content_type):
-        if req.path_info.startswith('/crashdump/'):
-            # In case of an invalid ticket, the data is invalid
-            if not data:
-                return template, data, content_type
-            tkt = data['ticket']
-            links = TicketLinks(self.env, tkt)
-            
-            for i in links.blocked_by:
-                if Ticket(self.env, i)['status'] != 'closed':
-                    add_script(req, 'crashdump/disable_resolve.js')
-                    break
-
-            # Add link to depgraph if needed
-            if links:
-                add_ctxtnav(req, 'Depgraph', req.href.depgraph(tkt.id))
-            
-            for change in data.get('changes', {}):
-                if not change.has_key('fields'):
-                    continue
-                for field, field_data in change['fields'].iteritems():
-                    if field in self.fields:
-                        if field_data['new'].strip():
-                            new = set([int(n) for n in field_data['new'].split(',')])
-                        else:
-                            new = set()
-                        if field_data['old'].strip():
-                            old = set([int(n) for n in field_data['old'].split(',')])
-                        else:
-                            old = set()
-                        add = new - old
-                        sub = old - new
-                        elms = tag()
-                        if add:
-                            elms.append(
-                                tag.em(u', '.join([unicode(n) for n in sorted(add)]))
-                            )
-                            elms.append(u' added')
-                        if add and sub:
-                            elms.append(u'; ')
-                        if sub:
-                            elms.append(
-                                tag.em(u', '.join([unicode(n) for n in sorted(sub)]))
-                            )
-                            elms.append(u' removed')
-                        field_data['rendered'] = elms
-
-        return template, data, content_type
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
@@ -178,15 +125,12 @@ class CrashDumpModule(Component):
 
     def process_request(self, req):
         path_info = req.path_info[10:]
+        data = {}
         if path_info == '/list' or not path_info:
-            content = 'Hello World list!'
+            data['content'] = 'Hello World list!'
         else:
-            content = 'Hello World !'
-        req.send_response(200)
-        req.send_header('Content-Type', 'text/plain')
-        req.send_header('Content-Length', len(content))
-        req.end_headers()
-        req.write(content)
+            data['content'] = 'Hello World !'
+        return 'list.html', data, None
 
     def _link_tickets(self, req, tickets):
         items = []
