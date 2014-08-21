@@ -77,14 +77,44 @@ class CrashDump(object):
             ret = crashid_id
         return ret
 
-    def find_by_uuid(self):
-        ret = None
+    def update(self):
+        ret = False
         with self.env.db_transaction as db:
             cursor = db.cursor()
-            sql = "SELECT id FROM crashdump WHERE uuid='%s'" % self.uuid
+            update_fields = []
+            for f in CrashDump.__db_fields:
+                v = getattr(self, f)
+                if v is None:
+                    continue
+                elif isinstance(v, str):
+                    update_fields.append(f + '=' + '\'' + v + '\'')
+                elif isinstance(v, UUID):
+                    update_fields.append(f + '=' + '\'' + str(v) + '\'')
+                elif isinstance(v, bool):
+                    update_fields.append(f + '=' + '1' if v else '0')
+                elif isinstance(v, int) or isinstance(v, float):
+                    update_fields.append(f + '=' + str(v))
+                else:
+                    update_fields.append(f + '=' + '\'' + v + '\'')
+
+            sql = "UPDATE crashdump SET %s WHERE id=%i" % \
+                (','.join(update_fields), self.id )
+            self.env.log.info("update crashdump: %s", sql)
+            cursor.execute(sql)
+            self.env.log.info("update crashdump: %s id=%i", self.uuid, self.id)
+            ret = True
+        return ret
+
+    def find_by_uuid(self, uuid=None):
+        ret = None
+        if uuid is None:
+            uuid = self.uuid
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            sql = "SELECT id FROM crashdump WHERE uuid='%s'" % uuid
             cursor.execute(sql)
             for crashid in cursor:
-                ret = crashid
+                ret = crashid[0]
         return ret
 
     def does_exist(self):

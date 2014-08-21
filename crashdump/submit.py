@@ -62,11 +62,13 @@ class CrashDumpSubmit(Component):
 
         uuid = UUID(id_str)
         crashdump = CrashDump(uuid, env=self.env)
+        crashid = crashdump.find_by_uuid(uuid)
+
         force_str = req.args.get('force') or 'false'
         force = True if force_str.lower() == 'true' else False
         # for easy testing
         force = True
-        if crashdump.does_exist() and not force:
+        if crashid is not None and not force:
             return self._error_response(req, status=HTTPForbidden.code, body='Crash identifier %s already uploaded.' % id_str)
 
         result = False
@@ -132,10 +134,17 @@ class CrashDumpSubmit(Component):
             crashdump.applicationname = appbase
 
         if result:
-            if crashdump.submit():
-                return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
+            if crashid is None:
+                if crashdump.submit():
+                    return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
+                else:
+                    return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
-                return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
+                crashdump.id = crashid
+                if crashdump.update():
+                    return self._success_response(req, body='Crash dump %s updated successfully.' % uuid)
+                else:
+                    return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
         else:
             return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s' % uuid)
 
