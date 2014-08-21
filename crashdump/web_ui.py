@@ -58,6 +58,14 @@ class CrashDumpModule(Component):
         if not data:
             return stream
 
+        if filename == 'query_results.html':
+            ticket = data.get('ticket')
+            if ticket:
+                for f in data.get('fields', []):
+                    name = f['name']
+                    if name == '_crashdump':
+                        fields[name] = 'Crash dump'
+        return stream
         # We try all at the same time to maybe catch also changed or processed templates
         if filename in ["report_view.html", "query_results.html", "ticket.html", "query.html"]:
             # For ticket.html
@@ -125,11 +133,9 @@ class CrashDumpModule(Component):
 
     def process_request(self, req):
         path_info = req.path_info[10:]
-        data = {}
-        if path_info == '/list' or not path_info:
-            data['content'] = 'Hello World list!'
-        else:
-            data['content'] = 'Hello World !'
+        dumps = CrashDump.query(self.env)
+        data = { 'dumps': dumps,
+                    'paginator': None }
         return 'list.html', data, None
 
     def _link_tickets(self, req, tickets):

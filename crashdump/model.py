@@ -127,5 +127,22 @@ class CrashDump(object):
                 ret = True
         return ret
 
-    def query(self):
-        return []
+    @staticmethod
+    def query(env=None, filter=None):
+        ret = []
+        where_expr = '1' if filter is None else filter
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            sql = "SELECT id,%s FROM crashdump WHERE %s" % \
+                (','.join(CrashDump.__db_fields), where_expr)
+            cursor.execute(sql)
+            for record in cursor:
+                item = CrashDump(None, env)
+                idx = 0
+                item.id = record[idx]
+                idx += 1
+                for f in CrashDump.__db_fields:
+                    setattr(item, f, record[idx])
+                    idx += 1
+                ret.append(item)
+        return ret
