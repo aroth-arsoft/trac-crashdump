@@ -130,16 +130,42 @@ class CrashDump(object):
             ret = True
         return ret
 
-    def find_by_uuid(self, uuid=None):
+    @staticmethod
+    def find_by_uuid(env, uuid):
         ret = None
-        if uuid is None:
-            uuid = self.uuid
-        with self.env.db_transaction as db:
+        with env.db_transaction as db:
             cursor = db.cursor()
-            sql = "SELECT id FROM crashdump WHERE uuid='%s'" % uuid
+            sql = "SELECT id,%s FROM crashdump WHERE uuid='%s'" % \
+                (','.join(CrashDump.__db_fields), str(uuid))
             cursor.execute(sql)
-            for crashid in cursor:
-                ret = crashid[0]
+            for record in cursor:
+                ret = CrashDump(None, env)
+                idx = 0
+                ret.id = record[idx]
+                idx += 1
+                for f in CrashDump.__db_fields:
+                    setattr(ret, f, record[idx])
+                    idx += 1
+                break
+        return ret
+
+    @staticmethod
+    def find_by_id(env, id):
+        ret = None
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            sql = "SELECT id,%s FROM crashdump WHERE id='%i'" % \
+                (','.join(CrashDump.__db_fields), id)
+            cursor.execute(sql)
+            for record in cursor:
+                ret = CrashDump(None, env)
+                idx = 0
+                ret.id = record[idx]
+                idx += 1
+                for f in CrashDump.__db_fields:
+                    setattr(ret, f, record[idx])
+                    idx += 1
+                break
         return ret
 
     def does_exist(self):

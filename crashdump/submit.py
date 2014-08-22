@@ -61,8 +61,12 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPForbidden.code, body='Invalid crash identifier %s specified.' % id_str)
 
         uuid = UUID(id_str)
-        crashdump = CrashDump(uuid, env=self.env)
-        crashid = crashdump.find_by_uuid(uuid)
+        crashid = None
+        crashdump = CrashDump.find_by_uuid(self.env, uuid)
+        if not crashdump:
+            crashdump = CrashDump(uuid, self.env)
+        else:
+            crashid = crashdump.id
 
         force_str = req.args.get('force') or 'false'
         force = True if force_str.lower() == 'true' else False

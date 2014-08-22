@@ -20,29 +20,18 @@ from trac.util.text import shorten_line
 from trac.util.datefmt import format_datetime, format_time, from_utimestamp
 from trac.util.compat import set, sorted, partial
 
-import graphviz
+import os.path
 from .model import CrashDump
+from .xmlreport import XMLReport
 
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
     implements(IRequestHandler, INavigationContributor, ITemplateStreamFilter,
                ITemplateProvider)
-    
-    dot_path = Option('crashdump', 'dot_path', default='dot',
-                      doc='Path to the dot executable.')
-    gs_path = Option('crashdump', 'gs_path', default='gs',
-                     doc='Path to the ghostscript executable.')
-    use_gs = BoolOption('crashdump', 'use_gs', default=False,
-                        doc='If enabled, use ghostscript to produce nicer output.')
-    
-    closed_color = Option('crashdump', 'closed_color', default='green',
-        doc='Color of closed tickets')
-    opened_color = Option('crashdump', 'opened_color', default='red',
-        doc='Color of opened tickets')
 
-    graph_direction = ChoiceOption('crashdump', 'graph_direction', choices = ['TD', 'LR', 'DT', 'RL'],
-        doc='Direction of the dependency graph (TD = Top Down, DT = Down Top, LR = Left Right, RL = Right Left)')
+    dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
+                      doc='Path to the crash dump data directory.')
 
     crashdump_fields = set(['crashdump'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
@@ -105,27 +94,52 @@ class CrashDumpModule(Component):
 
     # IRequestHandler methods
     def match_request(self, req):
-        if not req.path_info.startswith('/crashdump'):
+        if not req.path_info.startswith('/crash'):
             return False
 
-        path_info = req.path_info[10:]
-        if not path_info:
-            req.args['action'] = 'list'
+        ret = False
+        path_info = req.path_info[6:]
+        action = None
+        self.log.debug('match_request %s' % path_info)
+        match = re.match(r'/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(/.+)?$', path_info)
+        if match:
+            req.args['crashuuid'], action  = match.groups()
+            ret = True
         else:
-            match = re.match(r'/([A-Za-z]+)/?(.+)$', req.path_info)
+            match = re.match(r'/([0-9]+)(/.+)?$', path_info)
             if match:
-                req.args['action'] = match.group(1)
-        return True
+                req.args['crashid'], action  = match.groups()
+                ret = True
+        if ret:
+            req.args['action'] = action[1:] if action else None
+        self.log.debug('match_request %s' % str(req.args))
+        return ret
 
     def process_request(self, req):
-        path_info = req.path_info[10:]
-        dumps = CrashDump.query(self.env)
-        data = { 'dumps': dumps,
-                    'paginator': None }
-        return 'list.html', data, None
+        path_info = req.path_info[6:]
+        if 'crashuuid' in req.args:
+            object = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
+        elif 'crashid' in req.args:
+            object = CrashDump.find_by_id(self.env, req.args['crashid'])
+        else:
+            object = None
+        data = { 'object': object, 'action':req.args['action'] }
+        if object:
+            xmlfile = self._get_dump_filename(object, 'minidumpreportxmlfile')
+            xmlreport = XMLReport(xmlfile)
+            for f in xmlreport.fields:
+                data[f] = getattr(xmlreport, f)
+
+        return 'report.html', data, None
 
     def _format_datetime(self, req, timestamp):
         return format_datetime(from_utimestamp(long(timestamp)))
+
+
+    def _get_dump_filename(self, crashdump, name):
+        item_name = getattr(crashdump, name)
+        crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
+        return crash_file
 
     def _link_crash(self, req, uuid):
         items = []
