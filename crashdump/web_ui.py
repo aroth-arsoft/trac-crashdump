@@ -9,7 +9,6 @@ from trac.core import *
 from trac.web.api import IRequestHandler, ITemplateStreamFilter
 from trac.web.chrome import ITemplateProvider, INavigationContributor, add_stylesheet, add_script, \
                             add_ctxtnav
-from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.query import Query
 from trac.config import Option, BoolOption, ChoiceOption
@@ -18,6 +17,7 @@ from trac.util import to_unicode
 from trac.util.translation import _ 
 from trac.util.html import html, Markup
 from trac.util.text import shorten_line
+from trac.util.datefmt import format_datetime, format_time, from_utimestamp
 from trac.util.compat import set, sorted, partial
 
 import graphviz
@@ -27,7 +27,7 @@ class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
     implements(IRequestHandler, INavigationContributor, ITemplateStreamFilter,
-               ITemplateProvider, ITicketManipulator)
+               ITemplateProvider)
     
     dot_path = Option('crashdump', 'dot_path', default='dot',
                       doc='Path to the dot executable.')
@@ -44,7 +44,8 @@ class CrashDumpModule(Component):
     graph_direction = ChoiceOption('crashdump', 'graph_direction', choices = ['TD', 'LR', 'DT', 'RL'],
         doc='Direction of the dependency graph (TD = Top Down, DT = Down Top, LR = Left Right, RL = Right Left)')
 
-    fields = set(['blocking', 'blockedby'])
+    crashdump_fields = set(['crashdump'])
+    datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
@@ -58,51 +59,36 @@ class CrashDumpModule(Component):
         if not data:
             return stream
 
-        if filename == 'query_results.html':
-            ticket = data.get('ticket')
-            if ticket:
-                for f in data.get('fields', []):
-                    name = f['name']
-                    if name == '_crashdump':
-                        fields[name] = 'Crash dump'
-        return stream
         # We try all at the same time to maybe catch also changed or processed templates
         if filename in ["report_view.html", "query_results.html", "ticket.html", "query.html"]:
             # For ticket.html
             if 'fields' in data and isinstance(data['fields'], list):
                 for field in data['fields']:
-                    for f in self.fields:
+                    for f in self.crashdump_fields:
                         if field['name'] == f and data['ticket'][f]:
-                            field['rendered'] = self._link_tickets(req, data['ticket'][f])
+                            field['rendered'] = self._link_crash(req, data['ticket'][f])
             # For query_results.html and query.html
             if 'groups' in data and isinstance(data['groups'], list):
                 for group, tickets in data['groups']:
                     for ticket in tickets:
-                        for f in self.fields:
+                        for f in self.crashdump_fields:
                             if f in ticket:
-                                ticket[f] = self._link_tickets(req, ticket[f])
+                                ticket[f] = self._link_crash(req, ticket[f])
             # For report_view.html
             if 'row_groups' in data and isinstance(data['row_groups'], list):
+                #self.log.debug('got row_groups %s' % str(data['row_groups']))
                 for group, rows in data['row_groups']:
                     for row in rows:
                         if 'cell_groups' in row and isinstance(row['cell_groups'], list):
                             for cells in row['cell_groups']:
                                 for cell in cells:
                                     # If the user names column in the report differently (blockedby AS "blocked by") then this will not find it
-                                    if cell.get('header', {}).get('col') in self.fields:
-                                        cell['value'] = self._link_tickets(req, cell['value'])
+                                    self.log.debug('got cell header %s' % str(cell.get('header', {}).get('col')))
+                                    if cell.get('header', {}).get('col') in self.crashdump_fields:
+                                        cell['value'] = self._link_crash(req, cell['value'])
+                                    elif cell.get('header', {}).get('col') in self.datetime_fields:
+                                        cell['value'] = self._format_datetime(req, cell['value'])
         return stream
-        
-    # ITicketManipulator methods
-    def prepare_ticket(self, req, ticket, fields, actions):
-        pass
-        
-    def validate_ticket(self, req, ticket):
-        if req.args.get('action') == 'resolve' and req.args.get('action_resolve_resolve_resolution') == 'fixed': 
-            links = TicketLinks(self.env, ticket)
-            for i in links.blocked_by:
-                if Ticket(self.env, i)['status'] != 'closed':
-                    yield None, 'Ticket #%s is blocking this ticket'%i
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -138,30 +124,24 @@ class CrashDumpModule(Component):
                     'paginator': None }
         return 'list.html', data, None
 
-    def _link_tickets(self, req, tickets):
+    def _format_datetime(self, req, timestamp):
+        return format_datetime(from_utimestamp(long(timestamp)))
+
+    def _link_crash(self, req, uuid):
         items = []
 
-        for i, word in enumerate(re.split(r'([;,\s]+)', tickets)):
-            if i % 2:
-                items.append(word)
-            elif word:
-                ticketid = word
-                word = '#%s' % word
-
-                try:
-                    ticket = Ticket(self.env, ticketid)
-                    if 'TICKET_VIEW' in req.perm(ticket.resource):
-                        word = \
-                            tag.a(
-                                '#%s' % ticket.id,
-                                class_=ticket['status'],
-                                href=req.href.ticket(int(ticket.id)),
-                                title=shorten_line(ticket['summary'])
-                            )
-                except ResourceNotFound:
-                    pass
-               
-                items.append(word)
+        try:
+            crash = CrashDump(self.env, uuid)
+            word = \
+                tag.a(
+                    '%s' % uuid,
+                    class_=crash.status,
+                    href=req.href('crash', uuid),
+                    title=uuid
+                )
+        except ResourceNotFound:
+            pass
+        items.append(word)
 
         if items:
             return tag(items)

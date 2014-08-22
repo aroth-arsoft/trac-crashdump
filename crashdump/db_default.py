@@ -4,10 +4,11 @@
 from trac.db import Table, Column
 
 name = 'crashdump'
-version = 4
+version = 8
 tables = [
     Table('crashdump', key=('id'))[
         Column('id', type='int'),
+        Column('state', type='int'),
         Column('uuid', type='string', size=36),
         Column('crashtime', type='int'),
         Column('reporttime', type='int'),
@@ -39,6 +40,11 @@ tables = [
         Column('coredumpreporttextfile', type='string', size=256),
         Column('coredumpreportxmlfile', type='string', size=256),
         Column('coredumpreporthtmlfile', type='string', size=256),
+    ],
+    Table('crashdump_state', key=('id'))[
+        Column('id', type='int'),
+        Column('name', type='string', size=36),
+        Column('description', type='string', size=256),
     ]
 ]
 
