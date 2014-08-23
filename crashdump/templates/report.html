@@ -10,72 +10,76 @@
     <title>${object.uuid}</title>
   </head>
   <body>
-    <div id="content">
-        <h1>${object.uuid}</h1>
+    <div id="content" class="crashdump">
+        <h1 id="trac-ticket-title" class="searchable">
+            <span class="summary">${object.uuid}</span>
+        </h1>
 
-<table class='crash_info'>
+<table class="properties">
 <h2>Crash dump information</h2>
-<tr><td>Id</td><td>${crash_info.uuid}</td></tr>
-<tr><td>State</td><td>{{ object.state.description}</td></tr>
-<tr><td>Crash timestamp</td><td>${crash_info.crash_timestamp}</td></tr>
-<tr><td>Report timestamp</td><td>${crash_info.report_time}</td></tr>
+<tbody>
+<tr><td>Id</td><td>${object.uuid}</td></tr>
+<tr><td>State</td><td>${object.state}</td></tr>
+<tr><td>Crash time</td><td>${pretty_dateinfo(object.crashtime)}</td></tr>
+<tr><td>Report time</td><td>${pretty_dateinfo(object.reporttime)}</td></tr>
+<tr><td>Upload time</td><td>${pretty_dateinfo(object.uploadtime)}</td></tr>
 <tr><td>Application name</td>
 <!--
 <td><a href="{ % url "list_filter_app" crash_info.application %}">${crash_info.application}</a></td>
 -->
 <td>${crash_info.application}</td>
 </tr>
-<tr><td>Command line</td><td><pre><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre></td></tr>
-<tr><td>Report FQDN</td><td>${crash_info.report_fqdn}</td></tr>
-<tr><td>Report username</td><td>${crash_info.report_username}</td></tr>
-<tr><td>Symbol directories</td><td><ul><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
-<tr><td>Image directories</td><td><ul><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><td>Application&nbsp;file</td>
+<td>${crash_info.applicationfile}</td>
+</tr>
+<tr><td>Command&nbsp;line</td><td><pre><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre></td></tr>
+<tr><td>Report&nbsp;FQDN</td><td>${crash_info.report_fqdn}</td></tr>
+<tr><td>Report&nbsp;username</td><td>${crash_info.report_username}</td></tr>
+<tr><td>Symbol&nbsp;directories</td><td><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><td>Image&nbsp;directories</td><td><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
 <tr><td>Environment</td><td>
-<a href="javascript:;" onclick="show('environment')">Show</a>
-<div class="expandable_hidden" id="environment">
-<ul>
+<ul class="environment">
 <py:for each="k,v in crash_info.environment.items()">
 <li>${k}&nbsp;=&nbsp;${v}</li>
-</py:for></ul>
-</div>
+</py:for>
+</ul>
 </td></tr>
+</tbody>
 </table>
 
-<a href="javascript:;" onclick="show('system_info')">System information</a>
-<div class="expandable_hidden" id="system_info">
-<table class='system_info'>
-<tr><td>Platform type</td><td>${system_info.platform_type}</td></tr>
-<tr><td>CPU type</td><td>${system_info.cpu_type}</td></tr>
-<tr><td>CPU 64-bit</td><td>${system_info.cpu_64_bit}</td></tr>
-<tr><td>CPU name</td><td>${system_info.cpu_name}</td></tr>
-<tr><td>CPU level</td><td>0x${system_info.cpu_level}</td></tr>
-<tr><td>CPU revision</td><td>0x${system_info.cpu_revision}</td></tr>
-<tr><td>CPU vendor</td><td>${system_info.cpu_vendor}</td></tr>
-<tr><td>Number of CPUs</td><td>${system_info.number_of_cpus}</td></tr>
-<tr><td>OS version</td><td>${system_info.os_version}</td></tr>
-<tr><td>OS version info</td><td>${system_info.os_version_info}</td></tr>
-<tr><td>Distribution id</td><td>${system_info.distribution_id}</td></tr>
-<tr><td>Distribution release</td><td>${system_info.distribution_release}</td></tr>
-<tr><td>Distribution codename</td><td>${system_info.distribution_codename}</td></tr>
-<tr><td>Distribution description</td><td>${system_info.distribution_description}</td></tr>
+<h2>System information</h2>
+<table class="properties">
+<tr><td>Platform&nbsp;type</td><td>${system_info.platform_type}</td></tr>
+<tr><td>CPU&nbsp;type</td><td>${system_info.cpu_type}</td></tr>
+<tr><td>CPU&nbsp;64-bit</td><td><py:choose test="system_info.cpu_64_bit"><py:when test="True">yes</py:when><py:otherwise>no</py:otherwise></py:choose></td></tr>
+<tr><td>CPU&nbsp;name</td><td>${system_info.cpu_name}</td></tr>
+<tr><td>CPU&nbsp;level</td><td>0x${system_info.cpu_level}</td></tr>
+<tr><td>CPU&nbsp;revision</td><td>0x${system_info.cpu_revision}</td></tr>
+<tr><td>CPU&nbsp;vendor</td><td>${system_info.cpu_vendor}</td></tr>
+<tr><td>Number&nbsp;of&nbsp;CPUs</td><td>${system_info.number_of_cpus}</td></tr>
+<tr><td>OS&nbsp;version</td><td>${system_info.os_version}</td></tr>
+<tr><td>OS&nbsp;version&nbsp;info</td><td>${system_info.os_version_info}</td></tr>
+<tr><td>Distribution&nbsp;id</td><td>${system_info.distribution_id}</td></tr>
+<tr><td>Distribution&nbsp;release</td><td>${system_info.distribution_release}</td></tr>
+<tr><td>Distribution&nbsp;codename</td><td>${system_info.distribution_codename}</td></tr>
+<tr><td>Distribution&nbsp;description</td><td>${system_info.distribution_description}</td></tr>
 </table>
-</div>
 
 <py:if test="exception">
 <h2>Exception</h2>
-<table class='exception'>
+<table class="properties">
 <tr><td>Thread id</td><td>${exception.thread}</td></tr>
 <tr><td>Code</td><td>${exception.code}</td></tr>
 <tr><td>Name</td><td>${exception.name}</td></tr>
 <tr><td>Info</td><td>${exception.info}</td></tr>
-<tr><td>Address</td><td>0x${exception.address}</td></tr>
-<tr><td>Flags</td><td>0x${exception.flags}</td></tr>
+<tr><td>Address</td><td>${ hex_format(exception.address) }</td></tr>
+<tr><td>Flags</td><td>${ hex_format(exception.flags) }</td></tr>
 </table>
 </py:if>
 
 <py:if test="assertion">
 <h2>Assertion</h2>
-<table class='assertion'>
+<table class="properties">
 <tr><td>Expression</td><td>${assertion.expression}</td></tr>
 <tr><td>Function</td><td>${assertion.function}</td></tr>
 <tr><td>Source</td><td>${assertion.source}</td></tr>
@@ -84,7 +88,7 @@
 </py:if>
 
 <h2>Modules</h2>
-<table class='modules'>
+<table class="properties">
 <tr>
 <th>Base</th>
 <th>Size</th>
@@ -93,11 +97,11 @@
 <th>File version</th>
 <th>Flags</th>
 <th>Name</th>
-<th>Symbol file</th>
+<th>Symbol&nbsp;file</th>
 </tr>
 <py:for each="module in modules">
 <tr>
-<td>0x${module.base}</td>
+<td>${ hex_format(module.base)}</td>
 <td>${module.size} </td>
 <td>${module.timestamp}</td>
 <td>${module.product_version} </td>
@@ -110,7 +114,7 @@
 </table>
 
 <h2>Threads</h2>
-<table class='threads'>
+<table class="properties">
 <tr>
 <th>Id</th>
 <th>Name</th>
@@ -123,10 +127,10 @@
 </tr>
 <py:for each="thread in threads">
 <tr>
-<td><a name="thread_${thread.id}">0x${thread.id}<py:if test="thread.exception">*</py:if></a></td>
+<td><a name="thread_${thread.id}">${ hex_format(thread.id)}<py:if test="thread.exception">*</py:if></a></td>
 <td>${thread.name} </td>
 <td><a href="#memory_block_${thread.memory}">0x${thread.memory}</a></td>
-<td>0x${thread.start_addr}</td>
+<td>${ hex_format(thread.start_addr) }</td>
 <td>${thread.create_time}</td>
 <td>${thread.exit_time}</td>
 <td>${thread.kernel_time} </td>
@@ -137,8 +141,8 @@
 
 <h2>Stack dumps</h2>
 <py:for each="stackdump in stackdumps">
-<h3><a href="#thread_${stackdump.threadid}">Thread 0x${stackdump.threadid}</a><py:if test="stackdump.exception"> with exception</py:if></h3>
-<table class='callstack'>
+<h3><a href="#thread_${stackdump.threadid}">Thread ${ hex_format(stackdump.threadid) }</a><py:if test="stackdump.exception"> with exception</py:if></h3>
+<table class="properties">
 <tr>
 <th>Num</th>
 <th>Addr</th>
@@ -155,23 +159,28 @@
 <py:for each="frame in stackdump.callstack">
 <tr>
 <td>${frame.num}</td>
-<td>0x${frame.addr}</td>
-<td>0x${frame.retaddr}</td>
-<td>0x${frame.param0}</td>
-<td>0x${frame.param1}</td>
-<td>0x${frame.param2}</td>
-<td>0x${frame.param3}</td>
+<td>${ hex_format(frame.addr) }</td>
+<td>${ hex_format(frame.retaddr) }</td>
+<td>${ hex_format(frame.param0) }</td>
+<td>${ hex_format(frame.param1) }</td>
+<td>${ hex_format(frame.param2) }</td>
+<td>${ hex_format(frame.param3) }</td>
 <td>${frame.module}</td>
 <td>${frame.function}</td>
-<td><a href="${frame.source_url}">${frame.source}:${frame.line}</a></td>
-<td>0x${frame.lineoff}</td>
+<td>
+<py:choose test="frame.source and len(frame.source)">
+  <py:when test="False">Unknown</py:when>
+  <py:otherwise><a href="${frame.source_url}">${frame.source}:${frame.line}</a></py:otherwise>
+</py:choose>
+</td>
+<td>${ hex_format(frame.lineoff) }</td>
 </tr>
 </py:for>
 </table>
 </py:for>
 
 <h2>Memory regions</h2>
-<table class="memory_region">
+<table class="properties">
 <tr>
 <th>Base address</th>
 <th>Size</th>
@@ -183,13 +192,13 @@
 </tr>
 <py:for each="memory_region in memory_regions">
 <tr>
-<td>0x${memory_region.base_addr}</td>
+<td>${ hex_format(memory_region.base_addr) }</td>
 <td>${memory_region.size} </td>
-<td>0x${memory_region.alloc_base}</td>
-<td>0x${memory_region.alloc_prot}</td>
-<td>0x${memory_region.type}</td>
-<td>0x${memory_region.protect}</td>
-<td>0x${memory_region.state}</td>
+<td>${ hex_format(memory_region.alloc_base) }</td>
+<td>${ hex_format(memory_region.alloc_prot) }</td>
+<td>${ hex_format(memory_region.type) }</td>
+<td>${ hex_format(memory_region.protect) }</td>
+<td>${ hex_format(memory_region.state) }</td>
 </tr>
 </py:for>
 </table>
@@ -197,11 +206,11 @@
 <h2>Memory blocks</h2>
 <table class="memory_blocks">
 <py:for each="memory_block in memory_blocks">
-<h3><a name="memory_block_${memory_block.base}">Memory block #${memory_block.num} at 0x${memory_block.base} size ${memory_block.size} bytes</a></h3>
+<h3><a name="memory_block_${memory_block.base}">Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${memory_block.size} bytes</a></h3>
 <table class="memory_block">
 <py:for each="hexdump_line in memory_block.memory.hexdump">
 <tr>
-<td>0x${hexdump_line.offset}</td>
+<td>${hex_format(hexdump_line.offset, width=memory_block.memory.hexdump.offset_width) }</td>
 <td><pre>${hexdump_line.hex}</pre></td>
 <td><pre>${hexdump_line.ascii}</pre></td>
 </tr>

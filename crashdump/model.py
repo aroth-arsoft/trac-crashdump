@@ -1,11 +1,3 @@
-# Created by Noah Kantrowitz on 2007-07-04.
-# Copyright (c) 2007 Noah Kantrowitz. All rights reserved.
-import copy
-from datetime import datetime
-
-from trac.ticket.model import Ticket
-from trac.util.compat import set, sorted
-from trac.util.datefmt import utc, to_utimestamp
 from uuid import UUID
 
 class CrashDumpState(object):
@@ -131,6 +123,17 @@ class CrashDump(object):
         return ret
 
     @staticmethod
+    def _create_instance_from_record(env, record):
+        ret = CrashDump(None, env)
+        idx = 0
+        ret.id = record[idx]
+        idx += 1
+        for f in CrashDump.__db_fields:
+            setattr(ret, f, record[idx])
+            idx += 1
+        return ret
+
+    @staticmethod
     def find_by_uuid(env, uuid):
         ret = None
         with env.db_transaction as db:
@@ -139,13 +142,7 @@ class CrashDump(object):
                 (','.join(CrashDump.__db_fields), str(uuid))
             cursor.execute(sql)
             for record in cursor:
-                ret = CrashDump(None, env)
-                idx = 0
-                ret.id = record[idx]
-                idx += 1
-                for f in CrashDump.__db_fields:
-                    setattr(ret, f, record[idx])
-                    idx += 1
+                ret = CrashDump._create_instance_from_record(env, record)
                 break
         return ret
 
@@ -158,13 +155,7 @@ class CrashDump(object):
                 (','.join(CrashDump.__db_fields), id)
             cursor.execute(sql)
             for record in cursor:
-                ret = CrashDump(None, env)
-                idx = 0
-                ret.id = record[idx]
-                idx += 1
-                for f in CrashDump.__db_fields:
-                    setattr(ret, f, record[idx])
-                    idx += 1
+                ret = CrashDump._create_instance_from_record(env, record)
                 break
         return ret
 
@@ -188,12 +179,6 @@ class CrashDump(object):
                 (','.join(CrashDump.__db_fields), where_expr)
             cursor.execute(sql)
             for record in cursor:
-                item = CrashDump(None, env)
-                idx = 0
-                item.id = record[idx]
-                idx += 1
-                for f in CrashDump.__db_fields:
-                    setattr(item, f, record[idx])
-                    idx += 1
+                item = CrashDump._create_instance_from_record(env, record)
                 ret.append(item)
         return ret

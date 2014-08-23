@@ -21,8 +21,28 @@ from trac.util.datefmt import format_datetime, format_time, from_utimestamp
 from trac.util.compat import set, sorted, partial
 
 import os.path
+import math
 from .model import CrashDump
 from .xmlreport import XMLReport
+
+def hex_format(number, prefix='0x', width=None):
+    if width is None:
+        if number > 2**48:
+            width = 16
+        elif number > 2**40:
+            width = 12
+        elif number > 2**32:
+            width = 10
+        elif number > 2**24:
+            width = 8
+        elif number > 2**16:
+            width = 6
+        elif number > 2**8:
+            width = 4
+        else:
+            width = 2
+    fmt = '%%0%ix' % width
+    return prefix + fmt % number
 
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
@@ -123,13 +143,14 @@ class CrashDumpModule(Component):
             object = CrashDump.find_by_id(self.env, req.args['crashid'])
         else:
             object = None
-        data = { 'object': object, 'action':req.args['action'] }
+        data = { 'object': object, 'action':req.args['action'], 'hex_format':hex_format }
         if object:
             xmlfile = self._get_dump_filename(object, 'minidumpreportxmlfile')
             xmlreport = XMLReport(xmlfile)
             for f in xmlreport.fields:
                 data[f] = getattr(xmlreport, f)
 
+        add_stylesheet(req, 'crashdump/crashdump.css')
         return 'report.html', data, None
 
     def _format_datetime(self, req, timestamp):
