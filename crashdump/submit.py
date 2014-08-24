@@ -139,6 +139,7 @@ class CrashDumpSubmit(Component):
 
         if result:
             if crashid is None:
+                crashdump.status = 'new'
                 if crashdump.submit():
                     return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
                 else:

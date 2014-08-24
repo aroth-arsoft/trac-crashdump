@@ -1,36 +1,15 @@
 from uuid import UUID
 
-class CrashDumpState(object):
-    __db_fields = [
-        'name',
-        'description'
-        ]
-    def __init__(self, id=None, env=None):
-        for f in CrashDumpState.__db_fields:
-            setattr(self, f, None)
-        self.id = None
-        self.env = env
-
-    @staticmethod
-    def by_name(self, env, name):
-        ret = None
-        with self.env.db_transaction as db:
-            cursor = db.cursor()
-            sql = "SELECT id FROM crashdump_state WHERE name='%s'" % name
-            cursor.execute(sql)
-            for stateid in cursor:
-                ret = CrashDumpState(stateid[0], env=env)
-        return ret
-
-
 class CrashDump(object):
 
     __db_fields = [
         'uuid',
-        'state',
+        'status',
         'crashtime',
         'reporttime',
         'uploadtime',
+        'changetime',
+        'closetime',
         'applicationname',
         'applicationfile',
         'uploadhostname',

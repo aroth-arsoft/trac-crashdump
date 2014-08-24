@@ -19,67 +19,68 @@ class CrashDumpSystem(Component):
     NUMBERS_RE = re.compile(r'\d+', re.U)
     
     # IEnvironmentSetupParticipant methods
-    def environment_created(self):
-        self.found_db_version = 0
-        self.upgrade_environment(self.env.get_db_cnx())
-        
-    def environment_needs_upgrade(self, db):
-        cursor = db.cursor()
-        cursor.execute("SELECT value FROM system WHERE name=%s", (db_default.name,))
-        value = cursor.fetchone()
-        if not value:
-            self.found_db_version = 0
-            return True
-        else:
-            self.found_db_version = int(value[0])
-            #self.log.debug('WeatherWidgetSystem: Found db version %s, current is %s' % (self.found_db_version, db_default.version))
-            if self.found_db_version < db_default.version:
-                return True
 
-        # Fall through
-        return False
+    def environment_created(self):
+        self._upgrade_db(self.env.get_db_cnx())
+
+    def environment_needs_upgrade(self, db):
+        schema_ver = db_default.get_current_schema_version(db)
+        if schema_ver == db_default.schema_version:
+            return False
+        if schema_ver > db_default.schema_version:
+            raise TracError(_("""A newer plugin version has been installed
+                              before, but downgrading is unsupported."""))
+        self.log.info("TracAnnouncer db schema version is %d, should be %d"
+                      % (schema_ver, db_default.schema_version))
+        return True
 
     def upgrade_environment(self, db):
-        db_manager, _ = DatabaseManager(self.env)._get_connector()
-                
-        # Insert the default table
-        old_data = {} # {table_name: (col_names, [row, ...]), ...}
-        cursor = db.cursor()
-        if not self.found_db_version:
-            cursor.execute("INSERT INTO system (name, value) VALUES (%s, %s)",(db_default.name, db_default.version))
-        else:
-            cursor.execute("UPDATE system SET value=%s WHERE name=%s",(db_default.version, db_default.name))
-            for tbl in db_default.tables:
-                try:
-                    cursor.execute('SELECT * FROM %s'%tbl.name)
-                    old_data[tbl.name] = ([d[0] for d in cursor.description], cursor.fetchall())
-                except Exception, e:
-                    if 'OperationalError' not in e.__class__.__name__:
-                        raise e # If it is an OperationalError, keep going
-                try:
-                    cursor.execute('DROP TABLE %s'%tbl.name)
-                except Exception, e:
-                    if 'OperationalError' not in e.__class__.__name__:
-                        raise e # If it is an OperationalError, just move on to the next table
+        self._upgrade_db(db)
 
-        for vers, migration in db_default.migrations:
-            if self.found_db_version in vers:
-                self.log.info('CrashDumpSystem: Running migration %s', migration.__doc__)
-                migration(old_data)          
-                
-        for tbl in db_default.tables:
-            for sql in db_manager.to_sql(tbl):
-                cursor.execute(sql)
-                    
-            # Try to reinsert any old data
-            if tbl.name in old_data:
-                data = old_data[tbl.name]
-                sql = 'INSERT INTO %s (%s) VALUES (%s)' % \
-                      (tbl.name, ','.join(data[0]), ','.join(['%s'] * len(data[0])))
-                for row in data[1]:
-                    try:
-                        cursor.execute(sql, row)
-                    except Exception, e:
-                        if 'OperationalError' not in e.__class__.__name__:
-                            raise e
+    def _upgrade_db(self, db):
+        """Each schema version should have its own upgrade module, named
+        upgrades/dbN.py, where 'N' is the version number (int).
+        """
+        db_mgr = DatabaseManager(self.env)
+        schema_ver = db_default.get_current_schema_version(db)
+
+        cursor = db.cursor()
+        # Is this a new installation?
+        if not schema_ver:
+            # Perform a single-step install: Create plugin schema and
+            # insert default data into the database.
+            connector = db_mgr._get_connector()[0]
+            for table in db_default.schema:
+                for stmt in connector.to_sql(table):
+                    cursor.execute(stmt)
+            for table, cols, vals in db_default.get_data(db):
+                print("INSERT INTO %s (%s) VALUES (%s)" % (table,
+                                   ','.join(cols),
+                                   ','.join(['%s' for c in cols])))
+                print(vals)
+                cursor.executemany("INSERT INTO %s (%s) VALUES (%s)" % (table,
+                                   ','.join(cols),
+                                   ','.join(['%s' for c in cols])), vals)
+        else:
+            # Perform incremental upgrades.
+            for i in range(schema_ver + 1, db_default.schema_version + 1):
+                name  = 'db%i' % i
+                try:
+                    upgrades = __import__(__name__ + '.upgrades', globals(),
+                                          locals(), [name])
+                    script = getattr(upgrades, name)
+                except AttributeError:
+                    raise TracError(_("""
+                        No upgrade module for version %(num)i (%(version)s.py) in %(module)s
+                        """, num=i, version=name, module=__name__ + '.upgrades'))
+                script.do_upgrade(self.env, i, cursor)
+        cursor.execute("""
+            UPDATE system
+               SET value=%i
+             WHERE name='%s'
+            """ % (db_default.schema_version, db_default.name))
+        self.log.info("Upgraded %s db schema from version %d to %d"
+                      % (db_default.name, schema_ver, db_default.schema_version))
+        db.commit()
+
 
