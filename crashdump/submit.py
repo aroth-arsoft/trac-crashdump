@@ -20,6 +20,33 @@ class CrashDumpSubmit(Component):
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
                       doc='Path to the crash dump data directory.')
 
+    default_priority = Option('crashdump', 'default_priority', default='major',
+                      doc='Default priority for submitted crash reports.')
+
+    default_milestone = Option('crashdump', 'default_milestone', '',
+        """Default milestone for submitted crash reports.""")
+
+    default_component = Option('crashdump', 'default_component', '',
+        """Default component for submitted crash reports.""")
+
+    default_severity = Option('crashdump', 'default_severity', '',
+        """Default severity for submitted crash reports.""")
+
+    default_summary = Option('crashdump', 'default_summary', '',
+        """Default summary (title) for submitted crash reports.""")
+
+    default_description = Option('crashdump', 'default_description', '',
+        """Default description for submitted crash reports.""")
+
+    default_keywords = Option('crashdump', 'default_keywords', '',
+        """Default keywords for submitted crash reports.""")
+
+    default_reporter = Option('crashdump', 'default_reporter', '< default >',
+        """Default reporter for submitted crash reports.""")
+
+    default_owner = Option('crashdump', 'default_owner', '< default >',
+        """Default owner for submitted crash reports.""")
+
     # IRequestHandler methods
     def match_request(self, req):
         if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
@@ -140,6 +167,19 @@ class CrashDumpSubmit(Component):
         if result:
             if crashid is None:
                 crashdump.status = 'new'
+                crashdump.priority = self.default_priority
+                crashdump.milestone = self.default_milestone
+                crashdump.component = self.default_component
+                crashdump.severity = self.default_severity
+                crashdump.summary = self.default_summary
+                crashdump.description = self.default_description
+                crashdump.keywords = self.default_keywords
+                crashdump.owner = self.default_owner
+                if self.default_reporter == '< default >':
+                    crashdump.reporter = crashdump.crashusername
+                else:
+                    crashdump.reporter = self.default_reporter
+
                 if crashdump.submit():
                     return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
                 else:

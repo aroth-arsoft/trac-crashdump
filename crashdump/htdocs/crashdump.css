@@ -83,8 +83,6 @@
  clear: both;
  border-top: 1px solid #dd9;
  border-collapse: collapse;
- table-layout: fixed;
- width: 100%;
 }
 #crashdump table.properties tr { border-bottom: 1px dotted #eed }
 #crashdump table.properties td, #crashdump table.properties th {

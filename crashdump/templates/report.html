@@ -36,17 +36,31 @@
 
 
 <table class="properties">
-<h2>Crash dump information</h2>
-<tr><td>Application name</td>
-<!--
-<td><a href="{ % url "list_filter_app" crash_info.application %}">${crash_info.application}</a></td>
--->
-<td class="fullrow">${object.application}</td>
-<!--
-<td class="fill">&nbsp;</td>
--->
+<h2></h2>
+<tr>
+<th>Reported by:</th><td>${object.reported}</td>
+<th>Owned by:</th><td>${object.owner}</td>
 </tr>
-<tr><td>Application&nbsp;file</td>
+<tr>
+<th>Priority:</th><td>${object.priority}</td>
+<th>Severity:</th><td>${object.severity}</td>
+</tr>
+<tr>
+<th>Version:</th><td>${object.version}</td>
+<th>Milestone:</th><td>${object.milestone}</td>
+</tr>
+<tr>
+<th>Application name:</th><td>${object.applicationname}</td>
+<th>Component:</th><td>${object.component}</td>
+</tr>
+<tr>
+<th>Keywords:</th><td>${object.keywords}</td>
+<th>Cc:</th><td>${object.cc}</td>
+</tr>
+</table>
+<h3 id="crash_dump_info">Crash dump information</h3>
+<table class="properties">
+<tr><th>Application&nbsp;file</th>
 <td class="fullrow">${object.applicationfile}</td>
 </tr>
 <tr><td>Command&nbsp;line</td><td class="fullrow"><pre class="cmdline"><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre></td></tr>
@@ -56,8 +70,8 @@
 <tr><td>Image&nbsp;directories</td><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
 <tr><td>Environment</td><td class="fullrow">
 <ul class="environment">
-<py:for each="k,v in crash_info.environment.items()">
-<li>${k}&nbsp;=&nbsp;${v}</li>
+<py:for each="k in sorted(crash_info.environment.keys())">
+<li>${k}&nbsp;=&nbsp;${crash_info.environment[k]}</li>
 </py:for>
 </ul>
 </td></tr>

@@ -53,7 +53,7 @@ class CrashDumpModule(Component):
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
                       doc='Path to the crash dump data directory.')
 
-    crashdump_fields = set(['crashdump'])
+    crashdump_fields = set(['_crash'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
 
     # INavigationContributor methods
@@ -95,6 +95,9 @@ class CrashDumpModule(Component):
                                     self.log.debug('got cell header %s' % str(cell.get('header', {}).get('col')))
                                     if cell.get('header', {}).get('col') in self.crashdump_fields:
                                         cell['value'] = self._link_crash(req, cell['value'])
+                                        cell['header']['hidden'] = False
+                                        cell['header']['title'] = 'Crashdump'
+                                        self.log.debug('got crash cell %s' % str(cell))
                                     elif cell.get('header', {}).get('col') in self.datetime_fields:
                                         cell['value'] = self._format_datetime(req, cell['value'])
         return stream

@@ -11,6 +11,7 @@ schema = [
         Column('uuid', type='string', size=36),
         Column('status', type='string'),
         Column('priority', type='string', size=36),
+        Column('severity', type='string', size=36),
         Column('owner', type='string'),
         Column('reporter', type='string'),
         Column('component', type='string'),
@@ -92,12 +93,15 @@ def get_data(db):
                     (
                         ('Active crashes', """
 SELECT p.value AS __color__,
-   c.uuid AS Crash, c.application as Application,
-   c.crashtime as Crashtime,
-  FROM crashdump c
-  LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
-  WHERE c.status <> 'closed'
-  ORDER BY CAST(p.value AS integer), c.crashtime
+   c.uuid AS _crash,
+   c.crashtime as crashtime,
+   c.applicationname as Application,
+   c.priority,
+   c.component
+FROM crashdump c
+LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
+WHERE c.status <> 'closed'
+ORDER BY CAST(p.value AS integer), c.crashtime
                         """, ' List all active crashes by priority'),
                     )
             ),
