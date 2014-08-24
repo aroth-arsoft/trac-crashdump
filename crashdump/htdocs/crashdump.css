@@ -92,6 +92,9 @@
  padding: .5em 1em;
  vertical-align: top;
 }
+#crashdump table.properties td.fullrow {
+ width: 90%;
+}
 #crashdump table.properties th {
  color: #663;
  font-weight: normal;
@@ -99,7 +102,6 @@
  width: 20%;
 }
 #crashdump table.properties th.missing { color: #d3d398; }
-#crashdump table.properties td { width: 30% }
 #crashdump table.properties td p:first-child { margin-top: 0 }
 #crashdump table.properties td p:last-child { margin-bottom: 0 }
 #crashdump table.properties .description { border-top: 1px solid #dd9 }
@@ -225,8 +227,17 @@ form .field div.trac-resizable { width: 100% }
  vertical-align: top;
 }
 #properties table th.col2 { border-left: 1px dotted #d7d7d7 }
-#properties table td { vertical-align: middle; width: 30% }
-#properties table td.fullrow { vertical-align: middle; width: 80% }
+#properties table th,td {
+    vertical-align: top;
+    width: 30%;
+    text-align: left;
+    vertical-align: top;
+    padding-left: 3pt;
+    padding-right: 3pt;
+    padding-top: 1pt;
+    padding-bottom: 1pt;
+}
+#properties table td.fullrow { vertical-align: top; width: 80% }
 
 #action { line-height: 2em }
 
@@ -242,7 +253,7 @@ fieldset.radio label { padding-right: 1em }
 
 #content.crashdump .trac-nav a { margin-left: 1em; }
 
-#memory_block pre {
+pre.hexdump_hex, pre.hexdump_ascii, pre.cmdline {
     padding-top: 0px;
     padding-bottom: 0px;
     margin-top: 0px;
@@ -250,7 +261,8 @@ fieldset.radio label { padding-right: 1em }
     margin-left: 0px;
     margin-right: 0px;
 }
-#memory_block td,tr,table {
+td.memory_block, tr.memory_block, table.memory_block {
+    border: 0;
     border-spacing: 0;
     border-collapse: collapse;
     width: 1px;
@@ -260,18 +272,12 @@ fieldset.radio label { padding-right: 1em }
     padding-right: 3pt;
     padding-top: 1pt;
     padding-bottom: 1pt;
-}
-#properties th,td {
-    text-align:left;
-    vertical-align: top;
-    padding-left: 3pt;
-    padding-right: 3pt;
-    padding-top: 1pt;
-    padding-bottom: 1pt;
+    margin: 0px;
 }
 ul.environment,ol.environment,ul.dirlist {
     list-style-type: square;
     padding-top: 0px;
     padding-bottom: 0px;
     margin: 0px;
+    white-space: nowrap;
 }
