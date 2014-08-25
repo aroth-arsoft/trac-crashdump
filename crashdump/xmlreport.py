@@ -76,6 +76,11 @@ class MemoryBlock(object):
 
 
 class XMLReport(object):
+
+    _main_fields = ['crash_info', 'system_info', 'file_info', 'exception',
+                    'assertion', 'modules', 'threads', 'memory_regions',
+                    'memory_blocks', 'handles', 'stackdumps' ]
+
     _crash_dump_fields = ['uuid', 'crash_timestamp', 'report_time', 'report_fqdn',
                           'report_username', 'application', 'command_line',
                           'symbol_directories', 'image_directories', 'environment']
@@ -96,6 +101,43 @@ class XMLReport(object):
 
     _stackdump_fields = ['threadid', 'exception']
     _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'module', 'function', 'source', 'line', 'lineoff' ]
+
+    _fast_protect_version_info_fields = [
+        'product_name',
+        'product_code_name',
+        'product_version',
+        'product_target_version',
+        'root_revision',
+        'buildtools_revision',
+        'external_revision',
+        'third_party_revision',
+        'terra3d_revision',
+        'jenkins_job_name',
+        'jenkins_build_number',
+        'jenkins_build_id',
+        'jenkins_build_tag',
+        'jenkins_build_url',
+        'jenkins_git_revision',
+        'jenkins_git_branch',
+        'jenkins_master',
+        'jenkins_nodename'
+        ]
+
+    _fast_protect_gfxcaps_fields = [
+        'opengl_vendor',
+        'opengl_renderer',
+        'opengl_version',
+        'opengl_vendor_id',
+        'opengl_driver_id',
+        'opengl_chip_class',
+        'opengl_driver_version',
+        'opengl_hardware_ok',
+        'opengl_use_pbuffer',
+        'opengl_hardware_error',
+        'opengl_pbuffer_error',
+        'rawdata'
+        ]
+
 
     def __init__(self, filename=None):
         self._filename = filename
@@ -170,6 +212,13 @@ class XMLReport(object):
                 return 'file:///' + self.source
             else:
                 return None
+    class FastProtectVersionInfo(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.FastProtectVersionInfo, self).__init__(owner)
+
+    class FastProtectGfxCaps(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.FastProtectGfxCaps, self).__init__(owner)
 
     @staticmethod
     def _value_convert(value_str, data_type):
@@ -410,10 +459,26 @@ class XMLReport(object):
         return ret
 
     @property
+    def fast_protect_version_info(self):
+        i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_version_info')
+        ret = XMLReport.FastProtectVersionInfo(self) if i is not None else None
+        if i is not None:
+            for f in XMLReport._fast_protect_version_info_fields:
+                setattr(ret, f, XMLReport._get_node_value(i, f))
+        return ret
+
+    @property
+    def fast_protect_gfxcaps(self):
+        i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_gfxcaps')
+        ret = XMLReport.FastProtectGfxCaps(self) if i is not None else None
+        if i is not None:
+            for f in XMLReport._fast_protect_gfxcaps_fields:
+                setattr(ret, f, XMLReport._get_node_value(i, f))
+        return ret
+
+    @property
     def fields(self):
-        return ['crash_info', 'system_info', 'file_info', 'exception',
-                'assertion', 'modules', 'threads', 'memory_regions',
-                'memory_blocks', 'handles', 'stackdumps' ]
+        return self._main_fields
 
     def to_html(self):
         return str(self.crash_info)
@@ -444,9 +509,5 @@ if __name__ == '__main__':
     #for m in xmlreport.threads:
         #print(type(m.id))
 
-    m = MemoryBlock("Model field reference | Django documentation | Django")
-    h = m.hexdump
-    fmt = '0x%%0%ix: %%s - %%s' % h.offset_width
-    for l in h:
-        print(fmt % (l.offset, l.hex, l.ascii))
-
+    print(xmlreport.fast_protect_version_info)
+    print(xmlreport.fast_protect_gfxcaps)
