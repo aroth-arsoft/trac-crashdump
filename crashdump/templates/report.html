@@ -10,7 +10,18 @@
     <title>${object.uuid}</title>
   </head>
   <body>
-    <div id="content"><div id="crashdump">
+    <div id="content"><div id="crashdump"
+         py:with="can_append = 'TICKET_APPEND' in perm(object.resource);
+                  can_modify = 'TICKET_CHGPROP' in perm(object.resource);
+                  can_edit = 'TICKET_EDIT_DESCRIPTION' in perm(object.resource);
+                  only_for_admin = 'TICKET_ADMIN' in perm(object.resource);
+                  has_edit_comment = 'TICKET_EDIT_COMMENT' in perm(object.resource);
+                  has_property_editor = not version and version != 0 and not cnum_edit
+                                        and (can_append or can_modify or can_edit or can_create)">
+
+      <div class="trac-topnav" py:if="has_property_editor">
+        <a href="#modify" title="Go to the ticket editor">Modify</a> &darr;
+      </div>
 
   <div class="date">
     <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object.crashtime)}</p>
@@ -254,6 +265,186 @@
 </py:for>
 </table>
 
-    </div></div>
+</div>
+      <form method="post" id="propertyform" action="${href('crash', object.id) + '#trac-add-comment'}">
+        <!--! Add comment -->
+        <div id="trac-add-comment" class="field">
+          <h3 class="foldable" id="edit">Add Comment</h3>
+          <div>
+            <div id="trac-edit-warning" class="warning system-message"
+                 style="${'display: none' if start_time == object.changetime else None}"
+                 i18n:msg="">
+              This crash dump has been modified since you started editing. You should review the
+              <em class="trac-new">other modifications</em> which have been appended above,
+              and any <em class="trac-conflict">conflicts</em> shown in the preview below.
+              You can nevertheless proceed and submit your changes if you wish so.
+            </div>
+            <!--! Comment field -->
+            <fieldset>
+              <label for="comment" i18n:msg="">You may use
+                <a tabindex="42" href="${href.wiki('WikiFormatting')}">WikiFormatting</a>
+                here.
+              </label>
+              <textarea id="comment" name="comment" class="wikitext trac-resizable" rows="10" cols="78">
+${comment}</textarea>
+            </fieldset>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="foldable">Modify Ticket</h3>
+          <div id="modify">
+            <!--! Properties -->
+            <fieldset id="properties"
+                      py:with="fields = [f for f in fields if not f.skip]">
+              <legend py:choose="">
+                  Change Properties
+              </legend>
+              <table>
+                <tr>
+                  <th><label for="field-summary">Summary:</label></th>
+                  <td class="fullrow" colspan="3">
+                    <input type="text" id="field-summary" name="field_summary"
+                           value="$object.summary" size="70" />
+                  </td>
+                </tr>
+                <py:if test="False">
+                  <tr>
+                    <th><label for="field-reporter">Reporter:</label></th>
+                    <td class="fullrow" colspan="3">
+                      <input type="text" id="field-reporter" name="field_reporter"
+                             value="${object.reporter}" size="70" />
+                    </td>
+                  </tr>
+                </py:if>
+                <py:if test="True">
+                  <tr>
+                    <th><label for="field-description">Description:</label></th>
+                    <td class="fullrow" colspan="3">
+                      <fieldset>
+                        <label for="field-description" id="field-description-help" i18n:msg="">You may use
+                          <a tabindex="42" href="${href.wiki('WikiFormatting')}">WikiFormatting</a> here.
+                        </label>
+                        <textarea id="field-description" name="field_description"
+                                  class="wikitext trac-resizable" rows="10" cols="68">
+${object.description}</textarea>
+                      </fieldset>
+                    </td>
+                  </tr>
+                </py:if>
+                <tr py:for="row in group(fields, 2, lambda f: f.type != 'textarea')"
+                    py:if="can_modify or can_create"
+                    py:with="fullrow = len(row) == 1">
+                  <py:for each="idx, field in enumerate(row)"
+                          py:with="value = ticket.get_value_or_default(field.name)">
+                    <th class="col${idx + 1}" py:if="idx == 0 or not fullrow">
+                      <label for="field-${field.name}" py:if="field"
+                             py:strip="field.type == 'radio'" i18n:msg="field">${
+                        field.edit_label or field.label or field.name}:</label>
+                    </th>
+                    <td class="col${idx + 1}" py:if="idx == 0 or not fullrow"
+                        colspan="${3 if fullrow else None}">
+                      <py:choose test="field.type" py:if="field">
+                        <select py:when="'select'" id="field-${field.name}" name="field_${field.name}">
+                          <option py:if="field.optional"></option>
+                          <option py:for="option in field.options"
+                                  selected="${value == option or None}"
+                                  value="$option" py:content="option"></option>
+                          <optgroup py:for="optgroup in field.optgroups"
+                                    py:if="optgroup.options"
+                                    label="${optgroup.label}">
+                            <option py:for="option in optgroup.options"
+                                    selected="${value == option or None}"
+                                    value="$option" py:content="option"></option>
+                          </optgroup>
+                        </select>
+                        <textarea py:when="'textarea'" id="field-${field.name}" name="field_${field.name}"
+                                  cols="${field.width}" rows="${field.height}"
+                                  class="${'wikitext ' if field.format == 'wiki' else None}trac-resizable">
+${value}</textarea>
+                        <span py:when="'checkbox'">
+                          <input type="checkbox" id="field-${field.name}" name="field_${field.name}"
+                                 checked="${value == '1' or None}" value="1" />
+                          <input type="hidden" name="field_checkbox_${field.name}" value="1" />
+                        </span>
+                        <label py:when="'radio'"
+                               py:for="idx, option in enumerate(field.options)">
+                          <input type="radio" name="field_${field.name}" value="${option}"
+                                 checked="${value == option or None}" />
+                          ${option}
+                        </label>
+                        <py:otherwise><!--! Text input fields -->
+                          <py:choose>
+                            <span py:when="field.cc_entry"><!--! Special case for Cc: field -->
+                              <em>${field.cc_entry}</em>
+                              <input type="checkbox" id="field-cc" name="cc_update"
+                                title="This checkbox allows you to add or remove yourself from the CC list."
+                                checked="${field.cc_update}" />
+                            </span>
+                            <!--! Cc: when TICKET_EDIT_CC is allowed -->
+                            <span py:when="field.name == 'cc'">
+                              <input  type="text" id="field-${field.name}"
+                                title="Space or comma delimited email addresses and usernames are accepted."
+                                name="field_${field.name}" value="${value}" />
+                            </span>
+                            <!--! All the other text input fields -->
+                            <input py:otherwise="" type="text" id="field-${field.name}"
+                              name="field_${field.name}" value="${value}" />
+                          </py:choose>
+                        </py:otherwise>
+                      </py:choose>
+                    </td>
+                  </py:for>
+                </tr>
+              </table>
+            </fieldset>
+
+            <!--! Workflow support -->
+                <fieldset id="action">
+                  <legend>Action</legend>
+                  <div py:for="key, label, controls, hints in action_controls">
+                      <input type="radio" id="action_$key" name="action" value="$key"
+                             checked="${key == action or None}" />
+                      <label for="action_$key">$label</label>
+                      $controls
+                      <span class="hint" py:for="hint in hints">$hint</span>
+                  </div>
+                </fieldset>
+                <py:for each="key, label, controls, hints in action_controls">
+                    <input py:if="key == action" type="hidden" name="action" value="$action" />
+                </py:for>
+          </div>
+        </div>
+
+        <!--! Preview of ticket changes -->
+        <!--
+        <div py:if="ticket.exists and can_append" id="ticketchange" class="ticketdraft"
+             style="${'display: none' if not (change_preview.fields or change_preview.comment)
+                                         or cnum_edit is not None else None}">
+          <xi:include href="ticket_change.html" py:with="change = change_preview; preview = True"/>
+        </div>
+        -->
+
+        <div class="trac-nav">
+          <a href="#attachments" id="trac-up-attachments" title="Go to the list of attachments">Attachments</a> &uarr;
+          <a href="#content" id="trac-up-view" title="View the ticket description">Description</a> &uarr;
+        </div>
+        <div class="buttons">
+            <input type="hidden" name="start_time" value="${to_utimestamp(start_time)}" />
+            <input type="hidden" name="view_time" value="${to_utimestamp(object.changetime)}" />
+            <input type="hidden" name="replyto" value="${replyto}" />
+          <input type="submit" name="preview" value="${_('Preview')}" accesskey="r" />&nbsp;
+          <input type="submit" name="submit" value="${_('Submit changes')}" />
+        </div>
+
+      </form>
+
+      <div id="help" i18n:msg="">
+        <strong>Note:</strong> See
+        <a href="${href.wiki('TracTickets')}">TracTickets</a> for help on using
+        tickets.
+      </div>
+
+    </div>
   </body>
 </html>

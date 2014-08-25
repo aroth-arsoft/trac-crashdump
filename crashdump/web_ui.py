@@ -17,9 +17,8 @@ from trac.util import to_unicode
 from trac.util.translation import _ 
 from trac.util.html import html, Markup
 from trac.util.text import shorten_line
-from trac.util.datefmt import format_datetime, format_time, from_utimestamp
+from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_utimestamp
 from trac.util.compat import set, sorted, partial
-
 import os.path
 import math
 from .model import CrashDump
@@ -146,7 +145,7 @@ class CrashDumpModule(Component):
             object = CrashDump.find_by_id(self.env, req.args['crashid'])
         else:
             object = None
-        data = { 'object': object, 'action':req.args['action'], 'hex_format':hex_format }
+        data = { 'object': object, 'action':req.args['action'], 'hex_format':hex_format, 'to_utimestamp': to_utimestamp, }
         if object:
             xmlfile = self._get_dump_filename(object, 'minidumpreportxmlfile')
             xmlreport = XMLReport(xmlfile)
