@@ -107,6 +107,47 @@
 <tr><td>Distribution&nbsp;description</td><td class="fullrow">${system_info.distribution_description}</td></tr>
 </table>
 
+<py:if test="fast_protect_version_info">
+<h2>Version info</h2>
+<table class="properties">
+<tr><td>Product name</td><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
+<tr><td>Product code name</td><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
+<tr><td>Product version</td><td class="fullrow">${fast_protect_version_info.product_version}</td></tr>
+<tr><td>Product target version</td><td class="fullrow">${fast_protect_version_info.product_target_version}</td></tr>
+<tr><td>Root repository revision</td><td class="fullrow">${fast_protect_version_info.root_revision}</td></tr>
+<tr><td>Build tools repository revision</td><td class="fullrow">${fast_protect_version_info.buildtools_revision}</td></tr>
+<tr><td>External repository revision</td><td class="fullrow">${fast_protect_version_info.external_revision}</td></tr>
+<tr><td>Third-party repository revision</td><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
+<tr><td>${fast_protect_version_info.product_name} repository revision</td><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
+<tr><td>Jenkins job name</td><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
+<tr><td>Jenkins build number</td><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
+<tr><td>Jenkins build id</td><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
+<tr><td>Jenkins build tag</td><td class="fullrow">${fast_protect_version_info.jenkins_build_tag}</td></tr>
+<tr><td>Jenkins build url</td><td class="fullrow"><a href="${fast_protect_version_info.jenkins_build_url}">${fast_protect_version_info.jenkins_build_url}</a></td></tr>
+<tr><td>Jenkins Git revision</td><td class="fullrow">${fast_protect_version_info.jenkins_git_revision}</td></tr>
+<tr><td>Jenkins Git branch</td><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
+<tr><td>Jenkins master</td><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
+<tr><td>Jenkins nodename</td><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
+</table>
+</py:if>
+
+<py:if test="fast_protect_gfxcaps">
+<h2>Version info</h2>
+<table class="properties">
+<tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_gfxcaps.opengl_vendor}</td></tr>
+<tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_gfxcaps.opengl_renderer}</td></tr>
+<tr><td>OpenGL version</td><td class="fullrow">${fast_protect_gfxcaps.opengl_version}</td></tr>
+<tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_gfxcaps.opengl_vendor_id}</td></tr>
+<tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_gfxcaps.opengl_driver_id}</td></tr>
+<tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_gfxcaps.opengl_chip_class}</td></tr>
+<tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_gfxcaps.opengl_driver_version}</td></tr>
+<tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_gfxcaps.opengl_hardware_ok}</td></tr>
+<tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_gfxcaps.opengl_use_pbuffer}</td></tr>
+<tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_hardware_error}</td></tr>
+<tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_pbuffer_error}</td></tr>
+</table>
+</py:if>
+
 <py:if test="exception">
 <h2>Exception</h2>
 <table class="properties">
@@ -266,6 +307,39 @@
 </table>
 
 </div>
+
+        <div style="${'display: none' if not changes else None}">
+          <div style="position: relative">
+            <form id="prefs" method="get" action="${href.prefs()}" style="position: absolute; right: 0">
+              <div id="trac-comments-order">
+                <input type="radio" id="trac-comments-oldest" name="trac-comments-order" value="oldest" checked="checked" />
+                <label for="trac-comments-oldest">Oldest first</label>
+                <input type="radio" id="trac-comments-newest" name="trac-comments-order" value="newest" />
+                <label for="trac-comments-newest">Newest first</label>
+                <span id="trac-threaded-toggle" style="display: none">
+                  <input type="radio" id="trac-comments-threaded" name="trac-comments-order" value="threaded" />
+                  <label for="trac-comments-threaded">Threaded</label>
+                </span>
+              </div>
+              <div>
+                <input id="trac-comments-only-toggle" type="checkbox" />
+                <label for="trac-comments-only-toggle">Comments only</label>
+              </div>
+            </form>
+          </div>
+
+          <h3 class="foldable">Change History <span class="trac-count">(${len(changes)})</span></h3>
+
+          <div id="changelog">
+            <py:for each="change in changes">
+              <div class="change${' trac-new' if change.date > start_time and 'attachment' not in change.fields else None}"
+                   id="${'trac-change-%d-%d' % (change.cnum, to_utimestamp(change.date)) if 'cnum' in change else None}">
+                <xi:include href="ticket_change.html"/>
+              </div>
+            </py:for>
+          </div>
+        </div>
+
       <form method="post" id="propertyform" action="${href('crash', object.id) + '#trac-add-comment'}">
         <!--! Add comment -->
         <div id="trac-add-comment" class="field">
@@ -292,7 +366,7 @@ ${comment}</textarea>
         </div>
 
         <div>
-          <h3 class="foldable">Modify Ticket</h3>
+          <h3 class="foldable">Modify Crash information</h3>
           <div id="modify">
             <!--! Properties -->
             <fieldset id="properties"
@@ -427,7 +501,8 @@ ${value}</textarea>
 
         <div class="trac-nav">
           <a href="#attachments" id="trac-up-attachments" title="Go to the list of attachments">Attachments</a> &uarr;
-          <a href="#content" id="trac-up-view" title="View the ticket description">Description</a> &uarr;
+          <a href="#comments" id="trac-up-comments" title="Go to the comments">Comments</a> &uarr;
+          <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
         </div>
         <div class="buttons">
             <input type="hidden" name="start_time" value="${to_utimestamp(start_time)}" />
@@ -438,12 +513,6 @@ ${value}</textarea>
         </div>
 
       </form>
-
-      <div id="help" i18n:msg="">
-        <strong>Note:</strong> See
-        <a href="${href.wiki('TracTickets')}">TracTickets</a> for help on using
-        tickets.
-      </div>
 
     </div>
   </body>

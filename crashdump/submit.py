@@ -91,7 +91,7 @@ class CrashDumpSubmit(Component):
         crashid = None
         crashdump = CrashDump.find_by_uuid(self.env, uuid)
         if not crashdump:
-            crashdump = CrashDump(uuid, self.env)
+            crashdump = CrashDump(uuid=uuid, env=self.env, must_exist=False)
         else:
             crashid = crashdump.id
 
@@ -180,7 +180,7 @@ class CrashDumpSubmit(Component):
                 else:
                     crashdump.reporter = self.default_reporter
 
-                if crashdump.submit():
+                if crashdump.insert():
                     return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
                 else:
                     return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)

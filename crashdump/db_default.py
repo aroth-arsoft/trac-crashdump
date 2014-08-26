@@ -4,16 +4,18 @@
 from trac.db import Table, Column, Index
 
 name = 'crashdump'
-schema_version = 10
+schema_version = 11
 schema = [
     Table('crashdump', key=('id'))[
         Column('id', type='int', auto_increment=True),
         Column('uuid', type='string', size=36),
+        Column('type', type='string', size=32),
         Column('status', type='string'),
-        Column('priority', type='string', size=36),
-        Column('severity', type='string', size=36),
+        Column('priority', type='string', size=32),
+        Column('severity', type='string', size=32),
         Column('owner', type='string'),
         Column('reporter', type='string'),
+        Column('cc', type='string'),
         Column('component', type='string'),
         Column('milestone', type='string'),
         Column('version', type='string'),

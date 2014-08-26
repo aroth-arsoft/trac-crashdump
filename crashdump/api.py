@@ -1,14 +1,16 @@
 # Created by Noah Kantrowitz on 2007-07-04.
 # Copyright (c) 2007 Noah Kantrowitz. All rights reserved.
 import re
+import copy
 
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.util.compat import set, sorted
+from trac.util.translation import _, N_, gettext
+from trac.cache import cached
 
 import db_default
-from .model import CrashDump
 from trac.ticket.model import Ticket
 
 class CrashDumpSystem(Component):
@@ -30,8 +32,8 @@ class CrashDumpSystem(Component):
         if schema_ver > db_default.schema_version:
             raise TracError(_("""A newer plugin version has been installed
                               before, but downgrading is unsupported."""))
-        self.log.info("TracAnnouncer db schema version is %d, should be %d"
-                      % (schema_ver, db_default.schema_version))
+        self.log.info("%s db schema version is %d, should be %d"
+                      % (__name__, schema_ver, db_default.schema_version))
         return True
 
     def upgrade_environment(self, db):
@@ -69,18 +71,134 @@ class CrashDumpSystem(Component):
                     upgrades = __import__(__name__ + '.upgrades', globals(),
                                           locals(), [name])
                     script = getattr(upgrades, name)
-                except AttributeError:
-                    raise TracError(_("""
-                        No upgrade module for version %(num)i (%(version)s.py) in %(module)s
-                        """, num=i, version=name, module=__name__ + '.upgrades'))
-                script.do_upgrade(self.env, i, cursor)
+                except (AttributeError, ImportError) as e:
+                    self.log.info("No upgrade module for version %(num)i (%(version)s.py) in %(module)s" % { 'num':i, 'version':name, 'module':__name__ + '.upgrades'})
+                    script = None
+                if script:
+                    script.do_upgrade(self.env, i, cursor)
         cursor.execute("""
             UPDATE system
                SET value=%i
              WHERE name='%s'
-            """ % (db_default.schema_version, db_default.name))
+            """ % (db_default.schema_version, db_default.name + '_version'))
         self.log.info("Upgraded %s db schema from version %d to %d"
                       % (db_default.name, schema_ver, db_default.schema_version))
         db.commit()
 
+    def get_custom_fields(self):
+        return copy.deepcopy(self.custom_fields)
 
+    @cached
+    def custom_fields(self, db):
+        """Return the list of custom crash fields available for crashes."""
+        fields = []
+        return fields
+
+    def get_crash_field_labels(self):
+        """Produce a (name,label) mapping from `get_crash_fields`."""
+        labels = dict((f['name'], f['label'])
+                      for f in self.get_crash_fields())
+        labels['attachment'] = _("Attachment")
+        return labels
+
+    def get_crash_fields(self):
+        """Returns list of fields available for tickets.
+
+        Each field is a dict with at least the 'name', 'label' (localized)
+        and 'type' keys.
+        It may in addition contain the 'custom' key, the 'optional' and the
+        'options' keys. When present 'custom' and 'optional' are always `True`.
+        """
+        fields = copy.deepcopy(self.fields)
+        label = 'label' # workaround gettext extraction bug
+        for f in fields:
+            f[label] = gettext(f[label])
+        return fields
+
+    def reset_crash_fields(self):
+        """Invalidate crash field cache."""
+        del self.fields
+
+    @cached
+    def fields(self, db):
+        """Return the list of fields available for crashes."""
+        from trac.ticket import model
+
+        fields = []
+
+        # Basic text fields
+        fields.append({'name': 'summary', 'type': 'text',
+                       'label': N_('Summary')})
+        fields.append({'name': 'reporter', 'type': 'text',
+                       'label': N_('Reporter')})
+
+        # Owner field, by default text but can be changed dynamically
+        # into a drop-down depending on configuration (restrict_owner=true)
+        field = {'name': 'owner', 'label': N_('Owner')}
+        field['type'] = 'text'
+        fields.append(field)
+
+        # Description
+        fields.append({'name': 'description', 'type': 'textarea',
+                       'label': N_('Description')})
+
+        # Default select and radio fields
+        selects = [('type', N_('Type'), model.Type),
+                   ('status', N_('Status'), model.Status),
+                   ('priority', N_('Priority'), model.Priority),
+                   ('milestone', N_('Milestone'), model.Milestone),
+                   ('component', N_('Component'), model.Component),
+                   ('version', N_('Version'), model.Version),
+                   ('severity', N_('Severity'), model.Severity),
+                   ('resolution', N_('Resolution'), model.Resolution)]
+        for name, label, cls in selects:
+            options = [val.name for val in cls.select(self.env, db=db)]
+            if not options:
+                # Fields without possible values are treated as if they didn't
+                # exist
+                continue
+            field = {'name': name, 'type': 'select', 'label': label,
+                     'value': getattr(self, 'default_' + name, ''),
+                     'options': options}
+            if name in ('status', 'resolution'):
+                field['type'] = 'radio'
+                field['optional'] = True
+            elif name in ('milestone', 'version'):
+                field['optional'] = True
+            fields.append(field)
+
+        # Advanced text fields
+        fields.append({'name': 'keywords', 'type': 'text', 'format': 'list',
+                       'label': N_('Keywords')})
+        fields.append({'name': 'cc', 'type': 'text',  'format': 'list',
+                       'label': N_('Cc')})
+
+        # Date/time fields
+        fields.append({'name': 'crashtime', 'type': 'time',
+                       'label': N_('Crash time')})
+        fields.append({'name': 'reporttime', 'type': 'time',
+                       'label': N_('Report time')})
+        fields.append({'name': 'uploadtime', 'type': 'time',
+                       'label': N_('Upload time')})
+        fields.append({'name': 'changetime', 'type': 'time',
+                       'label': N_('Modified')})
+        fields.append({'name': 'closetime', 'type': 'time',
+                       'label': N_('Closed')})
+
+        for field in self.get_custom_fields():
+            if field['name'] in [f['name'] for f in fields]:
+                self.log.warning('Duplicate field name "%s" (ignoring)',
+                                 field['name'])
+                continue
+            if field['name'] in self.reserved_field_names:
+                self.log.warning('Field name "%s" is a reserved name '
+                                 '(ignoring)', field['name'])
+                continue
+            if not re.match('^[a-zA-Z][a-zA-Z0-9_]+$', field['name']):
+                self.log.warning('Invalid name for custom field: "%s" '
+                                 '(ignoring)', field['name'])
+                continue
+            field['custom'] = True
+            fields.append(field)
+
+        return fields
