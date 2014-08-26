@@ -1,5 +1,6 @@
 from trac.core import *
 from trac.util.html import html
+from trac.util.datefmt import utc
 from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
@@ -11,7 +12,6 @@ import shutil
 import time
 import datetime
 
-from arsoft.timestamp import timestamp_from_datetime, parsedate_rfc2822
 from .model import CrashDump
 
 class CrashDumpSubmit(Component):
@@ -84,16 +84,18 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent)
 
         id_str = req.args.get('id')
-        if not id_str or id_str == '00000000-0000-0000-0000-000000000000' or id_str == '{00000000-0000-0000-0000-000000000000}':
+        if not id_str or not CrashDump.uuid_is_valid(id_str):
             return self._error_response(req, status=HTTPForbidden.code, body='Invalid crash identifier %s specified.' % id_str)
 
         uuid = UUID(id_str)
         crashid = None
-        crashdump = CrashDump.find_by_uuid(self.env, uuid)
-        if not crashdump:
-            crashdump = CrashDump(uuid=uuid, env=self.env, must_exist=False)
+        crashobj = CrashDump.find_by_uuid(self.env, uuid)
+        print('found %s' % str(crashobj))
+        if not crashobj:
+            crashobj = CrashDump(uuid=uuid, env=self.env, must_exist=False)
         else:
-            crashid = crashdump.id
+            crashid = crashobj.id
+        print('found crashid %s' % str(crashid))
 
         force_str = req.args.get('force') or 'false'
         force = True if force_str.lower() == 'true' else False
@@ -103,90 +105,93 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPForbidden.code, body='Crash identifier %s already uploaded.' % id_str)
 
         result = False
-        ok, crashdump.minidumpfile = self._store_dump_file(uuid, req, 'minidump', force)
+        ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
         if ok:
             result = True
-        ok, crashdump.minidumpreporttextfile = self._store_dump_file(uuid, req, 'minidumpreport', force)
+        ok, crashobj['minidumpreporttextfile'] = self._store_dump_file(uuid, req, 'minidumpreport', force)
         if ok:
             result = True
-        ok, crashdump.minidumpreportxmlfile = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
+        ok, crashobj['minidumpreportxmlfile'] = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
         if ok:
             result = True
-        ok, crashdump.minidumpreporthtmlfile = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
+        ok, crashobj['minidumpreporthtmlfile'] = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
         if ok:
             result = True
-        ok, crashdump.coredumpfile = self._store_dump_file(uuid, req, 'coredump', force)
+        ok, crashobj['coredumpfile'] = self._store_dump_file(uuid, req, 'coredump', force)
         if ok:
             result = True
-        ok, crashdump.coredumpreporttextfile = self._store_dump_file(uuid, req, 'coredumpreport', force)
+        ok, crashobj['coredumpreporttextfile'] = self._store_dump_file(uuid, req, 'coredumpreport', force)
         if ok:
             result = True
-        ok, crashdump.coredumpreportxmlfile = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
+        ok, crashobj['coredumpreportxmlfile'] = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
         if ok:
             result = True
-        ok, crashdump.coredumpreporthtmlfile = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
+        ok, crashobj['coredumpreporthtmlfile'] = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
         if ok:
             result = True
 
-        crashdump.applicationfile = req.args.get('applicationfile')
+        crashobj['applicationfile'] = req.args.get('applicationfile')
 
         crashtimestamp = datetime.datetime.strptime(req.args.get('crashtimestamp'), "%Y-%m-%dT%H:%M:%S" )
+        crashtimestamp = crashtimestamp.replace(tzinfo = utc)
         reporttimestamp = datetime.datetime.strptime(req.args.get('reporttimestamp'), "%Y-%m-%dT%H:%M:%S" )
+        reporttimestamp = reporttimestamp.replace(tzinfo = utc)
 
-        crashdump.crashtime = int(timestamp_from_datetime(crashtimestamp)) if crashtimestamp else None
-        crashdump.reporttime = int(timestamp_from_datetime(reporttimestamp)) if reporttimestamp else None
-        crashdump.uploadtime = int(time.time())
+        crashobj['crashtime'] = crashtimestamp if crashtimestamp else None
+        crashobj['reporttime'] = reporttimestamp if reporttimestamp else None
+        crashobj['uploadtime'] = datetime.datetime.now(utc)
 
-        self.log.debug('crashtimestamp %s' % (crashdump.crashtime))
-        self.log.debug('reporttimestamp %s' % (crashdump.reporttime))
+        self.log.debug('crashtimestamp %s' % (crashobj['crashtime']))
+        self.log.debug('reporttimestamp %s' % (crashobj['reporttime']))
 
-        crashdump.productname = req.args.get('productname')
-        crashdump.productcodename = req.args.get('productcodename')
-        crashdump.productversion = req.args.get('productversion')
-        crashdump.producttargetversion = req.args.get('producttargetversion')
-        crashdump.uploadhostname = req.args.get('fqdn')
-        crashdump.uploadusername = req.args.get('username')
-        crashdump.crashhostname = req.args.get('crashfqdn')
-        crashdump.crashusername = req.args.get('crashusername')
-        crashdump.buildtype = req.args.get('buildtype')
-        crashdump.buildpostfix = req.args.get('buildpostfix')
-        crashdump.machinetype = req.args.get('machinetype')
-        crashdump.systemname = req.args.get('systemname')
-        crashdump.osversion = req.args.get('osversion')
-        crashdump.osrelease = req.args.get('osrelease')
-        crashdump.osmachine = req.args.get('osmachine')
+        crashobj['productname'] = req.args.get('productname')
+        crashobj['productcodename'] = req.args.get('productcodename')
+        crashobj['productversion'] = req.args.get('productversion')
+        crashobj['producttargetversion'] = req.args.get('producttargetversion')
+        crashobj['uploadhostname'] = req.args.get('fqdn')
+        crashobj['uploadusername'] = req.args.get('username')
+        crashobj['crashhostname'] = req.args.get('crashfqdn')
+        crashobj['crashusername'] = req.args.get('crashusername')
+        crashobj['buildtype'] = req.args.get('buildtype')
+        crashobj['buildpostfix'] = req.args.get('buildpostfix')
+        crashobj['machinetype'] = req.args.get('machinetype')
+        crashobj['systemname'] = req.args.get('systemname')
+        crashobj['osversion'] = req.args.get('osversion')
+        crashobj['osrelease'] = req.args.get('osrelease')
+        crashobj['osmachine'] = req.args.get('osmachine')
 
         # get the application name from the application file
-        if crashdump.applicationfile:
-            appbase = os.path.basename(crashdump.applicationfile)
+        if crashobj['applicationfile']:
+            appbase = os.path.basename(crashobj['applicationfile'])
             (appbase, ext) = os.path.splitext(appbase)
-            if crashdump.buildpostfix and appbase.endswith(crashdump.buildpostfix):
-                appbase = appbase[:-len(crashdump.buildpostfix)]
-            crashdump.applicationname = appbase
+            if crashobj['buildpostfix'] and appbase.endswith(crashobj['buildpostfix']):
+                appbase = appbase[:-len(crashobj['buildpostfix'])]
+            crashobj['applicationname'] = appbase
 
         if result:
             if crashid is None:
-                crashdump.status = 'new'
-                crashdump.priority = self.default_priority
-                crashdump.milestone = self.default_milestone
-                crashdump.component = self.default_component
-                crashdump.severity = self.default_severity
-                crashdump.summary = self.default_summary
-                crashdump.description = self.default_description
-                crashdump.keywords = self.default_keywords
-                crashdump.owner = self.default_owner
+                crashobj['status'] = 'new'
+                crashobj['type'] = 'crash'
+                crashobj['priority'] = self.default_priority
+                crashobj['milestone'] = self.default_milestone
+                crashobj['component'] = self.default_component
+                crashobj['severity'] = self.default_severity
+                crashobj['summary'] = self.default_summary
+                crashobj['description'] = self.default_description
+                crashobj['keywords'] = self.default_keywords
+                crashobj['owner'] = self.default_owner
                 if self.default_reporter == '< default >':
-                    crashdump.reporter = crashdump.crashusername
+                    crashobj['reporter'] = crashobj['crashusername']
                 else:
-                    crashdump.reporter = self.default_reporter
+                    crashobj['reporter'] = self.default_reporter
 
-                if crashdump.insert():
+                if crashobj.insert():
                     return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
                 else:
                     return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
-                crashdump.id = crashid
-                if crashdump.update():
+                print('save changes')
+                if crashobj.save_changes():
                     return self._success_response(req, body='Crash dump %s updated successfully.' % uuid)
                 else:
                     return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)

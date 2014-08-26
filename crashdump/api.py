@@ -6,6 +6,7 @@ import copy
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
+from trac.perm import IPermissionRequestor, PermissionCache, PermissionSystem
 from trac.util.compat import set, sorted
 from trac.util.translation import _, N_, gettext
 from trac.cache import cached
@@ -14,13 +15,15 @@ import db_default
 from trac.ticket.model import Ticket
 
 class CrashDumpSystem(Component):
-    """Central functionality for the MasterTickets plugin."""
+    """Central functionality for the CrashDump plugin."""
 
     implements(IEnvironmentSetupParticipant)
     
     NUMBERS_RE = re.compile(r'\d+', re.U)
     
     # IEnvironmentSetupParticipant methods
+
+    restrict_owner = True
 
     def environment_created(self):
         self._upgrade_db(self.env.get_db_cnx())
@@ -138,6 +141,37 @@ class CrashDumpSystem(Component):
         field['type'] = 'text'
         fields.append(field)
 
+        simple_string_fields = [
+            ('uuid', N_('Crash identifier') ),
+            ('applicationname', N_('Application') ),
+            ('applicationfile', N_('Application file') ),
+            ('uploadhostname', N_('Upload FQDN') ),
+            ('uploadusername', N_('Upload username') ),
+            ('crashhostname', N_('Crash FQDN') ),
+            ('crashusername', N_('Crash username') ),
+            ('productname', N_('Product name') ),
+            ('productcodename', N_('Product code name') ),
+            ('productversion', N_('Product version') ),
+            ('producttargetversion', N_('Product target version') ),
+            ('buildtype', N_('Build type') ),
+            ('buildpostfix', N_('Build postfix') ),
+            ('machinetype', N_('Machine type') ),
+            ('systemname', N_('System name') ),
+            ('osversion', N_('OS version') ),
+            ('osrelease', N_('OS release') ),
+            ('osmachine', N_('OS machine') ),
+            ('minidumpfile', N_('Minidump file') ),
+            ('minidumpreporttextfile', N_('Minidump text report') ),
+            ('minidumpreportxmlfile', N_('Minidump XML report') ),
+            ('minidumpreporthtmlfile', N_('Minidump HTML report') ),
+            ('coredumpfile', N_('Coredump file') ),
+            ('coredumpreporttextfile', N_('Coredump text report') ),
+            ('coredumpreportxmlfile', N_('Coredump XML report') ),
+            ('coredumpreporthtmlfile', N_('Coredump HTML report') ),
+            ]
+        for (name, label) in simple_string_fields:
+            fields.append({'name': name, 'type': 'text', 'label': label})
+
         # Description
         fields.append({'name': 'description', 'type': 'textarea',
                        'label': N_('Description')})
@@ -202,3 +236,36 @@ class CrashDumpSystem(Component):
             fields.append(field)
 
         return fields
+
+    def eventually_restrict_owner(self, field, crashobj=None):
+        """Restrict given owner field to be a list of users having
+        the TICKET_MODIFY permission (for the given crashobj)
+        """
+        if self.restrict_owner:
+            field['type'] = 'select'
+            possible_owners = []
+            for user in PermissionSystem(self.env) \
+                    .get_users_with_permission('TICKET_MODIFY'):
+                if not crashobj or \
+                        'TICKET_MODIFY' in PermissionCache(self.env, user,
+                                                           crashobj.resource):
+                    possible_owners.append(user)
+            possible_owners.sort()
+            possible_owners.insert(0, '< default >')
+            field['options'] = possible_owners
+            field['optional'] = True
+
+    def get_available_actions(self, req, crashobj):
+        """Returns a sorted list of available actions"""
+        # The list should not have duplicates.
+        actions = {}
+        #for controller in self.action_controllers:
+            #weighted_actions = controller.get_ticket_actions(req, crashobj) or []
+            #for weight, action in weighted_actions:
+                #if action in actions:
+                    #actions[action] = max(actions[action], weight)
+                #else:
+                    #actions[action] = weight
+        all_weighted_actions = [(weight, action) for action, weight in
+                                actions.items()]
+        return [x[1] for x in sorted(all_weighted_actions, reverse=True)]

@@ -141,7 +141,8 @@ class XMLReport(object):
 
     def __init__(self, filename=None):
         self._filename = filename
-        self._xml = etree.parse(filename)
+        print(self._filename)
+        self._xml = etree.parse(self._filename) if self._filename else None
 
     class XMLReportEntity(object):
         def __init__(self, owner):

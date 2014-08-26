@@ -1,6 +1,8 @@
+import re
 from trac.resource import Resource, ResourceNotFound
 from trac.util.translation import _
 from trac.util.datefmt import from_utimestamp, to_utimestamp, utc, utcmax
+from trac.util.text import empty
 from .api import CrashDumpSystem
 from uuid import UUID
 from datetime import datetime
@@ -122,8 +124,10 @@ class CrashDump(object):
             if isinstance(value, list):
                 raise TracError(_("Multi-values fields not supported yet"))
             field = [field for field in self.fields if field['name'] == name]
-            if field and field[0].get('type') != 'textarea':
-                value = value.strip()
+            if field:
+                field_type = field[0].get('type')
+                if field_type != 'textarea' and field_type != 'time':
+                    value = value.strip()
         self.values[name] = value
 
     def get_value_or_default(self, name):
@@ -141,12 +145,12 @@ class CrashDump(object):
         if field:
             return field[0].get('value', '')
 
-    def _load_from_record(self, record):
+    def _load_from_record(self, row):
         for i, field in enumerate(self.std_fields):
             if i == 0:
                 self.id = row[0]
             else:
-                value = row[i]
+                value = row[i + 1]
                 if field in self.time_fields:
                     self.values[field] = from_utimestamp(value)
                 elif value is None:
@@ -201,6 +205,7 @@ class CrashDump(object):
         if when is None:
             when = datetime.now(utc)
         self.values['uploadtime'] = self.values['changetime'] = when
+        self.values['uuid'] = str(self.uuid)
 
         # The owner field defaults to the component owner
         if self.values.get('owner') == '< default >':
@@ -252,33 +257,159 @@ class CrashDump(object):
         self._old = {}
         return self.id
 
-    def update(self):
-        ret = False
-        with self.env.db_transaction as db:
-            cursor = db.cursor()
-            update_fields = []
-            for f in CrashDump.__db_fields:
-                v = getattr(self, f)
-                if v is None:
-                    continue
-                elif isinstance(v, str):
-                    update_fields.append(f + '=' + '\'' + v + '\'')
-                elif isinstance(v, UUID):
-                    update_fields.append(f + '=' + '\'' + str(v) + '\'')
-                elif isinstance(v, bool):
-                    update_fields.append(f + '=' + '1' if v else '0')
-                elif isinstance(v, int) or isinstance(v, float):
-                    update_fields.append(f + '=' + str(v))
-                else:
-                    update_fields.append(f + '=' + '\'' + v + '\'')
+    def save_changes(self, author=None, comment=None, when=None, db=None,
+                     cnum='', replyto=None):
+        """
+        Store ticket changes in the database. The ticket must already exist in
+        the database.  Returns False if there were no changes to save, True
+        otherwise.
 
-            sql = "UPDATE crashdump SET %s WHERE id=%i" % \
-                (','.join(update_fields), self.id )
-            self.env.log.info("update crashdump: %s", sql)
-            cursor.execute(sql)
-            self.env.log.info("update crashdump: %s id=%i", self.uuid, self.id)
-            ret = True
-        return ret
+        :since 1.0: the `db` parameter is no longer needed and will be removed
+        in version 1.1.1
+        :since 1.0: the `cnum` parameter is deprecated, and threading should
+        be controlled with the `replyto` argument
+        """
+        assert self.exists, "Cannot update a new crash dump"
+
+        if 'cc' in self.values:
+            self['cc'] = _fixup_cc_list(self.values['cc'])
+
+        props_unchanged = all(self.values.get(k) == v
+                              for k, v in self._old.iteritems())
+        if (not comment or not comment.strip()) and props_unchanged:
+            return False # Not modified
+
+        if when is None:
+            when = datetime.now(utc)
+        when_ts = to_utimestamp(when)
+
+        if 'component' in self.values:
+            # If the component is changed on a 'new' ticket
+            # then owner field is updated accordingly. (#623).
+            if self.values.get('status') == 'new' \
+                    and 'component' in self._old \
+                    and 'owner' not in self._old:
+                try:
+                    old_comp = Component(self.env, self._old['component'])
+                    old_owner = old_comp.owner or ''
+                    current_owner = self.values.get('owner') or ''
+                    if old_owner == current_owner:
+                        new_comp = Component(self.env, self['component'])
+                        if new_comp.owner:
+                            self['owner'] = new_comp.owner
+                except TracError:
+                    # If the old component has been removed from the database
+                    # we just leave the owner as is.
+                    pass
+
+        with self.env.db_transaction as db:
+            db("UPDATE crashdump SET changetime=%s WHERE id=%s",
+               (when_ts, self.id))
+
+            # find cnum if it isn't provided
+            if not cnum:
+                num = 0
+                for ts, old in db("""
+                        SELECT DISTINCT tc1.time, COALESCE(tc2.oldvalue,'')
+                        FROM crashdump_change AS tc1
+                        LEFT OUTER JOIN crashdump_change AS tc2
+                        ON tc2.crash=%s AND tc2.time=tc1.time
+                           AND tc2.field='comment'
+                        WHERE tc1.crash=%s ORDER BY tc1.time DESC
+                        """, (self.id, self.id)):
+                    # Use oldvalue if available, else count edits
+                    try:
+                        num += int(old.rsplit('.', 1)[-1])
+                        break
+                    except ValueError:
+                        num += 1
+                cnum = str(num + 1)
+                if replyto:
+                    cnum = '%s.%s' % (replyto, cnum)
+
+            # store fields
+            for name in self._old.keys():
+                if name in self.custom_fields:
+                    for row in db("""SELECT * FROM crash_custom
+                                     WHERE crash=%s and name=%s
+                                     """, (self.id, name)):
+                        db("""UPDATE crash_custom SET value=%s
+                              WHERE crash=%s AND name=%s
+                              """, (self[name], self.id, name))
+                        break
+                    else:
+                        db("""INSERT INTO crash_custom (crash,name,value)
+                              VALUES(%s,%s,%s)
+                              """, (self.id, name, self[name]))
+                else:
+                    db("UPDATE crashdump SET %s=%%s WHERE id=%%s"
+                       % name, (self[name], self.id))
+                db("""INSERT INTO crashdump_change
+                        (crash,time,author,field,oldvalue,newvalue)
+                      VALUES (%s, %s, %s, %s, %s, %s)
+                      """, (self.id, when_ts, author, name, self._old[name],
+                            self[name]))
+
+            # always save comment, even if empty
+            # (numbering support for timeline)
+            db("""INSERT INTO crashdump_change
+                    (crash,time,author,field,oldvalue,newvalue)
+                  VALUES (%s,%s,%s,'comment',%s,%s)
+                  """, (self.id, when_ts, author, cnum, comment))
+
+        old_values = self._old
+        self._old = {}
+        self.values['changetime'] = when
+
+        return int(cnum.rsplit('.', 1)[-1])
+
+    def get_changelog(self, when=None, db=None):
+        """Return the changelog as a list of tuples of the form
+        (time, author, field, oldvalue, newvalue, permanent).
+
+        While the other tuple elements are quite self-explanatory,
+        the `permanent` flag is used to distinguish collateral changes
+        that are not yet immutable (like attachments, currently).
+
+        :since 1.0: the `db` parameter is no longer needed and will be removed
+        in version 1.1.1
+        """
+        sid = str(self.id)
+        when_ts = to_utimestamp(when)
+        if when_ts:
+            sql = """
+                SELECT time, author, field, oldvalue, newvalue, 1 AS permanent
+                FROM crashdump_change WHERE crash=%s AND time=%s
+                  UNION
+                SELECT time, author, 'attachment', null, filename,
+                  0 AS permanent
+                FROM attachment WHERE type='crash' AND id=%s AND time=%s
+                  UNION
+                SELECT time, author, 'comment', null, description,
+                  0 AS permanent
+                FROM attachment WHERE type='crash' AND id=%s AND time=%s
+                ORDER BY time,permanent,author
+                """
+            args = (self.id, when_ts, sid, when_ts, sid, when_ts)
+        else:
+            sql = """
+                SELECT time, author, field, oldvalue, newvalue, 1 AS permanent
+                FROM crashdump_change WHERE crash=%s
+                  UNION
+                SELECT time, author, 'attachment', null, filename,
+                  0 AS permanent
+                FROM attachment WHERE type='crash' AND id=%s
+                  UNION
+                SELECT time, author, 'comment', null, description,
+                  0 AS permanent
+                FROM attachment WHERE type='crash' AND id=%s
+                ORDER BY time,permanent,author
+                """
+            args = (self.id, sid, sid)
+        return [(from_utimestamp(t), author, field, oldvalue or '',
+                 newvalue or '', permanent)
+                for t, author, field, oldvalue, newvalue, permanent in
+                self.env.db_query(sql, args)]
 
     @staticmethod
     def find_by_uuid(env, uuid):

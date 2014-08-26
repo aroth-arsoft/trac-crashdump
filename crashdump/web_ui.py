@@ -12,11 +12,18 @@ from trac.web.chrome import (
     add_ctxtnav, add_link, add_notice, add_script, add_script_data,
     add_stylesheet, add_warning, auth_link, prevnext_nav, web_context
 )
-
-from trac.ticket.model import Ticket
+from trac.web import (
+    arg_list_to_args, parse_arg_list
+)
+from trac.ticket.model import Milestone, Ticket, group_milestones
 from trac.ticket.query import Query
 from trac.config import Option, BoolOption, ChoiceOption
-from trac.resource import ResourceNotFound
+from trac.attachment import AttachmentModule
+from trac.mimeview.api import Mimeview, IContentConverter
+from trac.resource import (
+    Resource, ResourceNotFound, get_resource_url, render_resource_link,
+    get_resource_shortname
+)
 from trac.util import to_unicode, as_bool, as_int, get_reporter_id
 from trac.util.translation import _ 
 from trac.util.html import html, Markup
@@ -30,6 +37,7 @@ from trac.util.compat import set, sorted, partial
 import os.path
 import math
 from .model import CrashDump
+from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 
 def hex_format(number, prefix='0x', width=None):
@@ -59,6 +67,14 @@ class CrashDumpModule(Component):
 
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
                       doc='Path to the crash dump data directory.')
+
+    crashlink_query = Option('crashdump', 'crashlink_query',
+        default='?status=!closed',
+        doc="""The base query to be used when linkifying values of ticket
+            fields. The query is a URL query
+            string starting with `?` as used in `query:`
+            [TracQuery#UsingTracLinks Trac links].
+            (''since 0.12'')""")
 
     crashdump_fields = set(['_crash'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
@@ -157,10 +173,17 @@ class CrashDumpModule(Component):
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}
         xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
-        xmlreport = XMLReport(xmlfile)
-        for f in xmlreport.fields:
-            data[f] = getattr(xmlreport, f)
+        if xmlfile:
+            xmlreport = XMLReport(xmlfile)
+            for f in xmlreport.fields:
+                data[f] = getattr(xmlreport, f)
         return data
+
+    def _get_prefs(self, req):
+        return {'comments_order': req.session.get('ticket_comments_order',
+                                                  'oldest'),
+                'comments_only': req.session.get('ticket_comments_only',
+                                                 'false')}
 
     def process_request(self, req):
         path_info = req.path_info[6:]
@@ -225,7 +248,7 @@ class CrashDumpModule(Component):
             valid = True
 
             # Do any action on the crash?
-            actions = TicketSystem(self.env).get_available_actions(req, object)
+            actions = TicketSystem(self.env).get_available_actions(req, crashobj)
             if action not in actions:
                 valid = False
                 add_warning(req, _('The action "%(name)s" is not available.',
@@ -241,8 +264,8 @@ class CrashDumpModule(Component):
             # the webpage includes both changes by the user and changes by the
             # workflow... so we aren't able to differentiate them clearly.
 
-            self._populate(req, object) # Apply changes made by the user
-            field_changes, problems = self.get_ticket_changes(req, object,
+            self._populate(req, crashobj) # Apply changes made by the user
+            field_changes, problems = self.get_ticket_changes(req, crashobj,
                                                             action)
             if problems:
                 valid = False
@@ -257,16 +280,16 @@ class CrashDumpModule(Component):
                                 tracini=tag.tt('trac.ini')))
 
             # Apply changes made by the workflow
-            self._apply_ticket_changes(object, field_changes)
+            self._apply_ticket_changes(crashobj, field_changes)
             # Unconditionally run the validation so that the user gets
             # information any and all problems.  But it's only valid if it
             # validates and there were no problems with the workflow side of
             # things.
-            valid = self._validate_ticket(req, object, not valid) and valid
+            valid = self._validate_ticket(req, crashobj, not valid) and valid
             if 'submit' in req.args:
                 if valid:
                     # redirected if successful
-                    self._do_save(req, object, action)
+                    self._do_save(req, crashobj, action)
                 # else fall through in a preview
                 req.args['preview'] = True
 
@@ -293,7 +316,7 @@ class CrashDumpModule(Component):
                     'cnum_hist': req.args.get('cnum_hist'),
                     'cversion': req.args.get('cversion')})
 
-        self._insert_crashdump_data(req, object, data,
+        self._insert_crashdump_data(req, crashobj, data,
                                 get_reporter_id(req, 'author'), field_changes)
 
         if xhr:
@@ -305,7 +328,7 @@ class CrashDumpModule(Component):
         if format:
             # FIXME: mime.send_converted(context, ticket, 'ticket_x') (#3332)
             filename = 'crash%s' % str(crashobj.uuid) if format != 'rss' else None
-            mime.send_converted(req, 'trac.ticket.Ticket', object,
+            mime.send_converted(req, 'trac.ticket.Ticket', crashobj,
                                 format, filename=filename)
 
         def add_ticket_link(css_class, uuid):
@@ -316,10 +339,10 @@ class CrashDumpModule(Component):
 
         # If the ticket is being shown in the context of a query, add
         # links to help navigate in the query result set
-        if 'query_tickets' in req.session:
+        if 'query_crashes' in req.session:
             crashes = req.session['query_crashes'].split()
             if str(uuid.id) in crashes:
-                idx = crashes.index(str(ticket.id))
+                idx = crashes.index(str(crashobj.id))
                 if idx > 0:
                     add_ticket_link('first', crashes[0])
                     add_ticket_link('prev', crashes[idx - 1])
@@ -337,7 +360,7 @@ class CrashDumpModule(Component):
         # Add registered converters
         for conversion in mime.get_supported_conversions('trac.ticket.Ticket'):
             format = conversion[0]
-            conversion_href = get_resource_url(self.env, ticket.resource,
+            conversion_href = get_resource_url(self.env, crashobj.resource,
                                             req.href, format=format)
             if format == 'rss':
                 conversion_href = auth_link(req, conversion_href)
@@ -347,6 +370,38 @@ class CrashDumpModule(Component):
         prevnext_nav(req, _("Previous Crash"), _("Next Crash"),
                     _("Back to Query"))
         return 'report.html', data, None
+
+    def _query_link(self, req, name, value, text=None):
+        """Return a link to /query with the appropriate name and value"""
+        default_query = self.crashlink_query.lstrip('?')
+        args = arg_list_to_args(parse_arg_list(default_query))
+        args[name] = value
+        if name == 'resolution':
+            args['status'] = 'closed'
+        return tag.a(text or value, href=req.href.query(args))
+
+    def _query_link_words(self, context, name, value):
+        """Splits a list of words and makes a query link to each separately"""
+        if not isinstance(value, basestring): # None or other non-splitable
+            return value
+        default_query = self.crashlink_query.startswith('?') and \
+                        self.crashlink_query[1:] or self.crashlink_query
+        args = arg_list_to_args(parse_arg_list(default_query))
+        items = []
+        for i, word in enumerate(re.split(r'([;,\s]+)', value)):
+            if i % 2:
+                items.append(word.strip() + ' ')
+            elif word:
+                rendered = name != 'cc' and word \
+                           or Chrome(self.env).format_emails(context, word)
+                if rendered == word:
+                    word_args = args.copy()
+                    word_args[name] = '~' + word
+                    items.append(tag.a(word,
+                                       href=context.href.query(word_args)))
+                else:
+                    items.append(rendered)
+        return tag(items)
 
     def _prepare_fields(self, req, crashobj, field_changes=None):
         context = web_context(req, crashobj.resource)
@@ -365,12 +420,12 @@ class CrashDumpModule(Component):
                         'resolution', 'time', 'changetime'):
                 field['skip'] = True
             elif name == 'owner':
-                CrashDumpSystem(self.env).eventually_restrict_owner(field, ticket)
+                CrashDumpSystem(self.env).eventually_restrict_owner(field, crashobj)
                 type_ = field['type']
                 field['skip'] = True
-                if not ticket.exists:
+                if not crashobj.exists:
                     field['label'] = _("Owner")
-                    if 'TICKET_MODIFY' in req.perm(ticket.resource):
+                    if 'TICKET_MODIFY' in req.perm(crashobj.resource):
                         field['skip'] = False
                         owner_field = field
             elif name == 'milestone':
@@ -378,20 +433,20 @@ class CrashDumpModule(Component):
                               for opt in field['options']]
                 milestones = [m for m in milestones
                               if 'MILESTONE_VIEW' in req.perm(m.resource)]
-                groups = group_milestones(milestones, ticket.exists
-                    and 'TICKET_ADMIN' in req.perm(ticket.resource))
+                groups = group_milestones(milestones, crashobj.exists
+                    and 'TICKET_ADMIN' in req.perm(crashobj.resource))
                 field['options'] = []
                 field['optgroups'] = [
                     {'label': label, 'options': [m.name for m in milestones]}
                     for (label, milestones) in groups]
-                milestone = Resource('milestone', ticket[name])
+                milestone = Resource('milestone', crashobj[name])
                 field['rendered'] = render_resource_link(self.env, context,
                                                          milestone, 'compact')
             elif name == 'cc':
                 cc_changed = field_changes is not None and 'cc' in field_changes
-                if ticket.exists and \
-                        'TICKET_EDIT_CC' not in req.perm(ticket.resource):
-                    cc = ticket._old.get('cc', ticket['cc'])
+                if crashobj.exists and \
+                        'TICKET_EDIT_CC' not in req.perm(crashobj.resource):
+                    cc = crashobj._old.get('cc', crashobj['cc'])
                     cc_action, cc_entry, cc_list = self._toggle_cc(req, cc)
                     cc_update = 'cc_update' in req.args \
                                 and 'revert_cc' not in req.args
@@ -416,8 +471,8 @@ class CrashDumpModule(Component):
 
             # per type settings
             if type_ in ('radio', 'select'):
-                if ticket.exists:
-                    value = ticket.values.get(name)
+                if crashobj.exists:
+                    value = crashobj.values.get(name)
                     options = field['options']
                     optgroups = []
                     for x in field.get('optgroups', []):
@@ -425,28 +480,28 @@ class CrashDumpModule(Component):
                     if value and \
                         (not value in options and \
                          not value in optgroups):
-                        # Current ticket value must be visible,
+                        # Current crashobj value must be visible,
                         # even if it's not among the possible values
                         options.append(value)
             elif type_ == 'checkbox':
-                value = ticket.values.get(name)
+                value = crashobj.values.get(name)
                 if value in ('1', '0'):
                     field['rendered'] = self._query_link(req, name, value,
                                 _("yes") if value == '1' else _("no"))
             elif type_ == 'text':
                 if field.get('format') == 'wiki':
                     field['rendered'] = format_to_oneliner(self.env, context,
-                                                           ticket[name])
+                                                           crashobj[name])
                 elif field.get('format') == 'reference':
                     field['rendered'] = self._query_link(req, name,
-                                                         ticket[name])
+                                                         crashobj[name])
                 elif field.get('format') == 'list':
                     field['rendered'] = self._query_link_words(context, name,
-                                                               ticket[name])
+                                                               crashobj[name])
             elif type_ == 'textarea':
                 if field.get('format') == 'wiki':
                     field['rendered'] = \
-                        format_to_html(self.env, context, ticket[name],
+                        format_to_html(self.env, context, crashobj[name],
                                 escape_newlines=self.must_preserve_newlines)
 
             # ensure sane defaults
@@ -543,8 +598,7 @@ class CrashDumpModule(Component):
         # renders is a list of (action_key, label, widgets, hints) representing
         # the user interface for each action
         action_controls = []
-        sorted_actions = TicketSystem(self.env).get_available_actions(req,
-                                                                      crashobj)
+        sorted_actions = CrashDumpSystem(self.env).get_available_actions(req, crashobj)
         for action in sorted_actions:
             first_label = None
             hints = []
@@ -574,20 +628,20 @@ class CrashDumpModule(Component):
         if replyto:
             change_preview['replyto'] = replyto
         if req.method == 'POST':
-            self._apply_ticket_changes(ticket, field_changes)
-            self._render_property_changes(req, ticket, field_changes)
+            self._apply_ticket_changes(crashobj, field_changes)
+            self._render_property_changes(req, crashobj, field_changes)
 
-        if ticket.resource.version is not None: ### FIXME
-            ticket.values.update(values)
+        if crashobj.resource.version is not None: ### FIXME
+            crashobj.values.update(values)
 
-        context = web_context(req, ticket.resource)
+        context = web_context(req, crashobj.resource)
 
         # Display the owner and reporter links when not obfuscated
         chrome = Chrome(self.env)
         for user in 'reporter', 'owner':
-            if chrome.format_author(req, ticket[user]) == ticket[user]:
+            if chrome.format_author(req, crashobj[user]) == crashobj[user]:
                 data['%s_link' % user] = self._query_link(req, user,
-                                                          ticket[user])
+                                                          crashobj[user])
         data.update({
             'context': context, 'conflicts': conflicts,
             'fields': fields, 'fields_map': fields_map,
@@ -597,12 +651,85 @@ class CrashDumpModule(Component):
             'change_preview': change_preview, 'closetime': closetime,
         })
 
+    def rendered_changelog_entries(self, req, crashobj, when=None):
+        """Iterate on changelog entries, consolidating related changes
+        in a `dict` object.
+        """
+        attachment_realm = crashobj.resource.child('attachment')
+        for group in self.grouped_changelog_entries(crashobj, when=when):
+            t = crashobj.resource(version=group.get('cnum', None))
+            if 'TICKET_VIEW' in req.perm(t):
+                self._render_property_changes(req, crashobj, group['fields'], t)
+                if 'attachment' in group['fields']:
+                    filename = group['fields']['attachment']['new']
+                    attachment = attachment_realm(id=filename)
+                    if 'ATTACHMENT_VIEW' not in req.perm(attachment):
+                        del group['fields']['attachment']
+                        if not group['fields']:
+                            continue
+                yield group
+
+    def grouped_changelog_entries(self, crashobj, db=None, when=None):
+        """Iterate on changelog entries, consolidating related changes
+        in a `dict` object.
+
+        :since 1.0: the `db` parameter is no longer needed and will be removed
+        in version 1.1.1
+        """
+        field_labels = CrashDumpSystem(self.env).get_crash_field_labels()
+        changelog = crashobj.get_changelog(when=when)
+        autonum = 0 # used for "root" numbers
+        last_uid = current = None
+        for date, author, field, old, new, permanent in changelog:
+            uid = (date,) if permanent else (date, author)
+            if uid != last_uid:
+                if current:
+                    last_comment = comment_history[max(comment_history)]
+                    last_comment['comment'] = current['comment']
+                    yield current
+                last_uid = uid
+                comment_history = {0: {'date': date}}
+                current = {'date': date, 'fields': {},
+                           'permanent': permanent, 'comment': '',
+                           'comment_history': comment_history}
+                if permanent and not when:
+                    autonum += 1
+                    current['cnum'] = autonum
+            # some common processing for fields
+            if not field.startswith('_'):
+                current.setdefault('author', author)
+                comment_history[0].setdefault('author', author)
+            if field == 'comment':
+                current['comment'] = new
+                # Always take the author from the comment field if available
+                current['author'] = comment_history[0]['author'] = author
+                if old:
+                    if '.' in old: # retrieve parent.child relationship
+                        parent_num, this_num = old.split('.', 1)
+                        current['replyto'] = parent_num
+                    else:
+                        this_num = old
+                    current['cnum'] = autonum = int(this_num)
+            elif field.startswith('_comment'):      # Comment edits
+                rev = int(field[8:])
+                comment_history.setdefault(rev, {}).update({'comment': old})
+                comment_history.setdefault(rev + 1, {}).update(
+                        {'author': author, 'date': from_utimestamp(long(new))})
+            elif (old or new) and old != new:
+                current['fields'][field] = {
+                    'old': old, 'new': new,
+                    'label': field_labels.get(field, field)}
+        if current:
+            last_comment = comment_history[max(comment_history)]
+            last_comment['comment'] = current['comment']
+            yield current
+
     def _format_datetime(self, req, timestamp):
         return format_datetime(from_utimestamp(long(timestamp)))
 
-
-    def _get_dump_filename(self, crashdump, name):
-        item_name = getattr(crashdump, name)
+    def _get_dump_filename(self, crashobj, name):
+        print('_get_dump_filename %s' % name)
+        item_name = crashobj[name]
         crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
         return crash_file
 
@@ -610,7 +737,7 @@ class CrashDumpModule(Component):
         items = []
 
         try:
-            crash = CrashDump(self.env, uuid)
+            crash = CrashDump(env=self.env, uuid=uuid)
             word = \
                 tag.a(
                     '%s' % uuid,
@@ -618,9 +745,9 @@ class CrashDumpModule(Component):
                     href=req.href('crash', uuid),
                     title=uuid
                 )
+            items.append(word)
         except ResourceNotFound:
             pass
-        items.append(word)
 
         if items:
             return tag(items)

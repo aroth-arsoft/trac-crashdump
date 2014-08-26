@@ -58,7 +58,7 @@ schema = [
         Index(['id'], unique=True),
         Index(['uuid'], unique=True),
     ],
-    Table('crashdump_change', key=('crash', 'time'))[
+    Table('crashdump_change', key=('crash', 'time', 'field'))[
         Column('crash', type='int'),
         Column('time', type='int'),
         Column('author', type='string', size=256),
