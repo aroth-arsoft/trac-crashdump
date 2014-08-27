@@ -90,12 +90,10 @@ class CrashDumpSubmit(Component):
         uuid = UUID(id_str)
         crashid = None
         crashobj = CrashDump.find_by_uuid(self.env, uuid)
-        print('found %s' % str(crashobj))
         if not crashobj:
             crashobj = CrashDump(uuid=uuid, env=self.env, must_exist=False)
         else:
             crashid = crashobj.id
-        print('found crashid %s' % str(crashid))
 
         force_str = req.args.get('force') or 'false'
         force = True if force_str.lower() == 'true' else False
@@ -179,7 +177,10 @@ class CrashDumpSubmit(Component):
                 crashobj['summary'] = self.default_summary
                 crashobj['description'] = self.default_description
                 crashobj['keywords'] = self.default_keywords
-                crashobj['owner'] = self.default_owner
+                if self.default_reporter == '< default >':
+                    crashobj['owner'] = crashobj['crashusername']
+                else:
+                    crashobj['owner'] = self.default_owner
                 if self.default_reporter == '< default >':
                     crashobj['reporter'] = crashobj['crashusername']
                 else:
@@ -190,7 +191,6 @@ class CrashDumpSubmit(Component):
                 else:
                     return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
-                print('save changes')
                 if crashobj.save_changes():
                     return self._success_response(req, body='Crash dump %s updated successfully.' % uuid)
                 else:

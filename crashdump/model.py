@@ -189,8 +189,6 @@ class CrashDump(object):
         row = None
         if self.uuid_is_valid(uuid):
             # Fetch the standard crashdump fields
-            print("SELECT id,%s FROM crashdump WHERE uuid=%%s" %
-                                         ','.join(self.std_fields))
             for row in self.env.db_query("SELECT id,%s FROM crashdump WHERE uuid=%%s" %
                                          ','.join(self.std_fields), (str(uuid),)):
                 break

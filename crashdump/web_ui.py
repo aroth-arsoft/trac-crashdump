@@ -191,6 +191,7 @@ class CrashDumpModule(Component):
 
     def process_request(self, req):
         path_info = req.path_info[6:]
+        start = time.time()
         if 'crashuuid' in req.args:
             crashobj = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
             if not crashobj:
@@ -203,6 +204,7 @@ class CrashDumpModule(Component):
                                         id=req.args['crashid']), _("Invalid crash identifier"))
         else:
             raise ResourceNotFound(_("No crash identifier specified."))
+        end = time.time()
         version = as_int(req.args.get('version'), None)
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
 
@@ -218,112 +220,12 @@ class CrashDumpModule(Component):
         action = req.args.get('action', ('history' in req.args and 'history' or
                                         'view'))
         data = self._prepare_data(req, crashobj)
+        data['dbtime'] = end - start
 
-        if action in ('history', 'diff'):
-            field = req.args.get('field')
-            if field:
-                text_fields = [field]
-            else:
-                text_fields = [field['name'] for field in crashobj.fields if
-                            field['type'] == 'textarea']
-            if action == 'history':
-                return self._render_history(req, crashobj, data, text_fields)
-            elif action == 'diff':
-                return self._render_diff(req, crashobj, data, text_fields)
-        elif action == 'comment-history':
-            cnum = int(req.args['cnum'])
-            return self._render_comment_history(req, crashobj, data, cnum)
-        elif action == 'comment-diff':
-            cnum = int(req.args['cnum'])
-            return self._render_comment_diff(req, crashobj, data, cnum)
-        elif 'preview_comment' in req.args:
-            field_changes = {}
-            data.update({'action': None,
-                        'reassign_owner': req.authname,
-                        'resolve_resolution': None,
-                        'start_time': crashobj['changetime']})
-        elif req.method == 'POST':
-            if 'cancel_comment' in req.args:
-                req.redirect(req.href('crash', str(crashobj.uuid)))
-            elif 'edit_comment' in req.args:
-                comment = req.args.get('edited_comment', '')
-                cnum = int(req.args['cnum_edit'])
-                change = crashobj.get_change(cnum)
-                if not (req.authname and req.authname != 'anonymous'
-                        and change and change['author'] == req.authname):
-                    req.perm(crashobj.resource).require('TICKET_EDIT_COMMENT')
-                crashobj.modify_comment(change['date'], req.authname, comment)
-                req.redirect(req.href('crash', '%s#comment:%d' % (crashobj.uuid, cnum)))
-
-            valid = True
-
-            # Do any action on the crash?
-            actions = CrashDumpSystem(self.env).get_available_actions(req, crashobj)
-            if action not in actions:
-                valid = False
-                add_warning(req, _('The action "%(name)s" is not available.',
-                                name=action))
-
-            # We have a bit of a problem.  There are two sources of changes to
-            # the ticket: the user, and the workflow.  We need to show all the
-            # changes that are proposed, but we need to be able to drop the
-            # workflow changes if the user changes the action they want to do
-            # from one preview to the next.
-            #
-            # the _populate() call pulls all the changes from the webpage; but
-            # the webpage includes both changes by the user and changes by the
-            # workflow... so we aren't able to differentiate them clearly.
-
-            self._populate(req, crashobj) # Apply changes made by the user
-            field_changes, problems = self.get_crash_changes(req, crashobj,action)
-            if problems:
-                valid = False
-                for problem in problems:
-                    add_warning(req, problem)
-                add_warning(req,
-                            tag_("Please review your configuration, "
-                                "probably starting with %(section)s "
-                                "in your %(tracini)s.",
-                                section=tag.pre('[ticket]', tag.br(),
-                                                'workflow = ...'),
-                                tracini=tag.tt('trac.ini')))
-
-            # Apply changes made by the workflow
-            self._apply_crash_changes(crashobj, field_changes)
-            # Unconditionally run the validation so that the user gets
-            # information any and all problems.  But it's only valid if it
-            # validates and there were no problems with the workflow side of
-            # things.
-            valid = self._validate_ticket(req, crashobj, not valid) and valid
-            if 'submit' in req.args:
-                if valid:
-                    # redirected if successful
-                    self._do_save(req, crashobj, action)
-                # else fall through in a preview
-                req.args['preview'] = True
-
-            # Preview an existing crash (after a Preview or a failed Save)
-            start_time = from_utimestamp(long(req.args.get('start_time', 0)))
-            data.update({
-                'action': action, 'start_time': start_time,
-                'reassign_owner': (req.args.get('reassign_choice')
-                                or req.authname),
-                'resolve_resolution': req.args.get('resolve_choice'),
-                'valid': valid
-                })
-        else: # simply 'View'ing the crash
-            field_changes = {}
-            data.update({'action': None,
-                        'reassign_owner': req.authname,
-                        'resolve_resolution': None,
-                        # Store a timestamp for detecting "mid air collisions"
-                        'start_time': crashobj['changetime']})
-
-        data.update({'comment': req.args.get('comment'),
-                    'cnum_edit': req.args.get('cnum_edit'),
-                    'edited_comment': req.args.get('edited_comment'),
-                    'cnum_hist': req.args.get('cnum_hist'),
-                    'cversion': req.args.get('cversion')})
+        field_changes = {}
+        data.update({'action': None,
+                    # Store a timestamp for detecting "mid air collisions"
+                    'start_time': crashobj['changetime']})
 
         self._insert_crashdump_data(req, crashobj, data,
                                 get_reporter_id(req, 'author'), field_changes)
@@ -467,9 +369,6 @@ class CrashDumpModule(Component):
         if crashobj.resource.version is not None:
             crashobj.values.update(values)
 
-        # retrieve close time from changes
-        closetime = None
-
         context = web_context(req, crashobj.resource)
 
         # Display the owner and reporter links when not obfuscated
@@ -478,10 +377,7 @@ class CrashDumpModule(Component):
             if chrome.format_author(req, crashobj[user]) == crashobj[user]:
                 data['%s_link' % user] = self._query_link(req, user,
                                                           crashobj[user])
-        data.update({
-            'context': context,
-            'closetime': closetime,
-        })
+        data['context'] = context
 
     def _populate(self, req, crashobj, plain_fields=False):
         if not plain_fields:

@@ -19,23 +19,22 @@
     <div id="content">
         <div id="crashdump">
             <div class="date">
-                <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object.crashtime)}</p>
-                <p i18n:msg="created">Uploaded ${pretty_dateinfo(object.uploadtime)}</p>
-                <p i18n:msg="closed" py:if="object.closetime">Closed ${pretty_dateinfo(object.closetime)}</p>
-                <p i18n:msg="modified" py:if="object.changetime != object.uploadtime and object.changetime != object.closetime">
-                Last modified ${pretty_dateinfo(object.changetime)}</p>
+                <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object['crashtime'])}</p>
+                <p i18n:msg="created">Uploaded ${pretty_dateinfo(object['uploadtime'])}</p>
+                <p i18n:msg="closed" py:if="object['closetime'] != 0">Closed ${pretty_dateinfo(object['closetime'])}</p>
+                <p i18n:msg="modified" py:if="object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']">
+                Last modified ${pretty_dateinfo(object['changetime'])}</p>
             </div>
-  <!--! use a placeholder if it's a new ticket -->
 
             <h2>
                 <a href="${href('crash', object['uuid'])}" class="trac-id">{${object['uuid']}}</a>
                 <span class="trac-status">
                 ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
                 </span>
-                <span class="trac-type" py:if="object.type">
+                <span class="trac-type" py:if="object['type']">
                 ${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}
                 </span>
-                <span class="trac-resolution" py:if="object.resolution">
+                <span class="trac-resolution" py:if="object['resolution']">
                 (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
                 </span>
             </h2>
@@ -64,7 +63,8 @@
 <th>Cc:</th><td>${object['cc']}</td>
 </tr>
 <tr>
-<th>Parse time:</th><td>${parsetime}</td>
+<th>Parse time:</th><td>${parsetime} s</td>
+<th>Database time:</th><td>${dbtime} s</td>
 </tr>
 </table>
 
@@ -232,13 +232,13 @@
 <py:for each="thread in threads">
 <tr>
 <td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.exception">*</py:if></a></td>
-<td>${thread.name} </td>
+<td>${ thread.name if thread.name else 'Unknown' }</td>
 <td><a href="#memory_block_${thread.memory}">${ hex_format(thread.memory) }</a></td>
 <td>${ hex_format(thread.start_addr) }</td>
-<td>${thread.create_time}</td>
-<td>${thread.exit_time}</td>
-<td>${thread.kernel_time} </td>
-<td>${thread.user_time}</td>
+<td>${pretty_dateinfo(thread.create_time) if thread.create_time else 'Unknown'}</td>
+<td>${pretty_dateinfo(thread.exit_time) if thread.exit_time else 'Unknown'}</td>
+<td>${thread.kernel_time}s</td>
+<td>${thread.user_time}s</td>
 </tr>
 </py:for>
 </table>
@@ -331,7 +331,7 @@
 <div id="crashdump">
 <h2>Memory blocks</h2>
 <py:for each="memory_block in memory_blocks">
-<a name="memory_block_${memory_block.base}"></a>
+<a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
 <div class="collapsed">
     <h3 class="foldable" id="memory_block_${memory_block.base}_title">
         Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${memory_block.size} bytes
