@@ -56,9 +56,46 @@ class MemoryBlock(object):
             else:
                 self.offset_width = 2
             self._lines = []
+            self._raw_offset = None
+            self._raw_hex = None
+            self._raw_ascii = None
 
         def __iter__(self):
             return iter(self._lines)
+
+        def _generate_raw(self):
+            self._raw_offset  = ''
+            self._raw_hex  = ''
+            self._raw_ascii  = ''
+            offset_fmt = '0x%%0%dX' % self.offset_width
+            first = True
+            for line in self._lines:
+                if not first:
+                    self._raw_offset += '\r\n'
+                    self._raw_hex += '\r\n'
+                    self._raw_ascii += '\r\n'
+                self._raw_offset += offset_fmt % line.offset
+                self._raw_hex += line.hex
+                self._raw_ascii += line.ascii
+                first = False
+
+        @property
+        def raw_offset(self):
+            if self._raw_offset is None:
+                self._generate_raw()
+            return self._raw_offset
+
+        @property
+        def raw_hex(self):
+            if self._raw_hex is None:
+                self._generate_raw()
+            return self._raw_hex
+
+        @property
+        def raw_ascii(self):
+            if self._raw_ascii is  None:
+                self._generate_raw()
+            return self._raw_ascii
 
     def _generate_hexdump(self):
         offset = 0
@@ -195,6 +232,15 @@ class XMLReport(object):
         @property
         def hexdump(self):
             return self.memory.hexdump
+
+        @property
+        def threadid(self):
+            ret = None
+            for thread in self._owner.threads:
+                if thread.memory == self.base:
+                    ret = thread.id
+                    break
+            return ret
 
     class Handle(XMLReportEntity):
         def __init__(self, owner):

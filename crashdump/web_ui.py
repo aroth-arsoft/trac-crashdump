@@ -36,6 +36,7 @@ from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_
 from trac.util.compat import set, sorted, partial
 import os.path
 import math
+import time
 from .model import CrashDump
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
@@ -174,9 +175,12 @@ class CrashDumpModule(Component):
                 'emtpy': empty}
         xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
         if xmlfile:
+            start = time.time()
             xmlreport = XMLReport(xmlfile)
             for f in xmlreport.fields:
                 data[f] = getattr(xmlreport, f)
+            end = time.time()
+            data['parsetime'] = end - start
         return data
 
     def _get_prefs(self, req):
@@ -324,104 +328,11 @@ class CrashDumpModule(Component):
         self._insert_crashdump_data(req, crashobj, data,
                                 get_reporter_id(req, 'author'), field_changes)
 
-        if xhr:
-            data['preview_mode'] = bool(data['change_preview']['fields'])
-            return 'report_preview.html', data, None
-
-        mime = Mimeview(self.env)
-        format = req.args.get('format')
-        if format:
-            # FIXME: mime.send_converted(context, ticket, 'ticket_x') (#3332)
-            filename = 'crash%s' % str(crashobj.uuid) if format != 'rss' else None
-            mime.send_converted(req, 'trac.ticket.Ticket', crashobj,
-                                format, filename=filename)
-
-        def add_ticket_link(css_class, uuid):
-            t = ticket.resource(id=uuid, version=None)
-            if t:
-                add_link(req, css_class, req.href('crash', uuid),
-                        _("Crash {%(uuid)s}", uuid=uuid))
-
-        # If the ticket is being shown in the context of a query, add
-        # links to help navigate in the query result set
-        if 'query_crashes' in req.session:
-            crashes = req.session['query_crashes'].split()
-            if str(uuid.id) in crashes:
-                idx = crashes.index(str(crashobj.id))
-                if idx > 0:
-                    add_ticket_link('first', crashes[0])
-                    add_ticket_link('prev', crashes[idx - 1])
-                if idx < len(crashes) - 1:
-                    add_ticket_link('next', crashes[idx + 1])
-                    add_ticket_link('last', crashes[-1])
-                add_link(req, 'up', req.session['query_href'])
-
         add_script_data(req, {'comments_prefs': self._get_prefs(req)})
         add_stylesheet(req, 'crashdump/crashdump.css')
         add_script(req, 'common/js/folding.js')
-        Chrome(self.env).add_wiki_toolbars(req)
-        Chrome(self.env).add_auto_preview(req)
 
-        # Add registered converters
-        for conversion in mime.get_supported_conversions('trac.ticket.Ticket'):
-            format = conversion[0]
-            conversion_href = get_resource_url(self.env, crashobj.resource,
-                                            req.href, format=format)
-            if format == 'rss':
-                conversion_href = auth_link(req, conversion_href)
-            add_link(req, 'alternate', conversion_href, conversion[1],
-                    conversion[4], format)
-
-        prevnext_nav(req, _("Previous Crash"), _("Next Crash"),
-                    _("Back to Query"))
         return 'report.html', data, None
-
-    def get_crash_changes(self, req, crashobj, selected_action):
-        """Returns a dictionary of field changes.
-
-        The field changes are represented as:
-        `{field: {'old': oldvalue, 'new': newvalue, 'by': what}, ...}`
-        """
-        field_labels = CrashDumpSystem(self.env).get_crash_field_labels()
-        field_changes = {}
-        def store_change(field, old, new, author):
-            field_changes[field] = {'old': old, 'new': new, 'by': author,
-                                    'label': field_labels.get(field, field)}
-        # Start with user changes
-        for field, value in crashobj._old.iteritems():
-            store_change(field, value or '', crashobj[field], 'user')
-
-        # Apply controller changes corresponding to the selected action
-        problems = []
-        for controller in self._get_action_controllers(req, crashobj,
-                                                       selected_action):
-            cname = controller.__class__.__name__
-            action_changes = controller.get_ticket_changes(req, crashobj,
-                                                           selected_action)
-            for key in action_changes.keys():
-                old = crashobj[key]
-                new = action_changes[key]
-                # Check for conflicting changes between controllers
-                if key in field_changes:
-                    last_new = field_changes[key]['new']
-                    last_by = field_changes[key]['by']
-                    if last_new != new and last_by:
-                        problems.append('%s changed "%s" to "%s", '
-                                        'but %s changed it to "%s".' %
-                                        (cname, key, new, last_by, last_new))
-                store_change(key, old, new, cname)
-
-        # Detect non-changes
-        for key, item in field_changes.items():
-            if item['old'] == item['new']:
-                del field_changes[key]
-        return field_changes, problems
-
-    def _apply_crash_changes(self, crashobj, field_changes):
-        """Apply the changes obtained from `get_crash_changes` to the crashobj
-        """
-        for key in field_changes:
-            crashobj[key] = field_changes[key]['new']
 
     def _query_link(self, req, name, value, text=None):
         """Return a link to /query with the appropriate name and value"""
@@ -431,29 +342,6 @@ class CrashDumpModule(Component):
         if name == 'resolution':
             args['status'] = 'closed'
         return tag.a(text or value, href=req.href.query(args))
-
-    def _query_link_words(self, context, name, value):
-        """Splits a list of words and makes a query link to each separately"""
-        if not isinstance(value, basestring): # None or other non-splitable
-            return value
-        default_query = self.crashlink_query.startswith('?') and \
-                        self.crashlink_query[1:] or self.crashlink_query
-        args = arg_list_to_args(parse_arg_list(default_query))
-        items = []
-        for i, word in enumerate(re.split(r'([;,\s]+)', value)):
-            if i % 2:
-                items.append(word.strip() + ' ')
-            elif word:
-                rendered = name != 'cc' and word \
-                           or Chrome(self.env).format_emails(context, word)
-                if rendered == word:
-                    word_args = args.copy()
-                    word_args[name] = '~' + word
-                    items.append(tag.a(word,
-                                       href=context.href.query(word_args)))
-                else:
-                    items.append(rendered)
-        return tag(items)
 
     def _prepare_fields(self, req, crashobj, field_changes=None):
         context = web_context(req, crashobj.resource)
@@ -574,117 +462,13 @@ class CrashDumpModule(Component):
         data['replyto'] = replyto
         data['version'] = crashobj.resource.version
         data['description_change'] = None
-
         data['author_id'] = author_id
-
-        # -- Ticket fields
-
-        fields = self._prepare_fields(req, crashobj, field_changes)
-        fields_map = dict((field['name'], i) for i, field in enumerate(fields))
-
-        # -- Ticket Change History
-
-        def quote_original(author, original, link):
-            if 'comment' not in req.args: # i.e. the comment was not yet edited
-                data['comment'] = '\n'.join(
-                    ["Replying to [%s %s]:" % (link,
-                                        obfuscate_email_address(author))] +
-                    ["> %s" % line for line in original.splitlines()] + [''])
-
-        if replyto == 'description':
-            quote_original(crashobj['reporter'], crashobj['description'],
-                           'crash:%s' % crashobj.uuid)
-        values = {}
-        replies = {}
-        changes = []
-        cnum = 0
-        skip = False
-        start_time = data.get('start_time', crashobj['changetime'])
-        conflicts = set()
-        for change in self.rendered_changelog_entries(req, crashobj):
-            # change['permanent'] is false for attachment changes; true for
-            # other changes.
-            if change['permanent']:
-                cnum = change['cnum']
-                if crashobj.resource.version is not None and \
-                       cnum > crashobj.resource.version:
-                    # Retrieve initial crashobj values from later changes
-                    for k, v in change['fields'].iteritems():
-                        if k not in values:
-                            values[k] = v['old']
-                    skip = True
-                else:
-                    # keep track of replies threading
-                    if 'replyto' in change:
-                        replies.setdefault(change['replyto'], []).append(cnum)
-                    # eventually cite the replied to comment
-                    if replyto == str(cnum):
-                        quote_original(change['author'], change['comment'],
-                                       'comment:%s' % replyto)
-                    if crashobj.resource.version:
-                        # Override crashobj value by current changes
-                        for k, v in change['fields'].iteritems():
-                            values[k] = v['new']
-                    if 'description' in change['fields']:
-                        data['description_change'] = change
-                if change['date'] > start_time:
-                    conflicts.update(change['fields'])
-            if not skip:
-                changes.append(change)
 
         if crashobj.resource.version is not None:
             crashobj.values.update(values)
 
-        # -- Workflow support
-
-        selected_action = req.args.get('action')
-
         # retrieve close time from changes
         closetime = None
-        for c in changes:
-            s = c['fields'].get('status')
-            if s:
-                closetime = c['date'] if s['new'] == 'closed' else None
-
-        # action_controls is an ordered list of "renders" tuples, where
-        # renders is a list of (action_key, label, widgets, hints) representing
-        # the user interface for each action
-        action_controls = []
-        sorted_actions = CrashDumpSystem(self.env).get_available_actions(req, crashobj)
-        for action in sorted_actions:
-            first_label = None
-            hints = []
-            widgets = []
-            for controller in self._get_action_controllers(req, crashobj,
-                                                           action):
-                label, widget, hint = controller.render_ticket_action_control(
-                    req, crashobj, action)
-                if not first_label:
-                    first_label = label
-                widgets.append(widget)
-                hints.append(hint)
-            action_controls.append((action, first_label, tag(widgets), hints))
-
-        # The default action is the first in the action_controls list.
-        if not selected_action:
-            if action_controls:
-                selected_action = action_controls[0][0]
-
-        # Insert change preview
-        change_preview = {
-            'author': author_id, 'fields': field_changes, 'preview': True,
-            'comment': req.args.get('comment', data.get('comment')),
-            'comment_history': {},
-        }
-        replyto = req.args.get('replyto')
-        if replyto:
-            change_preview['replyto'] = replyto
-        if req.method == 'POST':
-            self._apply_ticket_changes(crashobj, field_changes)
-            self._render_property_changes(req, crashobj, field_changes)
-
-        if crashobj.resource.version is not None: ### FIXME
-            crashobj.values.update(values)
 
         context = web_context(req, crashobj.resource)
 
@@ -695,12 +479,8 @@ class CrashDumpModule(Component):
                 data['%s_link' % user] = self._query_link(req, user,
                                                           crashobj[user])
         data.update({
-            'context': context, 'conflicts': conflicts,
-            'fields': fields, 'fields_map': fields_map,
-            'changes': changes, 'replies': replies,
-            'attachments': AttachmentModule(self.env).attachment_data(context),
-            'action_controls': action_controls, 'action': selected_action,
-            'change_preview': change_preview, 'closetime': closetime,
+            'context': context,
+            'closetime': closetime,
         })
 
     def _populate(self, req, crashobj, plain_fields=False):

@@ -89,6 +89,7 @@
  font-size: 80%;
  padding: .5em 1em;
  vertical-align: top;
+ text-align: left;
 }
 #crashdump table.properties td.fullrow {
  width: 90%;
@@ -251,7 +252,7 @@ fieldset.radio label { padding-right: 1em }
 
 #content.crashdump .trac-nav a { margin-left: 1em; }
 
-pre.hexdump_hex, pre.hexdump_ascii, pre.cmdline {
+pre.hexdump, pre.cmdline {
     padding-top: 0px;
     padding-bottom: 0px;
     margin-top: 0px;
@@ -278,4 +279,7 @@ ul.environment,ol.environment,ul.dirlist {
     padding-bottom: 0px;
     margin: 0px;
     white-space: nowrap;
+}
+.crashdump-nav {
+ font-size: 80%;
 }

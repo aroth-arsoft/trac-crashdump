@@ -8,30 +8,37 @@
   <xi:include href="layout.html" />
   <head>
     <title>${object['uuid']}</title>
+    <script type="text/javascript" py:choose="">
+      jQuery(document).ready(function($) {
+        $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
+        $(".foldable").enableFolding(false, true);
+      });
+    </script>
   </head>
   <body>
-    <div id="content"><div id="crashdump">
-    <div class="date">
-        <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object.crashtime)}</p>
-        <p i18n:msg="created">Uploaded ${pretty_dateinfo(object.uploadtime)}</p>
-        <p i18n:msg="closed" py:if="object.closetime">Closed ${pretty_dateinfo(object.closetime)}</p>
-        <p i18n:msg="modified" py:if="object.changetime != object.uploadtime and object.changetime != object.closetime">
-        Last modified ${pretty_dateinfo(object.changetime)}</p>
-    </div>
+    <div id="content">
+        <div id="crashdump">
+            <div class="date">
+                <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object.crashtime)}</p>
+                <p i18n:msg="created">Uploaded ${pretty_dateinfo(object.uploadtime)}</p>
+                <p i18n:msg="closed" py:if="object.closetime">Closed ${pretty_dateinfo(object.closetime)}</p>
+                <p i18n:msg="modified" py:if="object.changetime != object.uploadtime and object.changetime != object.closetime">
+                Last modified ${pretty_dateinfo(object.changetime)}</p>
+            </div>
   <!--! use a placeholder if it's a new ticket -->
 
-  <h2>
-    <a href="${href('crash', object['uuid'])}" class="trac-id">{${object['uuid']}}</a>
-    <span class="trac-status">
-      ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
-    </span>
-    <span class="trac-type" py:if="object.type">
-      ${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}
-    </span>
-    <span class="trac-resolution" py:if="object.resolution">
-      (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
-    </span>
-  </h2>
+            <h2>
+                <a href="${href('crash', object['uuid'])}" class="trac-id">{${object['uuid']}}</a>
+                <span class="trac-status">
+                ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
+                </span>
+                <span class="trac-type" py:if="object.type">
+                ${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}
+                </span>
+                <span class="trac-resolution" py:if="object.resolution">
+                (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
+                </span>
+            </h2>
 
 
 <table class="properties">
@@ -56,8 +63,16 @@
 <th>Keywords:</th><td>${object['keywords']}</td>
 <th>Cc:</th><td>${object['cc']}</td>
 </tr>
+<tr>
+<th>Parse time:</th><td>${parsetime}</td>
+</tr>
 </table>
-<h3 id="crash_dump_info">Crash dump information</h3>
+
+<!-- close the crashdump yellow box -->
+</div>
+
+<div id="crashdump">
+<h2 id="crash_dump_info">Crash dump information</h2>
 <table class="properties">
 <tr><th>Application&nbsp;file</th>
 <td class="fullrow">${object['applicationfile']}</td>
@@ -75,7 +90,9 @@
 </ul>
 </td></tr>
 </table>
+</div>
 
+<div id="crashdump">
 <h2>System information</h2>
 <table class="properties">
 <tr><td>Platform&nbsp;type</td><td class="fullrow">${system_info.platform_type}</td>
@@ -94,8 +111,10 @@
 <tr><td>Distribution&nbsp;codename</td><td class="fullrow">${system_info.distribution_codename}</td></tr>
 <tr><td>Distribution&nbsp;description</td><td class="fullrow">${system_info.distribution_description}</td></tr>
 </table>
+</div>
 
 <py:if test="fast_protect_version_info">
+<div id="crashdump">
 <h2>Version info</h2>
 <table class="properties">
 <tr><td>Product name</td><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
@@ -117,9 +136,11 @@
 <tr><td>Jenkins master</td><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
 <tr><td>Jenkins nodename</td><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
 </table>
+</div>
 </py:if>
 
 <py:if test="fast_protect_gfxcaps">
+<div id="crashdump">
 <h2>Version info</h2>
 <table class="properties">
 <tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_gfxcaps.opengl_vendor}</td></tr>
@@ -134,9 +155,11 @@
 <tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_hardware_error}</td></tr>
 <tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_pbuffer_error}</td></tr>
 </table>
+</div>
 </py:if>
 
 <py:if test="exception">
+<div id="crashdump">
 <h2>Exception</h2>
 <table class="properties">
 <tr><td>Thread id</td>
@@ -150,9 +173,11 @@
 <tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
 <tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
 </table>
+</div>
 </py:if>
 
 <py:if test="assertion">
+<div id="crashdump">
 <h2>Assertion</h2>
 <table class="properties">
 <tr><td>Expression</td><td class="fullrow">${assertion.expression}</td></tr>
@@ -160,8 +185,10 @@
 <tr><td>Source</td><td class="fullrow">${assertion.source}</td></tr>
 <tr><td>Line</td><td class="fullrow">${assertion.line}</td></tr>
 </table>
+</div>
 </py:if>
 
+<div id="crashdump">
 <h2>Modules</h2>
 <table class="properties">
 <tr>
@@ -187,7 +214,9 @@
 </tr>
 </py:for>
 </table>
+</div>
 
+<div id="crashdump">
 <h2>Threads</h2>
 <table class="properties">
 <tr>
@@ -202,7 +231,7 @@
 </tr>
 <py:for each="thread in threads">
 <tr>
-<td><a name="thread_${thread.id}">${ hex_format(thread.id)}<py:if test="thread.exception">*</py:if></a></td>
+<td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.exception">*</py:if></a></td>
 <td>${thread.name} </td>
 <td><a href="#memory_block_${thread.memory}">${ hex_format(thread.memory) }</a></td>
 <td>${ hex_format(thread.start_addr) }</td>
@@ -213,47 +242,66 @@
 </tr>
 </py:for>
 </table>
+</div>
 
+<div id="crashdump">
 <h2>Stack dumps</h2>
 <py:for each="stackdump in stackdumps">
-<h3><a href="#thread_${stackdump.threadid}">Thread ${ hex_format(stackdump.threadid) }</a><py:if test="stackdump.exception"> with exception</py:if></h3>
-<table class="properties">
-<tr>
-<th>Num</th>
-<th>Addr</th>
-<th>RetAddr</th>
-<th>Param0</th>
-<th>Param1</th>
-<th>Param2</th>
-<th>Param3</th>
-<th>Module</th>
-<th>Function</th>
-<th>Source</th>
-<th>LineOff</th>
-</tr>
-<py:for each="frame in stackdump.callstack">
-<tr>
-<td>${frame.num}</td>
-<td>${ hex_format(frame.addr) }</td>
-<td>${ hex_format(frame.retaddr) }</td>
-<td>${ hex_format(frame.param0) }</td>
-<td>${ hex_format(frame.param1) }</td>
-<td>${ hex_format(frame.param2) }</td>
-<td>${ hex_format(frame.param3) }</td>
-<td>${frame.module}</td>
-<td>${frame.function}</td>
-<td>
-<py:choose test="frame.source and len(frame.source)">
-  <py:when test="False">Unknown</py:when>
-  <py:otherwise><a href="${frame.source_url}">${frame.source}:${frame.line}</a></py:otherwise>
-</py:choose>
-</td>
-<td>${ hex_format(frame.lineoff) }</td>
-</tr>
+<a name="stackdump_${stackdump.threadid}"/>
+<div class="${ '' if stackdump.exception else 'collapsed' }">
+<h3 class="foldable">
+    Thread ${ hex_format(stackdump.threadid) } <py:if test="stackdump.exception"> with exception</py:if>
+</h3>
+<div id="stackdump_${stackdump.threadid}">
+    <div class="crashdump-nav">
+        <a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
+    </div>
+    <table class="properties">
+        <tr>
+        <th>Num</th>
+        <th>Addr</th>
+        <th>RetAddr</th>
+        <th>Param0</th>
+        <th>Param1</th>
+        <th>Param2</th>
+        <th>Param3</th>
+        <th>Module</th>
+        <th>Function</th>
+        <th>Source</th>
+        <th>LineOff</th>
+        </tr>
+        <py:for each="frame in stackdump.callstack">
+        <tr>
+        <td>${frame.num}</td>
+        <td>${ hex_format(frame.addr) }</td>
+        <td>${ hex_format(frame.retaddr) }</td>
+        <td>${ hex_format(frame.param0) }</td>
+        <td>${ hex_format(frame.param1) }</td>
+        <td>${ hex_format(frame.param2) }</td>
+        <td>${ hex_format(frame.param3) }</td>
+        <td>${frame.module}</td>
+        <td>${frame.function}</td>
+        <td>
+        <py:choose test="frame.source and len(frame.source)">
+        <py:when test="False">Unknown</py:when>
+        <py:otherwise><a href="${frame.source_url}">${frame.source}:${frame.line}</a></py:otherwise>
+        </py:choose>
+        </td>
+        <td>${ hex_format(frame.lineoff) }</td>
+        </tr>
+        </py:for>
+    </table>
+    <div class="crashdump-nav">
+        <a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
+    </div>
+    <br/>
+</div>
+</div>
 </py:for>
-</table>
-</py:for>
+</div>
 
+<py:if test="len(memory_regions) != 0">
+<div id="crashdump">
 <h2>Memory regions</h2>
 <table class="properties">
 <tr>
@@ -277,31 +325,49 @@
 </tr>
 </py:for>
 </table>
+</div>
+</py:if>
 
+<div id="crashdump">
 <h2>Memory blocks</h2>
-<table class="memory_blocks">
 <py:for each="memory_block in memory_blocks">
-<h3><a name="memory_block_${memory_block.base}">Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${memory_block.size} bytes</a></h3>
-<table class="memory_block">
-<py:for each="hexdump_line in memory_block.memory.hexdump">
-<tr>
-<td>${hex_format(hexdump_line.offset, width=memory_block.memory.hexdump.offset_width) }</td>
-<td><pre class="hexdump_hex">${hexdump_line.hex}</pre></td>
-<td><pre class="hexdump_ascii">${hexdump_line.ascii}</pre></td>
-</tr>
+<a name="memory_block_${memory_block.base}"></a>
+<div class="collapsed">
+    <h3 class="foldable" id="memory_block_${memory_block.base}_title">
+        Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${memory_block.size} bytes
+        <py:if test="memory_block.threadid is not None">
+            (memory of thread ${ hex_format(memory_block.threadid) })
+        </py:if>
+    </h3>
+    <div id="memory_block_${memory_block.base}">
+        <py:if test="memory_block.threadid is not None">
+            <div class="crashdump-nav">
+                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
+            </div>
+        </py:if>
+        <table class="memory_block">
+        <tr>
+        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_offset}</pre></td>
+        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_hex}</pre></td>
+        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_ascii}</pre></td>
+        </tr>
+        </table>
+        <py:if test="memory_block.threadid is not None">
+            <div class="crashdump-nav">
+                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
+            </div>
+        </py:if>
+    </div>
+</div>
 </py:for>
-</table>
-</py:for>
-</table>
-
 </div>
 
     <div class="trac-nav">
-        <a href="#attachments" id="trac-up-attachments" title="Go to the list of attachments">Attachments</a> &uarr;
-        <a href="#comments" id="trac-up-comments" title="Go to the comments">Comments</a> &uarr;
         <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
     </div>
 
-    </div>
+<!-- close the content -->
+</div>
+
   </body>
 </html>
