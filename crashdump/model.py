@@ -117,7 +117,10 @@ class CrashDump(object):
         if name in self.values and self.values[name] == value:
             return
         if name not in self._old: # Changed field
-            self._old[name] = self.values.get(name)
+            if name in self.time_fields:
+                self._old[name] = to_utimestamp(self.values.get(name))
+            else:
+                self._old[name] = self.values.get(name)
         elif self._old[name] == value: # Change of field reverted
             del self._old[name]
         if value:
@@ -126,8 +129,11 @@ class CrashDump(object):
             field = [field for field in self.fields if field['name'] == name]
             if field:
                 field_type = field[0].get('type')
-                if field_type != 'textarea' and field_type != 'time':
+                if field_type == 'time':
+                    pass
+                elif field_type != 'textarea':
                     value = value.strip()
+
         self.values[name] = value
 
     def get_value_or_default(self, name):
@@ -284,6 +290,11 @@ class CrashDump(object):
         if 'cc' in self.values:
             self['cc'] = _fixup_cc_list(self.values['cc'])
 
+        # Perform type conversions
+        for field in self.time_fields:
+            if field in self.values:
+                self.values[field] = to_utimestamp(self.values[field])
+
         props_unchanged = all(self.values.get(k) == v
                               for k, v in self._old.iteritems())
         if (not comment or not comment.strip()) and props_unchanged:
@@ -329,7 +340,7 @@ class CrashDump(object):
                         """, (self.id, self.id)):
                     # Use oldvalue if available, else count edits
                     try:
-                        num += int(old.rsplit('.', 1)[-1])
+                        num += int(str(old).rsplit('.', 1)[-1])
                         break
                     except ValueError:
                         num += 1

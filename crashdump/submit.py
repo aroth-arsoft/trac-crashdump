@@ -141,6 +141,7 @@ class CrashDumpSubmit(Component):
 
         self.log.debug('crashtimestamp %s' % (crashobj['crashtime']))
         self.log.debug('reporttimestamp %s' % (crashobj['reporttime']))
+        self.log.debug('uploadtime %s' % (crashobj['uploadtime']))
 
         crashobj['productname'] = req.args.get('productname')
         crashobj['productcodename'] = req.args.get('productcodename')
