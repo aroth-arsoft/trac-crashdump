@@ -189,10 +189,16 @@ class CrashDumpModule(Component):
         path_info = req.path_info[6:]
         if 'crashuuid' in req.args:
             crashobj = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
+            if not crashobj:
+                raise ResourceNotFound(_("Crash %(id)s does not exist.",
+                                        id=req.args['crashuuid']), _("Invalid crash identifier"))
         elif 'crashid' in req.args:
             crashobj = CrashDump.find_by_id(self.env, req.args['crashid'])
+            if not crashobj:
+                raise ResourceNotFound(_("Crash %(id)s does not exist.",
+                                        id=req.args['crashid']), _("Invalid crash identifier"))
         else:
-            crashobj = None
+            raise ResourceNotFound(_("No crash identifier specified."))
         version = as_int(req.args.get('version'), None)
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
 
@@ -248,7 +254,7 @@ class CrashDumpModule(Component):
             valid = True
 
             # Do any action on the crash?
-            actions = TicketSystem(self.env).get_available_actions(req, crashobj)
+            actions = CrashDumpSystem(self.env).get_available_actions(req, crashobj)
             if action not in actions:
                 valid = False
                 add_warning(req, _('The action "%(name)s" is not available.',
@@ -265,8 +271,7 @@ class CrashDumpModule(Component):
             # workflow... so we aren't able to differentiate them clearly.
 
             self._populate(req, crashobj) # Apply changes made by the user
-            field_changes, problems = self.get_ticket_changes(req, crashobj,
-                                                            action)
+            field_changes, problems = self.get_crash_changes(req, crashobj,action)
             if problems:
                 valid = False
                 for problem in problems:
@@ -280,7 +285,7 @@ class CrashDumpModule(Component):
                                 tracini=tag.tt('trac.ini')))
 
             # Apply changes made by the workflow
-            self._apply_ticket_changes(crashobj, field_changes)
+            self._apply_crash_changes(crashobj, field_changes)
             # Unconditionally run the validation so that the user gets
             # information any and all problems.  But it's only valid if it
             # validates and there were no problems with the workflow side of
@@ -370,6 +375,53 @@ class CrashDumpModule(Component):
         prevnext_nav(req, _("Previous Crash"), _("Next Crash"),
                     _("Back to Query"))
         return 'report.html', data, None
+
+    def get_crash_changes(self, req, crashobj, selected_action):
+        """Returns a dictionary of field changes.
+
+        The field changes are represented as:
+        `{field: {'old': oldvalue, 'new': newvalue, 'by': what}, ...}`
+        """
+        field_labels = CrashDumpSystem(self.env).get_crash_field_labels()
+        field_changes = {}
+        def store_change(field, old, new, author):
+            field_changes[field] = {'old': old, 'new': new, 'by': author,
+                                    'label': field_labels.get(field, field)}
+        # Start with user changes
+        for field, value in crashobj._old.iteritems():
+            store_change(field, value or '', crashobj[field], 'user')
+
+        # Apply controller changes corresponding to the selected action
+        problems = []
+        for controller in self._get_action_controllers(req, crashobj,
+                                                       selected_action):
+            cname = controller.__class__.__name__
+            action_changes = controller.get_ticket_changes(req, crashobj,
+                                                           selected_action)
+            for key in action_changes.keys():
+                old = crashobj[key]
+                new = action_changes[key]
+                # Check for conflicting changes between controllers
+                if key in field_changes:
+                    last_new = field_changes[key]['new']
+                    last_by = field_changes[key]['by']
+                    if last_new != new and last_by:
+                        problems.append('%s changed "%s" to "%s", '
+                                        'but %s changed it to "%s".' %
+                                        (cname, key, new, last_by, last_new))
+                store_change(key, old, new, cname)
+
+        # Detect non-changes
+        for key, item in field_changes.items():
+            if item['old'] == item['new']:
+                del field_changes[key]
+        return field_changes, problems
+
+    def _apply_crash_changes(self, crashobj, field_changes):
+        """Apply the changes obtained from `get_crash_changes` to the crashobj
+        """
+        for key in field_changes:
+            crashobj[key] = field_changes[key]['new']
 
     def _query_link(self, req, name, value, text=None):
         """Return a link to /query with the appropriate name and value"""
@@ -651,6 +703,359 @@ class CrashDumpModule(Component):
             'change_preview': change_preview, 'closetime': closetime,
         })
 
+    def _populate(self, req, crashobj, plain_fields=False):
+        if not plain_fields:
+            fields = dict((k[6:], v) for k, v in req.args.iteritems()
+                          if k.startswith('field_')
+                             and not 'revert_' + k[6:] in req.args)
+            # Handle revert of checkboxes (in particular, revert to 1)
+            for k in list(fields):
+                if k.startswith('checkbox_'):
+                    k = k[9:]
+                    if 'revert_' + k in req.args:
+                        fields[k] = crashobj[k]
+        else:
+            fields = req.args.copy()
+        # Prevent direct changes to protected fields (status and resolution are
+        # set in the workflow, in get_ticket_changes())
+        for each in Ticket.protected_fields:
+            fields.pop(each, None)
+            fields.pop('checkbox_' + each, None)    # See Ticket.populate()
+        crashobj.populate(fields)
+        # special case for updating the Cc: field
+        if 'cc_update' in req.args and 'revert_cc' not in req.args:
+            cc_action, cc_entry, cc_list = self._toggle_cc(req, crashobj['cc'])
+            if cc_action == 'remove':
+                cc_list.remove(cc_entry)
+            elif cc_action == 'add':
+                cc_list.append(cc_entry)
+            crashobj['cc'] = ', '.join(cc_list)
+
+    def _get_history(self, req, crashobj):
+        history = []
+        for change in self.rendered_changelog_entries(req, crashobj):
+            if change['permanent']:
+                change['version'] = change['cnum']
+                history.append(change)
+        return history
+
+    def _render_history(self, req, crashobj, data, text_fields):
+        """Extract the history for a ticket description."""
+        req.perm(crashobj.resource).require('TICKET_VIEW')
+
+        history = self._get_history(req, crashobj)
+        history.reverse()
+        history = [c for c in history if any(f in text_fields
+                                             for f in c['fields'])]
+        history.append({'version': 0, 'comment': "''Initial version''",
+                        'date': crashobj['changetime'],
+                        'author': crashobj['reporter'] # not 100% accurate...
+                        })
+        data.update({'title': _("Crash History"),
+                     'resource': crashobj.resource,
+                     'history': history})
+
+        add_ctxtnav(req, _("Back to Crash %(id)s", num=str(crashobj.uuid)),
+                           req.href('crash', crashobj.id))
+        return 'history_view.html', data, None
+
+    def _render_diff(self, req, crashobj, data, text_fields):
+        """Show differences between two versions of a ticket description.
+
+        `text_fields` is optionally a list of fields of interest, that are
+        considered for jumping to the next change.
+        """
+        new_version = int(req.args.get('version', 1))
+        old_version = int(req.args.get('old_version', new_version))
+        if old_version > new_version:
+            old_version, new_version = new_version, old_version
+
+        # get the list of versions having a description change
+        history = self._get_history(req, crashobj)
+        changes = {}
+        descriptions = []
+        old_idx = new_idx = -1 # indexes in descriptions
+        for change in history:
+            version = change['version']
+            changes[version] = change
+            if any(f in text_fields for f in change['fields']):
+                if old_version and version <= old_version:
+                    old_idx = len(descriptions)
+                if new_idx == -1 and new_version and version >= new_version:
+                    new_idx = len(descriptions)
+                descriptions.append((version, change))
+
+        # determine precisely old and new versions
+        if old_version == new_version:
+            if new_idx >= 0:
+                old_idx = new_idx - 1
+        if old_idx >= 0:
+            old_version, old_change = descriptions[old_idx]
+        else:
+            old_version, old_change = 0, None
+        num_changes = new_idx - old_idx
+        if new_idx >= 0:
+            new_version, new_change = descriptions[new_idx]
+        else:
+            raise TracError(_("No differences to show"))
+
+        tnew = crashobj.resource(version=new_version)
+        told = crashobj.resource(version=old_version)
+
+        req.perm(tnew).require('TICKET_VIEW')
+        req.perm(told).require('TICKET_VIEW')
+
+        # determine prev and next versions
+        prev_version = old_version
+        next_version = None
+        if new_idx < len(descriptions) - 1:
+            next_version = descriptions[new_idx+1][0]
+
+        # -- old properties (old_ticket) and new properties (new_ticket)
+
+        # assume a linear sequence of change numbers, starting at 1, with gaps
+        def replay_changes(values, old_values, from_version, to_version):
+            for version in range(from_version, to_version+1):
+                if version in changes:
+                    for k, v in changes[version]['fields'].iteritems():
+                        values[k] = v['new']
+                        if old_values is not None and k not in old_values:
+                            old_values[k] = v['old']
+
+        old_ticket = {}
+        if old_version:
+            replay_changes(old_ticket, None, 1, old_version)
+
+        new_ticket = dict(old_ticket)
+        replay_changes(new_ticket, old_ticket, old_version+1, new_version)
+
+        field_labels = CrashDumpSystem(self.env).get_crash_field_labels()
+
+        changes = []
+
+        def version_info(t, field=None):
+            path = _("Crash %(uuid)s", uuid=str(crashobj.uuid))
+            # TODO: field info should probably be part of the Resource as well
+            if field:
+                path = tag(path, Markup(' &ndash; '),
+                           field_labels.get(field, field.capitalize()))
+            if t.version:
+                rev = _("Version %(num)s", num=t.version)
+                shortrev = 'v%d' % t.version
+            else:
+                rev, shortrev = _("Initial Version"), _("initial")
+            return {'path':  path, 'rev': rev, 'shortrev': shortrev,
+                    'href': get_resource_url(self.env, t, req.href)}
+
+        # -- prop changes
+        props = []
+        for k, v in new_ticket.iteritems():
+            if k not in text_fields:
+                old, new = old_ticket[k], new_ticket[k]
+                if old != new:
+                    label = field_labels.get(k, k.capitalize())
+                    prop = {'name': label, 'field': k,
+                            'old': {'name': label, 'value': old},
+                            'new': {'name': label, 'value': new}}
+                    rendered = self._render_property_diff(req, crashobj, k,
+                                                          old, new, tnew)
+                    if rendered:
+                        prop['diff'] = tag.li(
+                            tag_("Property %(label)s %(rendered)s",
+                                 label=tag.strong(label), rendered=rendered))
+                    props.append(prop)
+        changes.append({'props': props, 'diffs': [],
+                        'new': version_info(tnew),
+                        'old': version_info(told)})
+
+        # -- text diffs
+        diff_style, diff_options, diff_data = get_diff_options(req)
+        diff_context = 3
+        for option in diff_options:
+            if option.startswith('-U'):
+                diff_context = int(option[2:])
+                break
+        if diff_context < 0:
+            diff_context = None
+
+        for field in text_fields:
+            old_text = old_ticket.get(field)
+            old_text = old_text.splitlines() if old_text else []
+            new_text = new_ticket.get(field)
+            new_text = new_text.splitlines() if new_text else []
+            diffs = diff_blocks(old_text, new_text, context=diff_context,
+                                ignore_blank_lines='-B' in diff_options,
+                                ignore_case='-i' in diff_options,
+                                ignore_space_changes='-b' in diff_options)
+
+            changes.append({'diffs': diffs, 'props': [], 'field': field,
+                            'new': version_info(tnew, field),
+                            'old': version_info(told, field)})
+
+        # -- prev/up/next links
+        if prev_version:
+            add_link(req, 'prev', get_resource_url(self.env, crashobj.resource,
+                                                   req.href, action='diff',
+                                                   version=prev_version),
+                     _("Version %(num)s", num=prev_version))
+        add_link(req, 'up', get_resource_url(self.env, crashobj.resource,
+                                             req.href, action='history'),
+                 _("Crash History"))
+        if next_version:
+            add_link(req, 'next', get_resource_url(self.env, crashobj.resource,
+                                                   req.href, action='diff',
+                                                   version=next_version),
+                     _("Version %(num)s", num=next_version))
+
+        prevnext_nav(req, _("Previous Change"), _("Next Change"),
+                     _("Crash History"))
+        add_stylesheet(req, 'common/css/diff.css')
+        add_script(req, 'common/js/diff.js')
+
+        data.update({
+            'title': _("Crash Diff"),
+            'resource': crashobj.resource,
+            'old_version': old_version, 'new_version': new_version,
+            'changes': changes, 'diff': diff_data,
+            'num_changes': num_changes, 'change': new_change,
+            'old_ticket': old_ticket, 'new_ticket': new_ticket,
+            'longcol': '', 'shortcol': ''
+        })
+
+        return 'diff_view.html', data, None
+
+    def _make_comment_url(self, req, crashobj, cnum, version=None):
+        return req.href('crash', crashobj.id,
+                               cnum_hist=cnum if version is not None else None,
+                               cversion=version) + '#comment:%d' % cnum
+
+    def _get_comment_history(self, req, crashobj, cnum):
+        history = []
+        for version, date, author, comment in crashobj.get_comment_history(cnum):
+            history.append({
+                'version': version, 'date': date, 'author': author,
+                'comment': _("''Initial version''") if version == 0 else '',
+                'value': comment,
+                'url': self._make_comment_url(req, crashobj, cnum, version)
+            })
+        return history
+
+    def _render_comment_history(self, req, crashobj, data, cnum):
+        """Extract the history for a crashobj comment."""
+        req.perm(crashobj.resource).require('TICKET_VIEW')
+        history = self._get_comment_history(req, crashobj, cnum)
+        history.reverse()
+        url = self._make_comment_url(req, crashobj, cnum)
+        data.update({
+            'title': _("Crash Comment History"),
+            'resource': crashobj.resource,
+            'name': _("Crash %(uuid)s, comment %(cnum)d",
+                      uuid=str(crashobj.uuid), cnum=cnum),
+            'url': url,
+            'diff_action': 'comment-diff', 'diff_args': [('cnum', cnum)],
+            'history': history,
+        })
+        add_ctxtnav(req, _("Back to Crash %(uuid)s", uuid=str(crashobj.uuid)), url)
+        return 'history_view.html', data, None
+
+    def _render_comment_diff(self, req, crashobj, data, cnum):
+        """Show differences between two versions of a crashobj comment."""
+        req.perm(crashobj.resource).require('TICKET_VIEW')
+        new_version = int(req.args.get('version', 1))
+        old_version = int(req.args.get('old_version', new_version))
+        if old_version > new_version:
+            old_version, new_version = new_version, old_version
+        elif old_version == new_version:
+            old_version = new_version - 1
+
+        history = {}
+        for change in self._get_comment_history(req, crashobj, cnum):
+            history[change['version']] = change
+
+        def version_info(version):
+            path = _("Crash %(uuid)s, comment %(cnum)d",
+                     uuid=str(crashobj.uuid), cnum=cnum)
+            if version:
+                rev = _("Version %(num)s", num=version)
+                shortrev = 'v%d' % version
+            else:
+                rev, shortrev = _("Initial Version"), _("initial")
+            return {'path':  path, 'rev': rev, 'shortrev': shortrev}
+
+        diff_style, diff_options, diff_data = get_diff_options(req)
+        diff_context = 3
+        for option in diff_options:
+            if option.startswith('-U'):
+                diff_context = int(option[2:])
+                break
+        if diff_context < 0:
+            diff_context = None
+
+        def get_text(version):
+            try:
+                text = history[version]['value']
+                return text.splitlines() if text else []
+            except KeyError:
+                raise ResourceNotFound(_("No version %(version)d for comment "
+                                         "%(cnum)d on crash %(uuid)s",
+                                         version=version, cnum=cnum,
+                                         uuid=str(crashobj.uuid)))
+
+        old_text = get_text(old_version)
+        new_text = get_text(new_version)
+        diffs = diff_blocks(old_text, new_text, context=diff_context,
+                            ignore_blank_lines='-B' in diff_options,
+                            ignore_case='-i' in diff_options,
+                            ignore_space_changes='-b' in diff_options)
+
+        changes = [{'diffs': diffs, 'props': [],
+                    'new': version_info(new_version),
+                    'old': version_info(old_version)}]
+
+        # -- prev/up/next links
+        prev_version = old_version
+        next_version = None
+        if new_version < len(history) - 1:
+            next_version = new_version + 1
+
+        if prev_version:
+            url = req.href('crash', crashobj.id, cnum=cnum, action='comment-diff',
+                                  version=prev_version)
+            add_link(req, 'prev', url, _("Version %(num)s", num=prev_version))
+        add_link(req, 'up', req.href('crash', crashobj.id, cnum=cnum,
+                                            action='comment-history'),
+                 _("Crash Comment History"))
+        if next_version:
+            url = req.href('crash', crashobj.id, cnum=cnum, action='comment-diff',
+                                  version=next_version)
+            add_link(req, 'next', url, _("Version %(num)s", num=next_version))
+
+        prevnext_nav(req, _("Previous Change"), _("Next Change"),
+                     _("Crash Comment History"))
+        add_stylesheet(req, 'common/css/diff.css')
+        add_script(req, 'common/js/diff.js')
+
+        data.update({
+            'title': _("Crash Comment Diff"),
+            'resource': crashobj.resource,
+            'name': _("Crash %(uuid)s, comment %(cnum)d",
+                      uuid=str(crashobj.uuid), cnum=cnum),
+            'url': self._make_comment_url(req, crashobj, cnum),
+            'old_url': self._make_comment_url(req, crashobj, cnum, old_version),
+            'new_url': self._make_comment_url(req, crashobj, cnum, new_version),
+            'diff_url': req.href('crash', crashobj.id, cnum=cnum,
+                                        action='comment-diff',
+                                        version=new_version),
+            'diff_action': 'comment-diff', 'diff_args': [('cnum', cnum)],
+            'old_version': old_version, 'new_version': new_version,
+            'changes': changes, 'diff': diff_data,
+            'num_changes': new_version - old_version,
+            'change': history[new_version],
+            'crash': crashobj, 'cnum': cnum,
+            'longcol': '', 'shortcol': ''
+        })
+        return 'diff_view.html', data, None
+
     def rendered_changelog_entries(self, req, crashobj, when=None):
         """Iterate on changelog entries, consolidating related changes
         in a `dict` object.
@@ -753,3 +1158,12 @@ class CrashDumpModule(Component):
             return tag(items)
         else:
             return None
+
+    # Internal methods
+    def _get_action_controllers(self, req, ticket, action):
+        """Generator yielding the controllers handling the given `action`"""
+        for controller in CrashDumpSystem(self.env).action_controllers:
+            actions = [a for w, a in
+                       controller.get_ticket_actions(req, ticket) or []]
+            if action in actions:
+                yield controller

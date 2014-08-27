@@ -145,6 +145,18 @@ class CrashDump(object):
         if field:
             return field[0].get('value', '')
 
+    def populate(self, values):
+        """Populate the ticket with 'suitable' values from a dictionary"""
+        field_names = [f['name'] for f in self.fields]
+        for name in [name for name in values.keys() if name in field_names]:
+            self[name] = values.get(name, '')
+
+        # We have to do an extra trick to catch unchecked checkboxes
+        for name in [name for name in values.keys() if name[9:] in field_names
+                     and name.startswith('checkbox_')]:
+            if name[9:] not in values:
+                self[name[9:]] = '0'
+
     def _load_from_record(self, row):
         for i, field in enumerate(self.std_fields):
             if i == 0:
@@ -160,7 +172,7 @@ class CrashDump(object):
 
     def _fetch_crash_by_id(self, id, must_exist=True):
         row = None
-        if self.uuid_is_valid(id):
+        if self.id_is_valid(id):
             # Fetch the standard crashdump fields
             for row in self.env.db_query("SELECT id,%s FROM crashdump WHERE id=%%s" %
                                          ','.join(self.std_fields), (id,)):
