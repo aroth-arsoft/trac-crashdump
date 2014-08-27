@@ -205,16 +205,7 @@ class CrashDumpModule(Component):
         else:
             raise ResourceNotFound(_("No crash identifier specified."))
         end = time.time()
-        version = as_int(req.args.get('version'), None)
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
-
-        if xhr and 'preview_comment' in req.args:
-            context = web_context(req, 'ticket', id, version)
-            escape_newlines = self.must_preserve_newlines
-            rendered = format_to_html(self.env, context,
-                                    req.args.get('edited_comment', ''),
-                                    escape_newlines=escape_newlines)
-            req.send(rendered.encode('utf-8'))
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
         action = req.args.get('action', ('history' in req.args and 'history' or
@@ -296,11 +287,3 @@ class CrashDumpModule(Component):
         else:
             return None
 
-    # Internal methods
-    def _get_action_controllers(self, req, ticket, action):
-        """Generator yielding the controllers handling the given `action`"""
-        for controller in CrashDumpSystem(self.env).action_controllers:
-            actions = [a for w, a in
-                       controller.get_ticket_actions(req, ticket) or []]
-            if action in actions:
-                yield controller

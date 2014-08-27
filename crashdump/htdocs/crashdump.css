@@ -98,7 +98,6 @@
  color: #663;
  font-weight: normal;
  text-align: left;
- width: 20%;
 }
 #crashdump table.properties th.missing { color: #d3d398; }
 #crashdump table.properties td p:first-child { margin-top: 0 }
@@ -228,7 +227,6 @@ form .field div.trac-resizable { width: 100% }
 #properties table th.col2 { border-left: 1px dotted #d7d7d7 }
 #properties table th,td {
     vertical-align: top;
-    width: 30%;
     text-align: left;
     vertical-align: top;
     padding-left: 3pt;
