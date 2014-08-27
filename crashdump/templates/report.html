@@ -21,7 +21,7 @@
             <div class="date">
                 <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object['crashtime'])}</p>
                 <p i18n:msg="created">Uploaded ${pretty_dateinfo(object['uploadtime'])}</p>
-                <p i18n:msg="closed" py:if="object['closetime'] != 0">Closed ${pretty_dateinfo(object['closetime'])}</p>
+                <p i18n:msg="closed" py:if="object['closetime']">Closed ${pretty_dateinfo(object['closetime'])}</p>
                 <p i18n:msg="modified" py:if="object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']">
                 Last modified ${pretty_dateinfo(object['changetime'])}</p>
             </div>

@@ -163,10 +163,10 @@ class CrashDump(object):
                 self.id = row[0]
             else:
                 value = row[i + 1]
-                if field in self.time_fields:
-                    self.values[field] = from_utimestamp(value)
-                elif value is None:
+                if value is None:
                     self.values[field] = empty
+                elif field in self.time_fields:
+                    self.values[field] = from_utimestamp(value)
                 else:
                     self.values[field] = value
 
