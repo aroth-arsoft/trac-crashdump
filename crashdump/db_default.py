@@ -4,7 +4,7 @@
 from trac.db import Table, Column, Index
 
 name = 'crashdump'
-schema_version = 11
+schema_version = 12
 schema = [
     Table('crashdump', key=('id'))[
         Column('id', type='int', auto_increment=True),
@@ -65,7 +65,12 @@ schema = [
         Column('field', type='string', size=64),
         Column('oldvalue', type='string'),
         Column('newvalue', type='string'),
-        Index(['crash', 'time'], unique=True)
+        Index(['crash', 'time', 'field'], unique=True)
+    ],
+    Table('crashdump_ticket', key=('crash', 'ticket'))[
+        Column('crash', type='int'),
+        Column('ticket', type='int'),
+        Index(['crash', 'ticket'], unique=True)
     ],
 ]
 
