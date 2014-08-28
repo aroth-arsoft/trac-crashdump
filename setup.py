@@ -6,17 +6,17 @@ from setuptools import setup
 
 setup(
     name = 'TracCrashDump',
-    version = '0.2',
+    version = '0.3',
     packages = ['crashdump'],
     package_data = { 'crashdump': ['templates/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
 
     author = 'Andreas Roth',
-    author_email = 'andreas.roth@fastprotect.net',
+    author_email = 'aroth@arsoft-online.com',
     description = 'Simple crashdump management.',
     long_description = open(os.path.join(os.path.dirname(__file__), 'README')).read(),
     license = 'BSD',
     keywords = 'trac plugin crash dump',
-    url = 'http://www.fastprotect.net',
+    url = 'https://github.com/aroth-arsoft/trac-crashdump',
     classifiers = [
         'Framework :: Trac',
         #'Development Status :: 1 - Planning',

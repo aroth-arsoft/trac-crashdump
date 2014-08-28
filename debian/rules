@@ -1,20 +1,14 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-PACKAGE=trac-mastertickets
-SRCURL=https://github.com/coderanger/trac-mastertickets/tarball
-SRCREV=b8715f528a
-VERSION=3.0.2+r${SRCREV}
+PACKAGE=trac-crashdump
 
 DH_VERBOSE=1
-
-get-orig-source:
-	wget ${SRCURL}/${SRCREV} -O ${PACKAGE}_${VERSION}.orig.tar.gz
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -rf build-stamp TracMasterTickets.egg-info
+	rm -rf build-stamp *.egg-info
 	python setup.py clean
 	rm -rf build/
 	dh_clean 
