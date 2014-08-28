@@ -102,6 +102,8 @@ class CrashDumpSubmit(Component):
         if crashid is not None and not force:
             return self._error_response(req, status=HTTPForbidden.code, body='Crash identifier %s already uploaded.' % id_str)
 
+        ticket_str = req.args.get('ticket') or 'no'
+
         result = False
         ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
         if ok:
