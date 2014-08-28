@@ -42,6 +42,8 @@ from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 
 def hex_format(number, prefix='0x', width=None):
+    if number is None:
+        return '(none)'
     if width is None:
         if number > 2**48:
             width = 16
@@ -59,6 +61,24 @@ def hex_format(number, prefix='0x', width=None):
             width = 2
     fmt = '%%0%ix' % width
     return prefix + fmt % number
+
+def excection_code(platform_type, code, name):
+    if platform_type == 'Linux':
+        return tag.a(name + '(' + hex_format(code) + ')', href='http://en.wikipedia.org/wiki/Unix_signal')
+    elif platform_type == 'Windows':
+        return tag.a(name + '(' + hex_format(code) + ')', href='http://msdn.microsoft.com/en-us/library/windows/desktop/ms679356(v=vs.85).aspx')
+    else:
+        return name + '(' + hex_format(code) + ')'
+
+def format_bool_yesno(val):
+    if val is None:
+        return '(none)'
+    elif val == True:
+        return _('yes')
+    elif val == False:
+        return _('no')
+    else:
+        return _('neither')
 
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
@@ -218,6 +238,8 @@ class CrashDumpModule(Component):
         data = {'object': crashobj,
                 'to_utimestamp': to_utimestamp,
                 'hex_format':hex_format,
+                'excection_code': excection_code,
+                'format_bool_yesno': format_bool_yesno,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}

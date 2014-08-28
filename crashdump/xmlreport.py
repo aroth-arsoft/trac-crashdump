@@ -127,7 +127,7 @@ class XMLReport(object):
                             'number_of_cpus', 'os_version', 'os_version_info',
                             'distribution_id', 'distribution_release', 'distribution_codename', 'distribution_description' ]
     _file_info_fields = ['log']
-    _exception_fields = ['thread', 'code', 'name', 'info', 'address', 'flags']
+    _exception_fields = ['threadid', 'code', 'name', 'info', 'address', 'flags']
     _assertion_fields = ['expression', 'function', 'source', 'line']
 
     _module_fields = ['base', 'size', 'timestamp', 'product_version', 'file_version', 'name', 'symbol_file', 'flags' ]
@@ -210,6 +210,15 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.Exception, self).__init__(owner)
 
+        @property
+        def thread(self):
+            ret = None
+            for thread in self._owner.threads:
+                if thread.id == self.threadid:
+                    ret = thread
+                    break
+            return ret
+
     class Assertion(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.Assertion, self).__init__(owner)
@@ -221,6 +230,15 @@ class XMLReport(object):
     class Thread(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.Thread, self).__init__(owner)
+
+        @property
+        def stackdump(self):
+            ret = None
+            for st in self._owner.stackdumps:
+                if st.threadid == self.id:
+                    ret = st
+                    break
+            return ret
 
     class MemoryRegion(XMLReportEntity):
         def __init__(self, owner):
@@ -527,14 +545,18 @@ class XMLReport(object):
     def fields(self):
         return self._main_fields
 
-    def to_html(self):
-        return str(self.crash_info)
-
+    @property
+    def exception_thread(self):
+        ex = self.exception
+        if ex:
+            return ex.thread
+        else:
+            return None
 
 if __name__ == '__main__':
     xmlreport = XMLReport(sys.argv[1])
     #print(xmlreport.crash_info)
-    #print(xmlreport.system_info)
+    print(xmlreport.system_info)
     #print(xmlreport.file_info)
     #for m in xmlreport.modules:
         #print(m)
@@ -558,3 +580,4 @@ if __name__ == '__main__':
 
     print(xmlreport.fast_protect_version_info)
     print(xmlreport.fast_protect_gfxcaps)
+    print(xmlreport.exception_thread)

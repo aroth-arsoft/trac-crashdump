@@ -105,7 +105,7 @@
 </tr>
 <tr><td>CPU&nbsp;type</td><td class="fullrow">${system_info.cpu_type}&nbsp;<a href="http://en.wikipedia.org/wiki/CPUID">CPUID information</a></td></tr>
 <tr><td>Number&nbsp;of&nbsp;CPUs</td><td class="fullrow">${system_info.number_of_cpus}</td></tr>
-<tr><td>CPU&nbsp;64-bit</td><td class="fullrow">${system_info.cpu_64_bit}</td></tr>
+<tr><td>CPU&nbsp;64-bit</td><td class="fullrow">${format_bool_yesno(system_info.cpu_64_bit)}</td></tr>
 <tr><td>CPU&nbsp;vendor</td><td class="fullrow">${system_info.cpu_vendor}</td></tr>
 <tr><td>CPU&nbsp;name</td><td class="fullrow">${system_info.cpu_name}</td></tr>
 <tr><td>CPU&nbsp;level</td><td class="fullrow">${ hex_format(system_info.cpu_level) }&nbsp;<a href="http://en.wikipedia.org/wiki/Stepping_level">More info</a></td></tr>
@@ -170,11 +170,10 @@
 <table class="properties">
 <tr><td>Thread id</td>
     <td class="fullrow">
-        <a href="#thread_${exception.thread}">${ hex_format(exception.thread) }</a>
+        <a href="#thread_${exception.threadid}">${ hex_format(exception.threadid) }</a>
     </td>
 </tr>
-<tr><td>Code</td><td class="fullrow">${hex_format(exception.code)}</td></tr>
-<tr><td>Name</td><td class="fullrow">${exception.name}</td></tr>
+<tr><td>Name</td><td class="fullrow">${excection_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
 <tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
 <tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
 <tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
