@@ -2,10 +2,11 @@ from trac.core import *
 from trac.util.html import html
 from trac.util.datefmt import utc
 from trac.web import IRequestHandler, IRequestFilter
-from trac.web.api import arg_list_to_args, RequestDone, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
+from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.config import Option, BoolOption, ChoiceOption
-from trac.ticket.model import Ticket
+from trac.resource import ResourceNotFound
+from trac.ticket.model import Ticket, Component as TicketComponent
 from pkg_resources import resource_filename
 from uuid import UUID
 import os
@@ -77,7 +78,7 @@ class CrashDumpSubmit(Component):
         ret = None
         for compname in possible_variants:
             try:
-                component = Component(self.env, compname)
+                component = TicketComponent(self.env, compname)
                 ret = component.name
                 break
             except ResourceNotFound:
@@ -128,19 +129,37 @@ class CrashDumpSubmit(Component):
 
         ticket_str = req.args.get('ticket') or 'no'
 
-        # for easy testing
-        ticket_str = '#5'
-
         new_ticket = False
         if ticket_str == 'no':
             ticketobj = None
         elif ticket_str[0] == '#':
-            ticketobj = Ticket(env=self.env, tkt_id=int(ticket_str[1:]))
-        elif ticket_str == 'new' or ticket_str == 'auto':
+            tkt_id=int(ticket_str[1:])
+            try:
+                ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
+            except ResourceNotFound:
+                return self._error_response(req, status=HTTPNotFound.code, body='Ticket %i not found. Cannot link crash %s to the requested ticket.' % (tkt_id, str(uuid)))
+        elif ticket_str == 'auto':
+            if crashid is None:
+                ticketobj = Ticket(env=self.env)
+                new_ticket = True
+            else:
+                ticketobj = None
+                for tkt_id in crashobj.linked_tickets:
+                    try:
+                        ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
+                        break
+                    except ResourceNotFound:
+                        pass
+                if ticketobj is None:
+                    ticketobj = Ticket(env=self.env)
+                    new_ticket = True
+                else:
+                    new_ticket = False
+        elif ticket_str == 'new':
             ticketobj = Ticket(env=self.env)
             new_ticket = True
         else:
-            ticketobj = None
+            return self._error_response(req, status=HTTPForbidden.code, body='Unrecognized ticket request %s for crash %s.' % (tkt_id, str(uuid)))
 
         result = False
         ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
@@ -227,7 +246,7 @@ class CrashDumpSubmit(Component):
                     default_to_owner = ''
                     if crashobj['component']:
                         try:
-                            component = Component(self.env, crashobj['component'])
+                            component = TicketComponent(self.env, crashobj['component'])
                             default_to_owner = component.owner # even if it's empty
                         except ResourceNotFound:
                             # No such component exists
@@ -248,37 +267,55 @@ class CrashDumpSubmit(Component):
                 result = crashobj.save_changes()
 
             if result:
-                if ticketobj is not None:
-                    comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s**
+                values = crashobj.values
+                values['crashtimestamp'] = crashtimestamp
+                values['reporttimestamp'] = reporttimestamp
+                if not new_crash and ticketobj:
+                    for tkt_id in crashobj.linked_tickets:
+                        try:
+                            ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
+                            comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been updated by **%(uploadusername)s**
+from **%(uploadhostname)s** is already linked to this ticket.
+""" % values
+
+                            ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                        except ResourceNotFound:
+                            pass
+
+                else:
+                    if ticketobj is not None:
+
+                        comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s**
 from **%(uploadhostname)s** and linked to this ticket.
 
-The crash occured at //%(crashtime)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
+The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
 application was running as part of %(productname)s (%(productcodename)s) version %(productversion)s (%(producttargetversion)s, %(buildtype)s) on a
 %(systemname)s/%(machinetype)s with %(osversion)s (%(osrelease)s/%(osmachine)s).
-""" % crashobj.values
+""" % values
 
-                    if new_ticket:
-                        ticketobj['type'] = self.default_ticket_type
-                        ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
-                                'uuid': uuid,
-                                'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
-                            }
-                        ticketobj['description'] = comment
-                        # copy over some fields from the crash itself
-                        for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
-                                    'severity', 'keywords']:
-                            ticketobj[field] = crashobj[field]
-                        ticketid = ticketobj.insert()
-                    else:
-                        linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else []
-                        linked_crashes.add(str(crashid))
-                        ticketobj['linked_crash'] = ','.join(linked_crashes)
-                        ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
-                        ticketid = ticketobj.id
+                        if new_ticket:
+                            ticketobj['type'] = self.default_ticket_type
+                            ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
+                                    'uuid': uuid,
+                                    'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
+                                }
+                            ticketobj['description'] = comment
+                            # copy over some fields from the crash itself
+                            for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
+                                        'severity', 'keywords']:
+                                ticketobj[field] = crashobj[field]
+                            ticketobj['linked_crash'] = str(crashid)
+                            ticketid = ticketobj.insert()
+                        else:
+                            linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else []
+                            linked_crashes.add(str(crashid))
+                            ticketobj['linked_crash'] = ','.join(linked_crashes)
+                            ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                            ticketid = ticketobj.id
 
-                    links = CrashDumpTicketLinks(self.env, tkt=ticketobj)
-                    links.crashes.add(crashid)
-                    links.save(author=crashobj['reporter'])
+                        links = CrashDumpTicketLinks(self.env, tkt=ticketobj)
+                        links.crashes.add(crashid)
+                        links.save(author=crashobj['reporter'])
 
             if result:
                 return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
