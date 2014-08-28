@@ -5,6 +5,7 @@ from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.config import Option, BoolOption, ChoiceOption
+from trac.ticket.model import Ticket
 from pkg_resources import resource_filename
 from uuid import UUID
 import os
@@ -46,6 +47,9 @@ class CrashDumpSubmit(Component):
 
     default_owner = Option('crashdump', 'default_owner', '< default >',
         """Default owner for submitted crash reports.""")
+
+    default_ticket_type = Option('crashdump', 'ticket_type', 'defect',
+        """Default ticket type for linked tickets.""")
 
     # IRequestHandler methods
     def match_request(self, req):
@@ -103,6 +107,20 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPForbidden.code, body='Crash identifier %s already uploaded.' % id_str)
 
         ticket_str = req.args.get('ticket') or 'no'
+
+        # for easy testing
+        ticket_str = '#5'
+
+        new_ticket = False
+        if ticket_str == 'no':
+            ticketobj = None
+        elif ticket_str[0] == '#':
+            ticketobj = Ticket(env=self.env, tkt_id=int(ticket_str[1:]))
+        elif ticket_str == 'new' or ticket_str == 'auto':
+            ticketobj = Ticket(env=self.env)
+            new_ticket = True
+        else:
+            ticketobj = None
 
         result = False
         ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
@@ -170,6 +188,7 @@ class CrashDumpSubmit(Component):
             crashobj['applicationname'] = appbase
 
         if result:
+
             if crashid is None:
                 crashobj['status'] = 'new'
                 crashobj['type'] = 'crash'
@@ -180,8 +199,18 @@ class CrashDumpSubmit(Component):
                 crashobj['summary'] = self.default_summary
                 crashobj['description'] = self.default_description
                 crashobj['keywords'] = self.default_keywords
-                if self.default_reporter == '< default >':
-                    crashobj['owner'] = crashobj['crashusername']
+                if self.default_owner == '< default >':
+                    default_to_owner = ''
+                    if crashobj['component']:
+                        try:
+                            component = Component(self.env, crashobj['component'])
+                            default_to_owner = component.owner # even if it's empty
+                        except ResourceNotFound:
+                            # No such component exists
+                            pass
+                    # If the current owner is "< default >", we need to set it to
+                    # _something_ else, even if that something else is blank.
+                    crashobj['owner'] = default_to_owner if default_to_owner else crashobj['crashusername']
                 else:
                     crashobj['owner'] = self.default_owner
                 if self.default_reporter == '< default >':
@@ -189,6 +218,31 @@ class CrashDumpSubmit(Component):
                 else:
                     crashobj['reporter'] = self.default_reporter
 
+            if ticketobj is not None:
+                comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s** from **%(uploadhostname)s** and linked to this ticket.
+
+The crash occured at //%(crashtime)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
+application was running as part of %(productname)s (%(productcodename)s) version %(productversion)s (%(producttargetversion)s, %(buildtype)s) on a
+%(systemname)s/%(machinetype)s with %(osversion)s (%(osrelease)s/%(osmachine)s).
+""" % crashobj.values
+
+                if new_ticket:
+                    ticketobj['type'] = self.default_ticket_type
+                    ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
+                            'uuid': uuid,
+                            'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
+                        }
+                    ticketobj['description'] = comment
+                    # copy over some fields from the crash itself
+                    for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
+                                'severity', 'keywords']:
+                        ticketobj[field] = crashobj[field]
+                    ticketid = ticketobj.insert()
+                else:
+                    ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                    ticketid = ticketobj.id
+
+            if crashid is None:
                 if crashobj.insert():
                     return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
                 else:
