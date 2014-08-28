@@ -27,7 +27,7 @@ class CrashDumpSubmit(Component):
     default_milestone = Option('crashdump', 'default_milestone', '',
         """Default milestone for submitted crash reports.""")
 
-    default_component = Option('crashdump', 'default_component', '',
+    default_component = Option('crashdump', 'default_component', '< default >',
         """Default component for submitted crash reports.""")
 
     default_severity = Option('crashdump', 'default_severity', '',
@@ -64,6 +64,26 @@ class CrashDumpSubmit(Component):
 
     def _success_response(self, req, body=None, status=200):
         req.send(content=body, content_type='text/plain', status=status)
+
+    def _find_component_for_application(self, applicationname):
+        if applicationname is None:
+            return None
+
+        possible_variants = [applicationname]
+        if '-' in applicationname:
+            (prefix, name) = applicationname.split('-', 1)
+            possible_variants.append(name)
+
+        ret = None
+        for compname in possible_variants:
+            try:
+                component = Component(self.env, compname)
+                ret = component.name
+                break
+            except ResourceNotFound:
+                # No such component exists
+                pass
+        return ret
 
     def pre_process_request(self, req, handler):
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
@@ -195,7 +215,10 @@ class CrashDumpSubmit(Component):
                 crashobj['type'] = 'crash'
                 crashobj['priority'] = self.default_priority
                 crashobj['milestone'] = self.default_milestone
-                crashobj['component'] = self.default_component
+                if self.default_component == '< default >':
+                    crashobj['component'] = self._find_component_for_application(crashobj['applicationname'])
+                else:
+                    crashobj['component'] = self.default_component
                 crashobj['severity'] = self.default_severity
                 crashobj['summary'] = self.default_summary
                 crashobj['description'] = self.default_description

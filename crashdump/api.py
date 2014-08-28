@@ -1,5 +1,3 @@
-# Created by Noah Kantrowitz on 2007-07-04.
-# Copyright (c) 2007 Noah Kantrowitz. All rights reserved.
 import re
 import copy
 
