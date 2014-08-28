@@ -13,7 +13,7 @@ import shutil
 import time
 import datetime
 
-from .model import CrashDump
+from .model import CrashDump, CrashDumpTicketLinks
 
 class CrashDumpSubmit(Component):
     implements(IRequestHandler, IRequestFilter, ITemplateProvider)
@@ -189,7 +189,8 @@ class CrashDumpSubmit(Component):
 
         if result:
 
-            if crashid is None:
+            new_crash = True if crashid is None else False
+            if new_crash:
                 crashobj['status'] = 'new'
                 crashobj['type'] = 'crash'
                 crashobj['priority'] = self.default_priority
@@ -218,40 +219,50 @@ class CrashDumpSubmit(Component):
                 else:
                     crashobj['reporter'] = self.default_reporter
 
-            if ticketobj is not None:
-                comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s** from **%(uploadhostname)s** and linked to this ticket.
+                crashid = crashobj.insert()
+                result = True if crashid else False
+            else:
+                result = crashobj.save_changes()
+
+            if result:
+                if ticketobj is not None:
+                    comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s**
+from **%(uploadhostname)s** and linked to this ticket.
 
 The crash occured at //%(crashtime)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
 application was running as part of %(productname)s (%(productcodename)s) version %(productversion)s (%(producttargetversion)s, %(buildtype)s) on a
 %(systemname)s/%(machinetype)s with %(osversion)s (%(osrelease)s/%(osmachine)s).
 """ % crashobj.values
 
-                if new_ticket:
-                    ticketobj['type'] = self.default_ticket_type
-                    ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
-                            'uuid': uuid,
-                            'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
-                        }
-                    ticketobj['description'] = comment
-                    # copy over some fields from the crash itself
-                    for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
-                                'severity', 'keywords']:
-                        ticketobj[field] = crashobj[field]
-                    ticketid = ticketobj.insert()
-                else:
-                    ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
-                    ticketid = ticketobj.id
+                    if new_ticket:
+                        ticketobj['type'] = self.default_ticket_type
+                        ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
+                                'uuid': uuid,
+                                'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
+                            }
+                        ticketobj['description'] = comment
+                        # copy over some fields from the crash itself
+                        for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
+                                    'severity', 'keywords']:
+                            ticketobj[field] = crashobj[field]
+                        ticketid = ticketobj.insert()
+                    else:
+                        linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else []
+                        linked_crashes.add(str(crashid))
+                        ticketobj['linked_crash'] = ','.join(linked_crashes)
+                        ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                        ticketid = ticketobj.id
 
-            if crashid is None:
-                if crashobj.insert():
-                    return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
-                else:
-                    return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
+                    links = CrashDumpTicketLinks(self.env, tkt=ticketobj)
+                    links.crashes.add(crashid)
+                    links.save(author=crashobj['reporter'])
+
+            if result:
+                return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
+            elif new_crash:
+                return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
-                if crashobj.save_changes():
-                    return self._success_response(req, body='Crash dump %s updated successfully.' % uuid)
-                else:
-                    return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
+                return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
         else:
             return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s' % uuid)
 

@@ -7,7 +7,7 @@
       xmlns:xi="http://www.w3.org/2001/XInclude">
   <xi:include href="layout.html" />
   <head>
-    <title>${object['uuid']}</title>
+    <title>CrashId#${object.id} - ${object['uuid']}</title>
     <script type="text/javascript" py:choose="">
       jQuery(document).ready(function($) {
         $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
@@ -27,7 +27,7 @@
             </div>
 
             <h2>
-                <a href="${href('crash', object['uuid'])}" class="trac-id">{${object['uuid']}}</a>
+                <a href="${href('crash', object['uuid'])}" class="trac-id">CrashId#${object.id} - {${object['uuid']}}</a>
                 <span class="trac-status">
                 ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
                 </span>
@@ -61,6 +61,12 @@
 <tr>
 <th>Keywords:</th><td>${object['keywords']}</td>
 <th>Cc:</th><td>${object['cc']}</td>
+</tr>
+<tr>
+<th>Linked tickets:</th><td><ul>
+<py:for each="tkt in linked_tickets"><li>${tkt}</li></py:for>
+</ul>
+</td>
 </tr>
 <tr>
 <th>Parse time:</th><td>${parsetime} s</td>

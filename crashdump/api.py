@@ -88,6 +88,15 @@ class CrashDumpSystem(Component):
                       % (db_default.name, schema_ver, db_default.schema_version))
         db.commit()
 
+        custom = self.config['ticket-custom']
+        config_dirty = False
+        if 'linked_crash' not in custom:
+            custom.set('linked_crash', 'text')
+            custom.set('linked_crash.label', 'Linked crash')
+            config_dirty = True
+        if config_dirty:
+            self.config.save()
+
     def get_custom_fields(self):
         return copy.deepcopy(self.custom_fields)
 

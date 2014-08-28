@@ -6,7 +6,7 @@ from genshi.core import Markup, START, END, TEXT
 from genshi.builder import tag
 
 from trac.core import *
-from trac.web.api import IRequestHandler, ITemplateStreamFilter
+from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import (
     Chrome, INavigationContributor, ITemplateProvider,
     add_ctxtnav, add_link, add_notice, add_script, add_script_data,
@@ -37,7 +37,7 @@ from trac.util.compat import set, sorted, partial
 import os.path
 import math
 import time
-from .model import CrashDump
+from .model import CrashDump, CrashDumpTicketLinks
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 
@@ -63,7 +63,7 @@ def hex_format(number, prefix='0x', width=None):
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
-    implements(IRequestHandler, INavigationContributor, ITemplateStreamFilter,
+    implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateStreamFilter,
                ITemplateProvider)
 
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
@@ -79,6 +79,7 @@ class CrashDumpModule(Component):
 
     crashdump_fields = set(['_crash'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
+    crashdump_link_fields = set(['linked_crash'])
 
     @property
     def must_preserve_newlines(self):
@@ -104,6 +105,9 @@ class CrashDumpModule(Component):
                     for f in self.crashdump_fields:
                         if field['name'] == f and data['ticket'][f]:
                             field['rendered'] = self._link_crash(req, data['ticket'][f])
+                    for f in self.crashdump_link_fields:
+                        if field['name'] == f and data['ticket'][f]:
+                            field['rendered'] = self._link_crashes_by_id(req, data['ticket'][f])
             # For query_results.html and query.html
             if 'groups' in data and isinstance(data['groups'], list):
                 for group, tickets in data['groups']:
@@ -166,6 +170,50 @@ class CrashDumpModule(Component):
         self.log.debug('match_request %s' % str(req.args))
         return ret
 
+    # IRequestFilter methods
+    def pre_process_request(self, req, handler):
+        return handler
+
+    def post_process_request(self, req, template, data, content_type):
+        if req.path_info.startswith('/ticket/'):
+            # In case of an invalid ticket, the data is invalid
+            if not data:
+                return template, data, content_type
+            tkt = data['ticket']
+            links = CrashDumpTicketLinks(self.env, tkt)
+
+            for change in data.get('changes', {}):
+                if not change.has_key('fields'):
+                    continue
+                for field, field_data in change['fields'].iteritems():
+                    if field in self.crashdump_link_fields:
+                        if field_data['new'].strip():
+                            new = set([int(n) for n in field_data['new'].split(',')])
+                        else:
+                            new = set()
+                        if field_data['old'].strip():
+                            old = set([int(n) for n in field_data['old'].split(',')])
+                        else:
+                            old = set()
+                        add = new - old
+                        sub = old - new
+                        elms = tag()
+                        if add:
+                            elms.append(
+                                tag.em(u', '.join([unicode(n) for n in sorted(add)]))
+                            )
+                            elms.append(u' added')
+                        if add and sub:
+                            elms.append(u'; ')
+                        if sub:
+                            elms.append(
+                                tag.em(u', '.join([unicode(n) for n in sorted(sub)]))
+                            )
+                            elms.append(u' removed')
+                        field_data['rendered'] = elms
+
+        return template, data, content_type
+
     def _prepare_data(self, req, crashobj, absurls=False):
         data = {'object': crashobj,
                 'to_utimestamp': to_utimestamp,
@@ -213,10 +261,19 @@ class CrashDumpModule(Component):
         data = self._prepare_data(req, crashobj)
         data['dbtime'] = end - start
 
+        linked_tickets = []
+        for tkt_id in crashobj.linked_tickets:
+            print(tkt_id)
+            a = self._link_ticket_by_id(req, tkt_id)
+            if a:
+                linked_tickets.append(a)
+
         field_changes = {}
         data.update({'action': None,
                     # Store a timestamp for detecting "mid air collisions"
-                    'start_time': crashobj['changetime']})
+                    'start_time': crashobj['changetime'],
+                    'linked_tickets':linked_tickets
+                    })
 
         self._insert_crashdump_data(req, crashobj, data,
                                 get_reporter_id(req, 'author'), field_changes)
@@ -266,24 +323,77 @@ class CrashDumpModule(Component):
         crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
         return crash_file
 
-    def _link_crash(self, req, uuid):
-        items = []
-
+    def _link_ticket_by_id(self, req, ticketid):
+        ret = None
         try:
-            crash = CrashDump(env=self.env, uuid=uuid)
-            word = \
-                tag.a(
-                    '%s' % uuid,
-                    class_=crash.status,
-                    href=req.href('crash', uuid),
-                    title=uuid
-                )
-            items.append(word)
+            ticket = Ticket(self.env, ticketid)
+            if 'TICKET_VIEW' in req.perm(ticket.resource):
+                ret = \
+                    tag.a(
+                        '#%s' % ticket.id,
+                        class_=ticket['status'],
+                        href=req.href.ticket(int(ticket.id)),
+                        title=shorten_line(ticket['summary'])
+                    )
         except ResourceNotFound:
             pass
+        return ret
+
+    def _link_crash_by_id(self, req, id):
+        ret = None
+        try:
+            crash = CrashDump(env=self.env, id=id)
+            ret = \
+                tag.a(
+                    'CrashId#%i' % crash.id,
+                    class_=crash.status,
+                    href=req.href('crash', crash['uuid']),
+                    title=crash['uuid']
+                )
+        except ResourceNotFound:
+            pass
+        return ret
+
+    def _link_crashes_by_id(self, req, ids):
+        items = []
+
+        for i, word in enumerate(re.split(r'([;,\s]+)', ids)):
+            if i % 2:
+                items.append(word)
+            elif word:
+                crashid = word
+                word = 'CrashId#%s' % word
+
+                try:
+                    crash = CrashDump(env=self.env, id=crashid)
+                    word = \
+                        tag.a(
+                            'CrashId#%i' % crash.id,
+                            class_=crash.status,
+                            href=req.href('crash', crash['uuid']),
+                            title=crash['uuid']
+                        )
+                except ResourceNotFound:
+                    pass
+                items.append(word)
 
         if items:
             return tag(items)
         else:
             return None
+
+    def _link_crash(self, req, uuid):
+        ret = None
+        try:
+            crash = CrashDump(env=self.env, uuid=uuid)
+            ret = \
+                tag.a(
+                    'CrashId#%i' % crash.id,
+                    class_=crash.status,
+                    href=req.href('crash', crash['uuid']),
+                    title=crash['uuid']
+                )
+        except ResourceNotFound:
+            pass
+        return ret
 
