@@ -4,7 +4,7 @@ from trac.util.datefmt import utc
 from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
-from trac.config import Option, BoolOption, ChoiceOption
+from trac.config import Option, BoolOption, ChoiceOption, ListOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent
 from pkg_resources import resource_filename
@@ -15,6 +15,7 @@ import time
 import datetime
 
 from .model import CrashDump, CrashDumpTicketLinks
+from .xmlreport import XMLReport
 
 class CrashDumpSubmit(Component):
     implements(IRequestHandler, IRequestFilter, ITemplateProvider)
@@ -51,6 +52,9 @@ class CrashDumpSubmit(Component):
 
     default_ticket_type = Option('crashdump', 'ticket_type', 'defect',
         """Default ticket type for linked tickets.""")
+
+    ignored_modules = Option('crashdump', 'ignore_modules', 'libc, kernel32, ntdll, user32, gdi32',
+        """List of modules to ignore for component matching.""")
 
     # IRequestHandler methods
     def match_request(self, req):
@@ -93,11 +97,32 @@ class CrashDumpSubmit(Component):
     def _find_component_from_involved_modules(self, module_list):
         possible_components = []
         for m in module_list:
-            possible_components.append(m)
-            if '-' in m:
-                (prefix, name) = m.split('-', 1)
-                possible_components.append(name)
+            module_name, module_ext = os.path.splitext(m)
+            if '-' in module_name:
+                (prefix, name) = module_name.split('-', 1)
+                name_is_version = True
+                for c in name:
+                    if (c >= '0' and c <= '9') or c == '.':
+                        pass
+                    else:
+                        name_is_version = False
 
+                if name_is_version:
+                    # name is a version number so check the prefix instead of the name
+                    # and to not check the full module name since it would check for
+                    # a matching version number as well.
+                    if prefix not in self.ignored_modules:
+                        possible_components.append(prefix)
+                else:
+                    # add the entire module name
+                    if module_name not in self.ignored_modules:
+                        possible_components.append(module_name)
+                    # ... and the shorten name (without prefix) to the list
+                    if name not in self.ignored_modules:
+                        possible_components.append(name)
+            else:
+                if module_name not in self.ignored_modules:
+                    possible_components.append(module_name)
         return self._find_first_component_from_list(possible_components)
 
     def _find_component_for_application(self, applicationname):
@@ -113,8 +138,9 @@ class CrashDumpSubmit(Component):
 
     def pre_process_request(self, req, handler):
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
-        # copy the requested form token from into the args to pass the CSRF test
-        req.args['__FORM_TOKEN' ] = req.form_token
+        if req.method == "POST":
+            # copy the requested form token from into the args to pass the CSRF test
+            req.args['__FORM_TOKEN' ] = req.form_token
         return handler
 
     def post_process_request(self, req, template, data, content_type, method=None):
@@ -254,9 +280,11 @@ class CrashDumpSubmit(Component):
         if result:
 
             if crashobj['minidumpreportxmlfile']:
-                xmlreport = XMLReport(crashobj['minidumpreportxmlfile'])
+                xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
+                xmlreport = XMLReport(xmlfile)
             elif crashobj['coredumpreportxmlfile']:
-                xmlreport = XMLReport(crashobj['coredumpreportxmlfile'])
+                xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
+                xmlreport = XMLReport(xmlfile)
             else:
                 xmlreport = None
 
@@ -363,7 +391,6 @@ application was running as part of %(productname)s (%(productcodename)s) version
                     headers['Linked-Tickets'] = ';'.join(linked_ticket_header)
                 headers['Crash-URL'] = req.abs_href('crash', str(uuid))
 
-                print(headers)
                 return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
             elif new_crash:
                 return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
@@ -424,3 +451,8 @@ application was running as part of %(productname)s (%(productcodename)s) version
                 shutil.copyfileobj(fileobj, targetfileobj)
                 ret = True
         return (ret, item_name)
+
+    def _get_dump_filename(self, crashobj, name):
+        item_name = crashobj[name]
+        crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
+        return crash_file

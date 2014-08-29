@@ -285,7 +285,6 @@ class CrashDumpModule(Component):
 
         linked_tickets = []
         for tkt_id in crashobj.linked_tickets:
-            print(tkt_id)
             a = self._link_ticket_by_id(req, tkt_id)
             if a:
                 linked_tickets.append(a)
@@ -340,7 +339,6 @@ class CrashDumpModule(Component):
         return format_datetime(from_utimestamp(long(timestamp)))
 
     def _get_dump_filename(self, crashobj, name):
-        print('_get_dump_filename %s' % name)
         item_name = crashobj[name]
         crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
         return crash_file
