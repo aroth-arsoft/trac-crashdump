@@ -78,17 +78,9 @@ class CrashDumpSubmit(Component):
             req.write(body)
         raise RequestDone
 
-    def _find_component_for_application(self, applicationname):
-        if applicationname is None:
-            return None
-
-        possible_variants = [applicationname]
-        if '-' in applicationname:
-            (prefix, name) = applicationname.split('-', 1)
-            possible_variants.append(name)
-
+    def _find_first_component_from_list(self, possible_components):
         ret = None
-        for compname in possible_variants:
+        for compname in possible_components:
             try:
                 component = TicketComponent(self.env, compname)
                 ret = component.name
@@ -97,6 +89,27 @@ class CrashDumpSubmit(Component):
                 # No such component exists
                 pass
         return ret
+
+    def _find_component_from_involved_modules(self, module_list):
+        possible_components = []
+        for m in module_list:
+            possible_components.append(m)
+            if '-' in m:
+                (prefix, name) = m.split('-', 1)
+                possible_components.append(name)
+
+        return self._find_first_component_from_list(possible_components)
+
+    def _find_component_for_application(self, applicationname):
+        if applicationname is None:
+            return None
+
+        possible_components = [applicationname]
+        if '-' in applicationname:
+            (prefix, name) = applicationname.split('-', 1)
+            possible_components.append(name)
+
+        return self._find_first_component_from_list(possible_components)
 
     def pre_process_request(self, req, handler):
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
@@ -240,6 +253,13 @@ class CrashDumpSubmit(Component):
 
         if result:
 
+            if crashobj['minidumpreportxmlfile']:
+                xmlreport = XMLReport(crashobj['minidumpreportxmlfile'])
+            elif crashobj['coredumpreportxmlfile']:
+                xmlreport = XMLReport(crashobj['coredumpreportxmlfile'])
+            else:
+                xmlreport = None
+
             new_crash = True if crashid is None else False
             if new_crash:
                 crashobj['status'] = 'new'
@@ -247,7 +267,10 @@ class CrashDumpSubmit(Component):
                 crashobj['priority'] = self.default_priority
                 crashobj['milestone'] = self.default_milestone
                 if self.default_component == '< default >':
-                    crashobj['component'] = self._find_component_for_application(crashobj['applicationname'])
+                    if xmlreport is not None and xmlreport.exception is not None:
+                        crashobj['component'] = self._find_component_from_involved_modules(xmlreport.exception.involved_modules)
+                    if not crashobj['component']:
+                        crashobj['component'] = self._find_component_for_application(crashobj['applicationname'])
                 else:
                     crashobj['component'] = self.default_component
                 crashobj['severity'] = self.default_severity
