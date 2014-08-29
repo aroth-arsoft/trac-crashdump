@@ -63,8 +63,20 @@ class CrashDumpSubmit(Component):
     def _error_response(self, req, status, body=None):
         req.send_error(None, template='', content_type='text/plain', status=status, env=None, data=body)
 
-    def _success_response(self, req, body=None, status=200):
-        req.send(content=body, content_type='text/plain', status=status)
+    def _success_response(self, req, body=None, content_type='text/plain', status=200, headers=None):
+        req.send_response(status)
+        req.send_header('Cache-Control', 'must-revalidate')
+        req.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
+        req.send_header('Content-Type', content_type + ';charset=utf-8')
+        req.send_header('Content-Length', len(body))
+        if headers:
+            for k,v in headers.items():
+                req.send_header(k, v)
+        req.end_headers()
+
+        if req.method != 'HEAD':
+            req.write(body)
+        raise RequestDone
 
     def _find_component_for_application(self, applicationname):
         if applicationname is None:
@@ -270,6 +282,7 @@ class CrashDumpSubmit(Component):
                 values = crashobj.values
                 values['crashtimestamp'] = crashtimestamp
                 values['reporttimestamp'] = reporttimestamp
+                linked_tickets = set()
                 if not new_crash and ticketobj:
                     for tkt_id in crashobj.linked_tickets:
                         try:
@@ -279,6 +292,7 @@ from **%(uploadhostname)s** is already linked to this ticket.
 """ % values
 
                             ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                            linked_tickets.add(tkt_id)
                         except ResourceNotFound:
                             pass
 
@@ -305,20 +319,29 @@ application was running as part of %(productname)s (%(productcodename)s) version
                                         'severity', 'keywords']:
                                 ticketobj[field] = crashobj[field]
                             ticketobj['linked_crash'] = str(crashid)
-                            ticketid = ticketobj.insert()
+                            ticketobj.insert()
                         else:
                             linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else []
                             linked_crashes.add(str(crashid))
                             ticketobj['linked_crash'] = ','.join(linked_crashes)
                             ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
-                            ticketid = ticketobj.id
 
+                        linked_tickets.add(ticketobj.id)
                         links = CrashDumpTicketLinks(self.env, tkt=ticketobj)
                         links.crashes.add(crashid)
                         links.save(author=crashobj['reporter'])
 
             if result:
-                return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid)
+                headers = {}
+                linked_ticket_header = []
+                for tkt_id in linked_tickets:
+                    linked_ticket_header.append('#%i:%s' % (tkt_id, req.abs_href.ticket(tkt_id)))
+                if linked_ticket_header:
+                    headers['Linked-Tickets'] = ';'.join(linked_ticket_header)
+                headers['Crash-URL'] = req.abs_href('crash', str(uuid))
+
+                print(headers)
+                return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
             elif new_crash:
                 return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
