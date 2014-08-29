@@ -177,6 +177,9 @@
 <tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
 <tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
 <tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
+<tr><td>Involved modules</td><td class="fullrow"><ol>
+<py:for each="m in exception.involved_modules "><li>${m}</li></py:for>
+</ol></td></tr>
 </table>
 </div>
 </py:if>

@@ -271,7 +271,17 @@ td.memory_block, tr.memory_block, table.memory_block {
     padding-bottom: 1pt;
     margin: 0px;
 }
-ul.environment,ol.environment,ul.dirlist {
+#crashdump table.properties ol {
+    padding-top: 0pt;
+    padding-bottom: 0pt;
+    margin: 0px;
+    white-space: nowrap;
+}
+#crashdump table.properties ol li {
+    padding-top: 1pt;
+    padding-bottom: 1pt;
+}
+ul.environment,ul.dirlist {
     list-style-type: square;
     padding-top: 0px;
     padding-bottom: 0px;

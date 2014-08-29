@@ -175,6 +175,17 @@ class XMLReport(object):
         'rawdata'
         ]
 
+    @staticmethod
+    def unique(items):
+        found = set()
+        keep = []
+
+        for item in items:
+            if item not in found:
+                found.add(item)
+                keep.append(item)
+
+        return keep
 
     def __init__(self, filename=None):
         self._filename = filename
@@ -218,6 +229,14 @@ class XMLReport(object):
                     ret = thread
                     break
             return ret
+
+        @property
+        def involved_modules(self):
+            t = self.thread
+            if t:
+                return t.stackdump.involved_modules
+            else:
+                return None
 
     class Assertion(XMLReportEntity):
         def __init__(self, owner):
@@ -268,9 +287,18 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.StackDump, self).__init__(owner)
 
+        @property
+        def involved_modules(self):
+            module_order = []
+            for frm in self.callstack:
+                module_order.append(frm.module)
+            return XMLReport.unique(module_order)
+
     class StackFrame(XMLReportEntity):
-        def __init__(self, owner):
+        def __init__(self, owner, dump):
             super(XMLReport.StackFrame, self).__init__(owner)
+            self._dump = dump
+
         @property
         def source_url(self):
             if self.source:
@@ -507,20 +535,20 @@ class XMLReport(object):
         all_subitems = i.xpath('stackdump') if i is not None else None
         if all_subitems is not None:
             for item in all_subitems:
-                m = XMLReport.StackDump(self)
+                dump = XMLReport.StackDump(self)
                 for f in XMLReport._stackdump_fields:
-                    setattr(m, f, XMLReport._get_attribute(item, f))
+                    setattr(dump, f, XMLReport._get_attribute(item, f))
 
-                m.callstack = []
+                dump.callstack = []
                 all_subitems = item.xpath('frame')
                 if all_subitems is not None:
                     for item in all_subitems:
-                        frame = XMLReport.StackFrame(self)
+                        frame = XMLReport.StackFrame(self, dump)
                         for f in XMLReport._stack_frame_fields:
                             setattr(frame, f, XMLReport._get_node_value(item, f))
-                        m.callstack.append(frame)
+                        dump.callstack.append(frame)
 
-                ret.append(m)
+                ret.append(dump)
         return ret
 
     @property
@@ -544,14 +572,6 @@ class XMLReport(object):
     @property
     def fields(self):
         return self._main_fields
-
-    @property
-    def exception_thread(self):
-        ex = self.exception
-        if ex:
-            return ex.thread
-        else:
-            return None
 
 if __name__ == '__main__':
     xmlreport = XMLReport(sys.argv[1])
@@ -580,4 +600,4 @@ if __name__ == '__main__':
 
     print(xmlreport.fast_protect_version_info)
     print(xmlreport.fast_protect_gfxcaps)
-    print(xmlreport.exception_thread)
+    print(xmlreport.exception.involved_modules)
