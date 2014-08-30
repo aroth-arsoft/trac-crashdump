@@ -80,6 +80,25 @@ def format_bool_yesno(val):
     else:
         return _('neither')
 
+def format_source_line(source, line, line_offset=None, source_url=None):
+    if source is None:
+        return _('unknown')
+    else:
+        title = str(source) + ':' + str(line)
+        if line_offset is not None:
+            title += '+' + hex_format(line_offset)
+        if source_url is not None:
+            href = source_url
+        else:
+            href='file:///' + str(source)
+        return tag.a(title, href=href)
+
+def str_or_unknown(str):
+    if str is None:
+        return _('unknown')
+    else:
+        return str
+
 class CrashDumpModule(Component):
     """Provides support for ticket dependencies."""
     
@@ -240,6 +259,8 @@ class CrashDumpModule(Component):
                 'hex_format':hex_format,
                 'excection_code': excection_code,
                 'format_bool_yesno': format_bool_yesno,
+                'format_source_line': format_source_line,
+                'str_or_unknown': str_or_unknown,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}

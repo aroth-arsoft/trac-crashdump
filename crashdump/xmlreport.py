@@ -601,3 +601,5 @@ if __name__ == '__main__':
     print(xmlreport.fast_protect_version_info)
     print(xmlreport.fast_protect_gfxcaps)
     print(xmlreport.exception.involved_modules)
+    for f in xmlreport.exception.thread.stackdump.callstack:
+        print(f)

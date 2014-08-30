@@ -168,9 +168,10 @@
 <div id="crashdump">
 <h2>Exception</h2>
 <table class="properties">
-<tr><td>Thread id</td>
+<tr><td>Thread</td>
     <td class="fullrow">
-        <a href="#thread_${exception.threadid}">${ hex_format(exception.threadid) }</a>
+        <a href="#thread_${exception.threadid}">Thread info ${ hex_format(exception.threadid) }</a>
+        <a href="#stackdump_${exception.threadid}">Stackdump ${ hex_format(exception.threadid) }</a>
     </td>
 </tr>
 <tr><td>Name</td><td class="fullrow">${excection_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
@@ -190,8 +191,7 @@
 <table class="properties">
 <tr><td>Expression</td><td class="fullrow">${assertion.expression}</td></tr>
 <tr><td>Function</td><td class="fullrow">${assertion.function}</td></tr>
-<tr><td>Source</td><td class="fullrow">${assertion.source}</td></tr>
-<tr><td>Line</td><td class="fullrow">${assertion.line}</td></tr>
+<tr><td>Source</td><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
 </table>
 </div>
 </py:if>
@@ -276,7 +276,6 @@
         <th width="15%">Module</th>
         <th width="15%">Function</th>
         <th width="25%">Source</th>
-        <th width="5%">LineOff</th>
         </tr>
         <py:for each="frame in stackdump.callstack">
         <tr>
@@ -287,15 +286,11 @@
         <td>${ hex_format(frame.param1) }</td>
         <td>${ hex_format(frame.param2) }</td>
         <td>${ hex_format(frame.param3) }</td>
-        <td>${frame.module}</td>
-        <td>${frame.function}</td>
+        <td>${str_or_unknown(frame.module)}</td>
+        <td>${str_or_unknown(frame.function)}</td>
         <td>
-        <py:choose test="frame.source and len(frame.source)">
-        <py:when test="False">Unknown</py:when>
-        <py:otherwise><a href="${frame.source_url}">${frame.source}:${frame.line}</a></py:otherwise>
-        </py:choose>
+        ${format_source_line(frame.source, frame.line, frame.lineoff, frame.source_url)}
         </td>
-        <td>${ hex_format(frame.lineoff) }</td>
         </tr>
         </py:for>
     </table>
