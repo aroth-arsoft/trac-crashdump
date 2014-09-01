@@ -18,6 +18,8 @@ from .model import CrashDump, CrashDumpTicketLinks
 from .xmlreport import XMLReport
 
 class CrashDumpSubmit(Component):
+    """Upload/Submit new crash dumps"""
+
     implements(IRequestHandler, IRequestFilter, ITemplateProvider)
 
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',

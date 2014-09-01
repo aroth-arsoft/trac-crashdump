@@ -100,7 +100,7 @@ def str_or_unknown(str):
         return str
 
 class CrashDumpModule(Component):
-    """Provides support for ticket dependencies."""
+    """UI for crash dumps."""
     
     implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateStreamFilter,
                ITemplateProvider)
