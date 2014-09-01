@@ -105,7 +105,7 @@ SELECT p.value AS __color__,
 FROM crashdump c
 LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
 WHERE c.status <> 'closed'
-ORDER BY CAST(p.value AS integer), c.crashtime
+ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
                         """, ' List all active crashes by priority'),
                     )
             ),
