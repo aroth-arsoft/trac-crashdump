@@ -57,10 +57,6 @@ class CrashDumpSystem(Component):
                 for stmt in connector.to_sql(table):
                     cursor.execute(stmt)
             for table, cols, vals in db_default.get_data(db):
-                print("INSERT INTO %s (%s) VALUES (%s)" % (table,
-                                   ','.join(cols),
-                                   ','.join(['%s' for c in cols])))
-                print(vals)
                 cursor.executemany("INSERT INTO %s (%s) VALUES (%s)" % (table,
                                    ','.join(cols),
                                    ','.join(['%s' for c in cols])), vals)

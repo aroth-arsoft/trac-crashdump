@@ -6,7 +6,7 @@ from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethod
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.config import Option, BoolOption, ChoiceOption, ListOption
 from trac.resource import ResourceNotFound
-from trac.ticket.model import Ticket, Component as TicketComponent
+from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version
 from pkg_resources import resource_filename
 from uuid import UUID
 import os
@@ -26,8 +26,11 @@ class CrashDumpSubmit(Component):
     default_priority = Option('crashdump', 'default_priority', default='major',
                       doc='Default priority for submitted crash reports.')
 
-    default_milestone = Option('crashdump', 'default_milestone', '',
+    default_milestone = Option('crashdump', 'default_milestone', '< default >',
         """Default milestone for submitted crash reports.""")
+
+    default_version = Option('crashdump', 'default_version', '< default >',
+        """Default version for submitted crash reports.""")
 
     default_component = Option('crashdump', 'default_component', '< default >',
         """Default component for submitted crash reports.""")
@@ -94,10 +97,39 @@ class CrashDumpSubmit(Component):
                 pass
         return ret
 
-    def _find_component_from_involved_modules(self, module_list):
+    def _find_first_milestone_from_list(self, possible_milestones):
+        #print('_find_first_milestone_from_list %s' % str(possible_milestones))
+        ret = None
+        for ms_name in possible_milestones:
+            try:
+                milestone = Milestone(self.env, ms_name)
+                ret = milestone.name
+                break
+            except ResourceNotFound:
+                # No such component exists
+                pass
+        return ret
+
+    def _find_first_version_from_list(self, possible_versions):
+        #print('_find_first_version_from_list %s' % str(possible_versions))
+        ret = None
+        for v_name in possible_versions:
+            try:
+                ver = Version(self.env, v_name)
+                ret = ver.name
+                break
+            except ResourceNotFound:
+                # No such component exists
+                pass
+        return ret
+
+    def _find_component_from_involved_modules(self, module_list, buildpostfix):
         possible_components = []
         for m in module_list:
-            module_name, module_ext = os.path.splitext(m)
+            module_base = os.path.basename(m)
+            module_name, module_ext = os.path.splitext(module_base)
+            if buildpostfix and module_name.endswith(buildpostfix):
+                module_name = module_name[:-len(buildpostfix)]
             if '-' in module_name:
                 (prefix, name) = module_name.split('-', 1)
                 name_is_version = True
@@ -135,6 +167,32 @@ class CrashDumpSubmit(Component):
             possible_components.append(name)
 
         return self._find_first_component_from_list(possible_components)
+
+    def _find_milestone(self, productversion, producttargetversion):
+        possible_versions = []
+        v_elems = producttargetversion.split('.')
+        while len(v_elems) < 4:
+            v_elems.append('0')
+
+        for i in range(4, 0, -1):
+            possible_versions.append('v' + '.'.join(v_elems[0:i]))
+            possible_versions.append('.'.join(v_elems[0:i]))
+        return self._find_first_milestone_from_list(possible_versions)
+
+    def _find_version(self, productversion, producttargetversion):
+        possible_versions = []
+        v_elems = productversion.split('.')
+        while len(v_elems) < 4:
+            v_elems.append('0')
+
+        for i in range(4, 2, -1):
+            possible_versions.append('v' + '.'.join(v_elems[0:i]))
+            possible_versions.append('.'.join(v_elems[0:i]))
+            if v_elems[i - 1] != '0':
+                v_elems[i - 1] = '0'
+            possible_versions.append('v' + '.'.join(v_elems[0:i]))
+            possible_versions.append('.'.join(v_elems[0:i]))
+        return self._find_first_version_from_list(possible_versions)
 
     def pre_process_request(self, req, handler):
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
@@ -293,10 +351,17 @@ class CrashDumpSubmit(Component):
                 crashobj['status'] = 'new'
                 crashobj['type'] = 'crash'
                 crashobj['priority'] = self.default_priority
-                crashobj['milestone'] = self.default_milestone
+                if self.default_milestone == '< default >':
+                    crashobj['milestone'] = self._find_milestone(crashobj['productversion'], crashobj['producttargetversion'])
+                else:
+                    crashobj['milestone'] = self.default_milestone
+                if self.default_version == '< default >':
+                    crashobj['version'] = self._find_version(crashobj['productversion'], crashobj['producttargetversion'])
+                else:
+                    crashobj['version'] = self.default_version
                 if self.default_component == '< default >':
                     if xmlreport is not None and xmlreport.exception is not None:
-                        crashobj['component'] = self._find_component_from_involved_modules(xmlreport.exception.involved_modules)
+                        crashobj['component'] = self._find_component_from_involved_modules(xmlreport.exception.involved_modules, crashobj['buildpostfix'])
                     if not crashobj['component']:
                         crashobj['component'] = self._find_component_for_application(crashobj['applicationname'])
                 else:

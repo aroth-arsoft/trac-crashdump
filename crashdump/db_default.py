@@ -98,8 +98,9 @@ def get_data(db):
                         ('Active crashes', """
 SELECT p.value AS __color__,
    c.uuid AS _crash,
-   c.crashtime as crashtime,
-   c.applicationname as Application,
+   c.crashtime AS crashtime,
+   c.status AS status,
+   c.applicationname AS Application,
    c.priority,
    c.component
 FROM crashdump c
