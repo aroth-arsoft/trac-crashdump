@@ -8,7 +8,7 @@ from genshi.builder import tag
 from trac.core import *
 from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import (
-    Chrome, INavigationContributor, ITemplateProvider,
+    Chrome, ITemplateProvider,
     add_ctxtnav, add_link, add_notice, add_script, add_script_data,
     add_stylesheet, add_warning, auth_link, prevnext_nav, web_context
 )
@@ -37,7 +37,8 @@ from trac.util.compat import set, sorted, partial
 import os.path
 import math
 import time
-from .model import CrashDump, CrashDumpTicketLinks
+from .model import CrashDump
+from .links import CrashDumpTicketLinks
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 
@@ -102,7 +103,7 @@ def str_or_unknown(str):
 class CrashDumpModule(Component):
     """UI for crash dumps."""
     
-    implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateStreamFilter,
+    implements(IRequestHandler, IRequestFilter, ITemplateStreamFilter,
                ITemplateProvider)
 
     dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
@@ -119,17 +120,11 @@ class CrashDumpModule(Component):
     crashdump_fields = set(['_crash'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
     crashdump_link_fields = set(['linked_crash'])
+    crashdump_ticket_fields = set(['linked_tickets'])
 
     @property
     def must_preserve_newlines(self):
         return True
-
-    # INavigationContributor methods
-    def get_active_navigation_item(self, req):
-        return 'crashdump'
-
-    def get_navigation_items(self, req):
-        yield 'mainnav', 'crashes', tag.a(_('Crashes'), href=req.href.crashdump())
 
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
@@ -154,6 +149,10 @@ class CrashDumpModule(Component):
                         for f in self.crashdump_fields:
                             if f in ticket:
                                 ticket[f] = self._link_crash(req, ticket[f])
+                        for f in self.crashdump_ticket_fields:
+                            if f in ticket:
+                                ticket[f] = self._link_tickets(req, ticket[f])
+
             # For report_view.html
             if 'row_groups' in data and isinstance(data['row_groups'], list):
                 #self.log.debug('got row_groups %s' % str(data['row_groups']))
@@ -169,6 +168,10 @@ class CrashDumpModule(Component):
                                         cell['header']['hidden'] = False
                                         cell['header']['title'] = 'Crashdump'
                                         self.log.debug('got crash cell %s' % str(cell))
+                                    elif cell.get('header', {}).get('col') in self.crashdump_ticket_fields:
+                                        cell['value'] = self._link_tickets(req, cell['value'])
+                                        cell['header']['hidden'] = False
+                                        cell['header']['title'] = 'Linked tickets'
                                     elif cell.get('header', {}).get('col') in self.datetime_fields:
                                         cell['value'] = self._format_datetime(req, cell['value'])
         return stream
@@ -250,6 +253,7 @@ class CrashDumpModule(Component):
                             )
                             elms.append(u' removed')
                         field_data['rendered'] = elms
+                        links.crashes = new
 
         return template, data, content_type
 
@@ -379,6 +383,38 @@ class CrashDumpModule(Component):
         except ResourceNotFound:
             pass
         return ret
+
+    def _link_tickets(self, req, tickets):
+        items = []
+
+        print(tickets)
+
+        for i, word in enumerate(re.split(r'([;,\s]+)', tickets)):
+            if i % 2:
+                items.append(word)
+            elif word:
+                ticketid = word
+                word = '#%s' % word
+
+                try:
+                    ticket = Ticket(self.env, ticketid)
+                    if 'TICKET_VIEW' in req.perm(ticket.resource):
+                        word = \
+                            tag.a(
+                                '#%s' % ticket.id,
+                                class_=ticket['status'],
+                                href=req.href.ticket(int(ticket.id)),
+                                title=shorten_line(ticket['summary'])
+                            )
+                except ResourceNotFound:
+                    pass
+
+                items.append(word)
+
+        if items:
+            return tag(items)
+        else:
+            return None
 
     def _link_crash_by_id(self, req, id):
         ret = None

@@ -14,7 +14,8 @@ import shutil
 import time
 import datetime
 
-from .model import CrashDump, CrashDumpTicketLinks
+from .model import CrashDump
+from .links import CrashDumpTicketLinks
 from .xmlreport import XMLReport
 
 class CrashDumpSubmit(Component):

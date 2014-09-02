@@ -5,17 +5,19 @@ from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.perm import IPermissionRequestor, PermissionCache, PermissionSystem
+from trac.ticket.api import ITicketChangeListener
 from trac.util.compat import set, sorted
 from trac.util.translation import _, N_, gettext
 from trac.cache import cached
 
 import db_default
 from trac.ticket.model import Ticket
+from .links import CrashDumpTicketLinks
 
 class CrashDumpSystem(Component):
     """Central functionality for the CrashDump plugin."""
 
-    implements(IEnvironmentSetupParticipant)
+    implements(IEnvironmentSetupParticipant, ITicketChangeListener)
     
     NUMBERS_RE = re.compile(r'\d+', re.U)
     
@@ -272,3 +274,29 @@ class CrashDumpSystem(Component):
         all_weighted_actions = [(weight, action) for action, weight in
                                 actions.items()]
         return [x[1] for x in sorted(all_weighted_actions, reverse=True)]
+
+    # ITicketChangeListener methods
+    def ticket_created(self, tkt):
+        self.ticket_changed(tkt, '', tkt['reporter'], {})
+
+    def ticket_changed(self, tkt, comment, author, old_values):
+        db = self.env.get_db_cnx()
+        links = self._prepare_links(tkt, db)
+        links.save(author, comment, tkt.time_changed, db)
+        db.commit()
+
+    def ticket_deleted(self, tkt):
+        db = self.env.get_db_cnx()
+
+        links = CrashDumpTicketLinks(self.env, tkt, db)
+        links.crashes = set()
+        links.save('trac', 'Ticket #%s deleted'%tkt.id, when=None, db=db)
+
+        db.commit()
+
+    # Internal methods
+    def _prepare_links(self, tkt, db):
+        links = CrashDumpTicketLinks(self.env, tkt, db)
+        links.crashes = set(int(n) for n in self.NUMBERS_RE.findall(tkt['linked_crash'] or ''))
+        print('links for %i: %s' % (tkt.id, str(links.crashes)))
+        return links
