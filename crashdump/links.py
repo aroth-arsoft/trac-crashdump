@@ -96,6 +96,15 @@ class CrashDumpTicketLinks(object):
         if handle_commit:
             db.commit()
 
+    @staticmethod
+    def tickets_for_crash(db, crashid):
+        cursor = db.cursor()
+
+        #print('tickets_for_crash db=%s, crashid=%s %s' % (db, crashid, type(crashid)))
+
+        cursor.execute('SELECT ticket FROM crashdump_ticket WHERE crash=%s ORDER BY ticket', (crashid,))
+        return set([int(num) for num, in cursor])
+
     def __repr__(self):
         def l(arr):
             arr2 = []

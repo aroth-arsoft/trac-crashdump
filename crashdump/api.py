@@ -6,6 +6,7 @@ from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.perm import IPermissionRequestor, PermissionCache, PermissionSystem
 from trac.ticket.api import ITicketChangeListener
+from trac.resource import Resource, ResourceNotFound
 from trac.util.compat import set, sorted
 from trac.util.translation import _, N_, gettext
 from trac.cache import cached
@@ -283,6 +284,36 @@ class CrashDumpSystem(Component):
         db = self.env.get_db_cnx()
         links = self._prepare_links(tkt, db)
         links.save(author, comment, tkt.time_changed, db)
+        from .model import CrashDump
+        if tkt['status'] == 'closed':
+            for crashid in links.crashes:
+                try:
+                    crashobj = CrashDump(env=self.env, id=crashid)
+                except ResourceNotFound:
+                    crashobj = None
+                    # No such component exists
+                    pass
+                if crashobj is not None and crashobj['status'] != 'closed':
+                    all_ticket_for_crash = CrashDumpTicketLinks.tickets_for_crash(db, crashid)
+                    all_tickets_closed = True
+                    for crash_tkt_id in all_ticket_for_crash:
+                        if crash_tkt_id == tkt.id:
+                            continue
+                        else:
+                            try:
+                                t = Ticket(self.env, crash_tkt_id)
+                                if t['status'] != 'closed':
+                                    all_tickets_closed = False
+                                    break
+                            except ResourceNotFound:
+                                # No such component exists
+                                pass
+                    if all_tickets_closed:
+                        crashobj['closetime'] = tkt.time_changed
+                        crashobj['resolution'] = tkt['resolution']
+                        crashobj['status'] = 'closed'
+                        crashobj.save_changes(author=author, comment=comment, when=tkt.time_changed, db=db)
+
         db.commit()
 
     def ticket_deleted(self, tkt):
