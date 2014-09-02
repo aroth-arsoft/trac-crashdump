@@ -1,3 +1,10 @@
+trac-crashdump (0.6) trusty; urgency=medium
+
+  * close crashes when all linked tickets are closed
+  * fix removal of ticket links to be stored in db
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 02 Sep 2014 14:06:12 +0200
+
 trac-crashdump (0.5) trusty; urgency=medium
 
   * mysql fixes
