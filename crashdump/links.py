@@ -2,6 +2,7 @@ import copy
 from trac.util.compat import set, sorted
 from trac.util.datefmt import from_utimestamp, to_utimestamp, utc, utcmax
 from trac.ticket.model import Ticket
+from datetime import datetime
 
 class CrashDumpTicketLinks(object):
     """A model for the ticket to crash links used TracCrashDump."""
@@ -66,14 +67,10 @@ class CrashDumpTicketLinks(object):
                                        (n, when_ts, author, 'comment', '', '(In #%s) %s'%(self.tkt.id, comment)))
 
 
-                    print('UPDATE ticket_custom SET value=%s WHERE ticket=%s AND name=%s'%
-                                   (new_value, n, field))
                     cursor.execute('UPDATE ticket_custom SET value=%s WHERE ticket=%s AND name=%s',
                                    (new_value, n, field))
 
                     if not cursor.rowcount:
-                        print('INSERT INTO ticket_custom (ticket, name, value) VALUES (%s, %s, %s)'%
-                                       (n, field, new_value))
                         cursor.execute('INSERT INTO ticket_custom (ticket, name, value) VALUES (%s, %s, %s)',
                                        (n, field, new_value))
 

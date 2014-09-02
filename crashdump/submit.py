@@ -401,12 +401,14 @@ class CrashDumpSubmit(Component):
                 values = crashobj.values
                 values['crashtimestamp'] = crashtimestamp
                 values['reporttimestamp'] = reporttimestamp
+                values['crashid'] = crashid
+                values['app'] = crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
                 linked_tickets = set()
                 if not new_crash and ticketobj:
                     for tkt_id in crashobj.linked_tickets:
                         try:
                             ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
-                            comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been updated by **%(uploadusername)s**
+                            comment = """The crash [[//crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been updated by **%(uploadusername)s**
 from **%(uploadhostname)s** is already linked to this ticket.
 """ % values
 
@@ -418,7 +420,7 @@ from **%(uploadhostname)s** is already linked to this ticket.
                 else:
                     if ticketobj is not None:
 
-                        comment = """The crash [[//crash/%(uuid)s|%(uuid)s]] has been uploaded by **%(uploadusername)s**
+                        comment = """The crash [[//crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
 from **%(uploadhostname)s** and linked to this ticket.
 
 The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
@@ -428,10 +430,7 @@ application was running as part of %(productname)s (%(productcodename)s) version
 
                         if new_ticket:
                             ticketobj['type'] = self.default_ticket_type
-                            ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % {
-                                    'uuid': uuid,
-                                    'app': crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
-                                }
+                            ticketobj['summary'] = "Crash %(uuid)s in %(app)s" % values
                             ticketobj['description'] = comment
                             # copy over some fields from the crash itself
                             for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
@@ -458,6 +457,7 @@ application was running as part of %(productname)s (%(productcodename)s) version
                 if linked_ticket_header:
                     headers['Linked-Tickets'] = ';'.join(linked_ticket_header)
                 headers['Crash-URL'] = req.abs_href('crash', str(uuid))
+                headers['CrashId'] = str(crashid)
 
                 return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
             elif new_crash:
