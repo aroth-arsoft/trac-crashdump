@@ -1,3 +1,9 @@
+trac-crashdump (0.7) trusty; urgency=medium
+
+  * fixed build errors for precise 
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 02 Sep 2014 16:09:52 +0200
+
 trac-crashdump (0.6) trusty; urgency=medium
 
   * close crashes when all linked tickets are closed
