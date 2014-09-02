@@ -423,7 +423,7 @@ class CrashDumpModule(Component):
             ret = \
                 tag.a(
                     'CrashId#%i' % crash.id,
-                    class_=crash.status,
+                    class_=crash['status'],
                     href=req.href('crash', crash['uuid']),
                     title=crash['uuid']
                 )
@@ -446,7 +446,7 @@ class CrashDumpModule(Component):
                     word = \
                         tag.a(
                             'CrashId#%i' % crash.id,
-                            class_=crash.status,
+                            class_=crash['status'],
                             href=req.href('crash', crash['uuid']),
                             title=crash['uuid']
                         )
@@ -466,7 +466,7 @@ class CrashDumpModule(Component):
             ret = \
                 tag.a(
                     'CrashId#%i' % crash.id,
-                    class_=crash.status,
+                    class_=crash['status'],
                     href=req.href('crash', crash['uuid']),
                     title=crash['uuid']
                 )
