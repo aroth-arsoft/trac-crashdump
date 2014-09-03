@@ -395,7 +395,7 @@ class CrashDumpSubmit(Component):
                 crashid = crashobj.insert()
                 result = True if crashid else False
             else:
-                result = crashobj.save_changes()
+                result = crashobj.save_changes(author=crashobj['crashusername'])
 
             if result:
                 values = crashobj.values
