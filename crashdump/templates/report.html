@@ -84,6 +84,34 @@
 <td class="fullrow">${object['applicationfile']}</td>
 </tr>
 <tr><td>Command&nbsp;line</td><td class="fullrow"><pre class="cmdline"><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre></td></tr>
+<py:if test="object['minidumpfile']">
+    <tr><td>Minidump file</td><td class="fullrow">
+        <a href="${href('crash', object.uuid, 'minidump_raw')}">Download</a>
+        <py:if test="object['minidumpreporttextfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}">Text report</a>
+        </py:if>
+        <py:if test="object['minidumpreportxmlfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'minidump_xml')}">XML report</a>
+        </py:if>
+        <py:if test="object['minidumpreporthtmlfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'minidump_html')}">HTML report</a>
+        </py:if>
+    </td></tr>
+</py:if>
+<py:if test="object['coredumpfile']">
+    <tr><td>Coredump file</td><td class="fullrow">
+        <a href="${href('crash', object.uuid, 'coredump_raw')}">Download</a>
+        <py:if test="object['coredumpreporttextfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}">Text report</a>
+        </py:if>
+        <py:if test="object['coredumpreportxmlfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'coredump_xml')}">XML report</a>
+        </py:if>
+        <py:if test="object['coredumpreporthtmlfile']">
+            &nbsp;<a href="${href('crash', object.uuid, 'coredump_html')}">HTML report</a>
+        </py:if>
+    </td></tr>
+</py:if>
 <tr><td>Report&nbsp;FQDN</td><td class="fullrow">${crash_info.report_fqdn}</td></tr>
 <tr><td>Report&nbsp;username</td><td class="fullrow">${crash_info.report_username}</td></tr>
 <tr><td>Symbol&nbsp;directories</td><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>

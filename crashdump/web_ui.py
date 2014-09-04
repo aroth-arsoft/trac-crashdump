@@ -303,32 +303,59 @@ class CrashDumpModule(Component):
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
-        action = req.args.get('action', ('history' in req.args and 'history' or
-                                        'view'))
-        data = self._prepare_data(req, crashobj)
-        data['dbtime'] = end - start
+        action = req.args.get('action') or 'view'
+        if action == 'view':
+            data = self._prepare_data(req, crashobj)
+            data['dbtime'] = end - start
 
-        linked_tickets = []
-        for tkt_id in crashobj.linked_tickets:
-            a = self._link_ticket_by_id(req, tkt_id)
-            if a:
-                linked_tickets.append(a)
+            linked_tickets = []
+            for tkt_id in crashobj.linked_tickets:
+                a = self._link_ticket_by_id(req, tkt_id)
+                if a:
+                    linked_tickets.append(a)
 
-        field_changes = {}
-        data.update({'action': None,
-                    # Store a timestamp for detecting "mid air collisions"
-                    'start_time': crashobj['changetime'],
-                    'linked_tickets':linked_tickets
-                    })
+            field_changes = {}
+            data.update({'action': action,
+                        # Store a timestamp for detecting "mid air collisions"
+                        'start_time': crashobj['changetime'],
+                        'linked_tickets':linked_tickets
+                        })
 
-        self._insert_crashdump_data(req, crashobj, data,
-                                get_reporter_id(req, 'author'), field_changes)
+            self._insert_crashdump_data(req, crashobj, data,
+                                    get_reporter_id(req, 'author'), field_changes)
 
-        add_script_data(req, {'comments_prefs': self._get_prefs(req)})
-        add_stylesheet(req, 'crashdump/crashdump.css')
-        add_script(req, 'common/js/folding.js')
+            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+            add_stylesheet(req, 'crashdump/crashdump.css')
+            add_script(req, 'common/js/folding.js')
 
-        return 'report.html', data, None
+            return 'report.html', data, None
+        elif action == 'minidump_raw':
+            self._send_file(req, crashobj, 'minidumpfile')
+        elif action == 'minidump_text':
+            self._send_file(req, crashobj, 'minidumpreporttextfile')
+        elif action == 'minidump_xml':
+            self._send_file(req, crashobj, 'minidumpreportxmlfile')
+        elif action == 'minidump_html':
+            self._send_file(req, crashobj, 'minidumpreporthtmlfile')
+        elif action == 'coredump_raw':
+            self._send_file(req, crashobj, 'coredumpfile')
+        elif action == 'coredump_text':
+            self._send_file(req, crashobj, 'coredumpreporttextfile')
+        elif action == 'coredump_xml':
+            self._send_file(req, crashobj, 'coredumpreportxmlfile')
+        elif action == 'coredump_html':
+            self._send_file(req, crashobj, 'coredumpreporthtmlfile')
+        else:
+            raise ResourceNotFound(_("Invalid action %(action)s for crash %(uuid)s specified.", action=str(action), uuid=str(crashobj.uuid)))
+
+    def _send_file(self, req, crashobj, name):
+        filename = self._get_dump_filename(crashobj, name)
+        item_name = os.path.basename(filename)
+        # Force browser to download files instead of rendering
+        # them, since they might contain malicious code enabling
+        # XSS attacks
+        req.send_header('Content-Disposition', 'attachment; filename=%s' % item_name)
+        req.send_file(filename, mimetype='application/force-download')
 
     def _query_link(self, req, name, value, text=None):
         """Return a link to /query with the appropriate name and value"""
