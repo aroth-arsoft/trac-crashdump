@@ -70,13 +70,15 @@ class CrashDumpSystem(Component):
         else:
             # Perform incremental upgrades.
             for i in range(schema_ver + 1, db_default.schema_version + 1):
+                (upgrades_module,_) = __name__.split('.',1)
+                upgrades_module += '.upgrades'
                 name  = 'db%i' % i
                 try:
-                    upgrades = __import__(__name__ + '.upgrades', globals(),
+                    upgrades = __import__(upgrades_module, globals(),
                                           locals(), [name])
                     script = getattr(upgrades, name)
                 except (AttributeError, ImportError) as e:
-                    self.log.info("No upgrade module for version %(num)i (%(version)s.py) in %(module)s" % { 'num':i, 'version':name, 'module':__name__ + '.upgrades'})
+                    self.log.info("No upgrade module for version %(num)i (%(version)s.py) in %(module)s" % { 'num':i, 'version':name, 'module':upgrades_module})
                     script = None
                 if script:
                     script.do_upgrade(self.env, i, cursor)

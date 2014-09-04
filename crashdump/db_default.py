@@ -5,7 +5,7 @@
 from trac.db import Table, Column, Index
 
 name = 'crashdump'
-schema_version = 12
+schema_version = 13
 schema = [
     Table('crashdump', key=('id'))[
         Column('id', type='int', auto_increment=True),
