@@ -131,19 +131,21 @@
 <table class="properties">
 <tr><td>Platform&nbsp;type</td><td class="fullrow">${system_info.platform_type}</td>
 </tr>
-<tr><td>CPU&nbsp;type</td><td class="fullrow">${system_info.cpu_type}&nbsp;<a href="http://en.wikipedia.org/wiki/CPUID">CPUID information</a>&nbsp;<a href="http://www.sandpile.org/x86/cpuid.htm">CPUID details</a></td></tr>
+<tr><td>CPU&nbsp;type</td><td class="fullrow">${format_cpu_type(system_info.cpu_type)}</td></tr>
 <tr><td>Number&nbsp;of&nbsp;CPUs</td><td class="fullrow">${system_info.number_of_cpus}</td></tr>
 <tr><td>CPU&nbsp;64-bit</td><td class="fullrow">${format_bool_yesno(system_info.cpu_64_bit)}</td></tr>
-<tr><td>CPU&nbsp;vendor</td><td class="fullrow">${system_info.cpu_vendor}</td></tr>
-<tr><td>CPU&nbsp;name</td><td class="fullrow">${system_info.cpu_name}</td></tr>
+<tr><td>CPU&nbsp;vendor</td><td class="fullrow">${format_cpu_vendor(system_info.cpu_vendor)}</td></tr>
+<tr><td>CPU&nbsp;name</td><td class="fullrow">${format_cpu_name(system_info.cpu_vendor, system_info.cpu_name)}</td></tr>
 <tr><td>CPU&nbsp;level</td><td class="fullrow">${ hex_format(system_info.cpu_level) }&nbsp;<a href="http://en.wikipedia.org/wiki/Stepping_level">More info</a></td></tr>
 <tr><td>CPU&nbsp;revision</td><td class="fullrow">${ hex_format(system_info.cpu_revision) }</td></tr>
 <tr><td>OS&nbsp;version</td><td class="fullrow">${system_info.os_version}</td></tr>
 <tr><td>OS&nbsp;version&nbsp;info</td><td class="fullrow">${system_info.os_version_info}</td></tr>
-<tr><td>Distribution&nbsp;id</td><td class="fullrow">${system_info.distribution_id}</td></tr>
+<py:if test="system_info.distribution_id">
+<tr><td>Distribution&nbsp;id</td><td class="fullrow">${format_distribution_id(system_info.distribution_id)}</td></tr>
 <tr><td>Distribution&nbsp;release</td><td class="fullrow">${system_info.distribution_release}</td></tr>
-<tr><td>Distribution&nbsp;codename</td><td class="fullrow">${system_info.distribution_codename}</td></tr>
+<tr><td>Distribution&nbsp;codename</td><td class="fullrow">${format_distribution_codename(system_info.distribution_id, system_info.distribution_codename)}</td></tr>
 <tr><td>Distribution&nbsp;description</td><td class="fullrow">${system_info.distribution_description}</td></tr>
+</py:if>
 </table>
 </div>
 

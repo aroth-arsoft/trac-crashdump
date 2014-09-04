@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
+
 from trac.core import *
 from trac.util.html import html
 from trac.util.datefmt import utc

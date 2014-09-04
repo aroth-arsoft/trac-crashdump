@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
+
 import copy
 from trac.util.compat import set, sorted
 from trac.util.datefmt import from_utimestamp, to_utimestamp, utc, utcmax

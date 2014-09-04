@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
+
 import subprocess
 import re
 
@@ -41,64 +45,7 @@ from .model import CrashDump
 from .links import CrashDumpTicketLinks
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
-
-def hex_format(number, prefix='0x', width=None):
-    if number is None:
-        return '(none)'
-    if width is None:
-        if number > 2**48:
-            width = 16
-        elif number > 2**40:
-            width = 12
-        elif number > 2**32:
-            width = 10
-        elif number > 2**24:
-            width = 8
-        elif number > 2**16:
-            width = 6
-        elif number > 2**8:
-            width = 4
-        else:
-            width = 2
-    fmt = '%%0%ix' % width
-    return prefix + fmt % number
-
-def excection_code(platform_type, code, name):
-    if platform_type == 'Linux':
-        return tag.a(name + '(' + hex_format(code) + ')', href='http://en.wikipedia.org/wiki/Unix_signal')
-    elif platform_type == 'Windows':
-        return tag.a(name + '(' + hex_format(code) + ')', href='http://msdn.microsoft.com/en-us/library/windows/desktop/ms679356(v=vs.85).aspx')
-    else:
-        return name + '(' + hex_format(code) + ')'
-
-def format_bool_yesno(val):
-    if val is None:
-        return '(none)'
-    elif val == True:
-        return _('yes')
-    elif val == False:
-        return _('no')
-    else:
-        return _('neither')
-
-def format_source_line(source, line, line_offset=None, source_url=None):
-    if source is None:
-        return _('unknown')
-    else:
-        title = str(source) + ':' + str(line)
-        if line_offset is not None:
-            title += '+' + hex_format(line_offset)
-        if source_url is not None:
-            href = source_url
-        else:
-            href='file:///' + str(source)
-        return tag.a(title, href=href)
-
-def str_or_unknown(str):
-    if str is None:
-        return _('unknown')
-    else:
-        return str
+from .utils import *
 
 class CrashDumpModule(Component):
     """UI for crash dumps."""
@@ -265,10 +212,20 @@ class CrashDumpModule(Component):
                 'format_bool_yesno': format_bool_yesno,
                 'format_source_line': format_source_line,
                 'str_or_unknown': str_or_unknown,
+                'format_cpu_type': format_cpu_type,
+                'format_cpu_vendor': format_cpu_vendor,
+                'format_cpu_name': format_cpu_name,
+                'format_distribution_id': format_distribution_id,
+                'format_distribution_codename': format_distribution_codename,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}
-        xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
+        if crashobj['minidumpreportxmlfile']:
+            xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
+        elif crashobj['coredumpreportxmlfile']:
+            xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
+        else:
+            xmlfile = None
         if xmlfile:
             start = time.time()
             xmlreport = XMLReport(xmlfile)

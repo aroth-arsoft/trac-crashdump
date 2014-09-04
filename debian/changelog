@@ -1,3 +1,10 @@
+trac-crashdump (0.8) trusty; urgency=medium
+
+  * allow to download minidump/coredump files or reports
+  * add more links for cpu and linux distros
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 04 Sep 2014 21:59:16 +0200
+
 trac-crashdump (0.7) trusty; urgency=medium
 
   * fixed build errors for precise 
