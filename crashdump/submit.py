@@ -18,7 +18,7 @@ import shutil
 import time
 import datetime
 
-from .model import CrashDump
+from .model import CrashDump, CrashDumpStackFrame
 from .links import CrashDumpTicketLinks
 from .xmlreport import XMLReport
 
@@ -398,6 +398,21 @@ class CrashDumpSubmit(Component):
 
                 crashid = crashobj.insert()
                 result = True if crashid else False
+                if result:
+                    ex_thread = xmlreport.exception.thread
+                    if ex_thread and ex_thread.stackdump:
+                        threadid = ex_thread.id
+                        for frameno, frm in enumerate(ex_thread.stackdump.callstack):
+                            frameobj = CrashDumpStackFrame(crashid, threadid,frameno, env=self.env)
+                            frameobj['module'] = frm.module
+                            frameobj['function'] = frm.function
+                            frameobj['funcoff'] = frm.funcoff
+                            frameobj['source'] = frm.source
+                            frameobj['line'] = frm.line
+                            frameobj['lineoff'] = frm.lineoff
+                            frameobj.insert()
+
+
             else:
                 result = crashobj.save_changes(author=crashobj['crashusername'])
 

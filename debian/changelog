@@ -1,3 +1,9 @@
+trac-crashdump (0.9) trusty; urgency=medium
+
+  * put stack of exception thread into db
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Fri, 05 Sep 2014 08:15:56 +0200
+
 trac-crashdump (0.8) trusty; urgency=medium
 
   * allow to download minidump/coredump files or reports

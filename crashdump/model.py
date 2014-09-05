@@ -476,3 +476,59 @@ class CrashDump(object):
             for ticketid, in cursor:
                 ret.append(int(ticketid))
         return ret
+
+class CrashDumpStackFrame(object):
+
+    __db_fields = [
+        'crash',
+        'threadid',
+        'frameno',
+        'module',
+        'function',
+        'funcoff',
+        'source',
+        'line',
+        'lineoff',
+        ]
+
+    def __init__(self, crashid=None, threadid=None, frameno=None, env=None, version=None):
+        self.crashid = crashid
+        self.threadid = threadid
+        self.frameno = frameno
+        self.env = env
+        self.values = {}
+        self.exists = False
+        if self.crashid is not None:
+            self.values['crash'] = self.crashid
+        if self.threadid is not None:
+            self.values['threadid'] = self.threadid
+        if self.frameno is not None:
+            self.values['frameno'] = self.frameno
+
+    def __getitem__(self, name):
+        return self.values.get(name)
+
+    def __setitem__(self, name, value):
+        self.values[name] = value
+
+    def insert(self, when=None, db=None):
+        """Add crash stack frame to database.
+
+        :since 1.0: the `db` parameter is no longer needed and will be removed
+        in version 1.1.1
+        """
+        assert not self.exists, 'Cannot insert an existing stack frame'
+
+        # Insert stack frame record
+        std_fields = []
+        for fname in self.__db_fields:
+            if fname in self.values:
+                std_fields.append(fname)
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            cursor.execute("INSERT INTO crashdump_stack (%s) VALUES (%s)"
+                           % (','.join(std_fields),
+                              ','.join(['%s'] * len(std_fields))),
+                           [self.values[name] for name in std_fields])
+            crash_id = db.get_last_id(cursor, 'crashdump')
+        return (self.crashid, self.threadid, self.frameno)

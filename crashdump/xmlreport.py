@@ -137,7 +137,7 @@ class XMLReport(object):
     _handle_fields = ['handle', 'type', 'name', 'count', 'pointers' ]
 
     _stackdump_fields = ['threadid', 'exception']
-    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'module', 'function', 'source', 'line', 'lineoff' ]
+    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
 
     _fast_protect_version_info_fields = [
         'product_name',
@@ -576,7 +576,7 @@ class XMLReport(object):
 if __name__ == '__main__':
     xmlreport = XMLReport(sys.argv[1])
     #print(xmlreport.crash_info)
-    print(xmlreport.system_info)
+    #print(xmlreport.system_info)
     #print(xmlreport.file_info)
     #for m in xmlreport.modules:
         #print(m)
@@ -601,5 +601,6 @@ if __name__ == '__main__':
     print(xmlreport.fast_protect_version_info)
     print(xmlreport.fast_protect_gfxcaps)
     print(xmlreport.exception.involved_modules)
-    for f in xmlreport.exception.thread.stackdump.callstack:
-        print(f)
+    print('Stackdump')
+    for (no, f) in enumerate(xmlreport.exception.thread.stackdump.callstack):
+        print('%i: %s' % (no, f))

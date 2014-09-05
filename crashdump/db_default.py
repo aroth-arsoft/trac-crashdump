@@ -73,6 +73,20 @@ schema = [
         Column('ticket', type='int'),
         Index(['crash', 'ticket'], unique=True)
     ],
+    # version 13
+    Table('crashdump_stack', key=('crash', 'threadid', 'frameno') )[
+        Column('crash', type='int'),
+        Column('threadid', type='int'),
+        Column('frameno', type='int'),
+        Column('module'),
+        Column('function'),
+        Column('funcoff', type='int'),
+        Column('source'),
+        Column('line', type='int'),
+        Column('lineoff', type='int'),
+        Index(['crash', 'frameno']),
+        Index(['crash', 'threadid', 'frameno'], unique=True),
+    ],
 ]
 
 def get_current_schema_version(db):

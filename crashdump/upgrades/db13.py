@@ -5,11 +5,15 @@ schema = [
         Column('crash', type='int'),
         Column('threadid', type='int'),
         Column('frameno', type='int'),
+        Column('module'),
         Column('function'),
+        Column('funcoff', type='int'),
         Column('source'),
         Column('line', type='int'),
+        Column('lineoff', type='int'),
         Index(['crash', 'frameno']),
-    ]
+        Index(['crash', 'threadid', 'frameno'], unique=True),
+    ],
 ]
 
 def do_upgrade(env, ver, cursor):
