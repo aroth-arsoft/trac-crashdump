@@ -211,6 +211,7 @@ class CrashDumpModule(Component):
                 'excection_code': excection_code,
                 'format_bool_yesno': format_bool_yesno,
                 'format_source_line': format_source_line,
+                'format_function_plus_offset': format_function_plus_offset,
                 'str_or_unknown': str_or_unknown,
                 'format_cpu_type': format_cpu_type,
                 'format_cpu_vendor': format_cpu_vendor,

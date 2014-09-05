@@ -57,6 +57,15 @@ def format_source_line(source, line, line_offset=None, source_url=None):
             href='file:///' + str(source)
         return tag.a(title, href=href)
 
+def format_function_plus_offset(function, funcoff=None):
+    if function is None:
+        return _('unknown')
+    else:
+        if funcoff:
+            return str(function) + '+' + hex_format(funcoff)
+        else:
+            return str(function)
+
 def str_or_unknown(str):
     if str is None:
         return _('unknown')

@@ -1,3 +1,9 @@
+trac-crashdump (0.10) trusty; urgency=medium
+
+  * add function offset and stack frame info source to html report 
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Fri, 05 Sep 2014 08:23:47 +0200
+
 trac-crashdump (0.9) trusty; urgency=medium
 
   * put stack of exception thread into db
