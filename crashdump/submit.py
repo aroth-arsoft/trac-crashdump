@@ -69,7 +69,7 @@ class CrashDumpSubmit(Component):
     # IRequestHandler methods
     def match_request(self, req):
         if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
-            #self.log.debug('match_request: %s %s', req.method, req.path_info)
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
         else:
             return False
@@ -458,7 +458,7 @@ application was running as part of %(productname)s (%(productcodename)s) version
                             ticketobj['linked_crash'] = str(crashid)
                             ticketobj.insert()
                         else:
-                            linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else []
+                            linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else set()
                             linked_crashes.add(str(crashid))
                             ticketobj['linked_crash'] = ','.join(linked_crashes)
                             ticketobj.save_changes(author=crashobj['reporter'], comment=comment)

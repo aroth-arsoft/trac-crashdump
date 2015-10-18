@@ -1,3 +1,10 @@
+trac-crashdump (0.11) wily; urgency=medium
+
+  * adjust for latest crashdump xml report changes (now includes less
+    redundant data)
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Sun, 18 Oct 2015 18:09:45 +0200
+
 trac-crashdump (0.10) trusty; urgency=medium
 
   * add function offset and stack frame info source to html report 

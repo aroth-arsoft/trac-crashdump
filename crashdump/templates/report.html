@@ -204,7 +204,7 @@
         <a href="#stackdump_${exception.threadid}">Stackdump ${ hex_format(exception.threadid) }</a>
     </td>
 </tr>
-<tr><td>Name</td><td class="fullrow">${excection_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
+<tr><td>Name</td><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
 <tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
 <tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
 <tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
@@ -285,6 +285,7 @@
 <div id="crashdump">
 <h2>Stack dumps</h2>
 <py:for each="stackdump in stackdumps">
+<py:if test="not stackdump.simplified">
 <a name="stackdump_${stackdump.threadid}"/>
 <div class="${ '' if stackdump.exception else 'collapsed' }">
 <h3 class="foldable">
@@ -332,6 +333,7 @@
     <br/>
 </div>
 </div>
+</py:if>
 </py:for>
 </div>
 

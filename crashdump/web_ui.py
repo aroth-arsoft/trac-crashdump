@@ -208,7 +208,7 @@ class CrashDumpModule(Component):
         data = {'object': crashobj,
                 'to_utimestamp': to_utimestamp,
                 'hex_format':hex_format,
-                'excection_code': excection_code,
+                'exception_code': exception_code,
                 'format_bool_yesno': format_bool_yesno,
                 'format_source_line': format_source_line,
                 'format_function_plus_offset': format_function_plus_offset,

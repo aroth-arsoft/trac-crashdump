@@ -26,13 +26,15 @@ def hex_format(number, prefix='0x', width=None):
     fmt = '%%0%ix' % width
     return prefix + fmt % number
 
-def excection_code(platform_type, code, name):
-    if platform_type == 'Linux':
-        return tag.a(name + '(' + hex_format(code) + ')', href='http://en.wikipedia.org/wiki/Unix_signal')
+def exception_code(platform_type, code, name):
+    if platform_type is None:
+        return 'Platform unknown'
+    elif platform_type == 'Linux':
+        return tag.a(str(name) + '(' + hex_format(code) + ')', href='http://en.wikipedia.org/wiki/Unix_signal')
     elif platform_type == 'Windows':
-        return tag.a(name + '(' + hex_format(code) + ')', href='http://msdn.microsoft.com/en-us/library/windows/desktop/ms679356(v=vs.85).aspx')
+        return tag.a(str(name) + '(' + hex_format(code) + ')', href='http://msdn.microsoft.com/en-us/library/windows/desktop/ms679356(v=vs.85).aspx')
     else:
-        return name + '(' + hex_format(code) + ')'
+        return tag.a(str(name) + '(' + hex_format(code) + ')', href='https://en.wikipedia.org/wiki/Special:Search/' + str(platform_type))
 
 def format_bool_yesno(val):
     if val is None:
