@@ -116,19 +116,18 @@ class XMLReport(object):
 
     _main_fields = ['crash_info', 'system_info', 'file_info', 'exception',
                     'assertion', 'modules', 'threads', 'memory_regions',
-                    'memory_blocks', 'handles', 'stackdumps' ]
+                    'memory_blocks', 'handles', 'stackdumps', 'simplified_info' ]
 
     _crash_dump_fields = ['uuid', 'crash_timestamp', 'report_time', 'report_fqdn',
                           'report_username', 'application', 'command_line',
-                          'symbol_directories', 'image_directories', 'environment']
+                          'symbol_directories', 'image_directories', 'usefulness_id', 'environment']
 
-
-    _system_info_fields = ['platform_type', 'cpu_type', 'cpu_64_bit', 'cpu_name', 'cpu_level', 'cpu_revision', 'cpu_vendor',
-                            'number_of_cpus', 'os_version', 'os_version_info',
+    _system_info_fields = ['platform_type', 'platform_type_id', 'cpu_type', 'cpu_type_id', 'cpu_name', 'cpu_level', 'cpu_revision', 'cpu_vendor',
+                            'number_of_cpus', 'os_version', 'os_version_number', 'os_version_info',
                             'distribution_id', 'distribution_release', 'distribution_codename', 'distribution_description' ]
     _file_info_fields = ['log']
-    _exception_fields = ['threadid', 'code', 'info', 'address', 'flags']
-    _assertion_fields = ['expression', 'function', 'source', 'line']
+    _exception_fields = ['threadid', 'code', 'info', 'address', 'flags', 'numparams', 'param0', 'param1', 'param2', 'param3']
+    _assertion_fields = ['expression', 'function', 'source', 'line', 'typeid']
 
     _module_fields = ['base', 'size', 'timestamp', 'product_version', 'file_version', 'name', 'symbol_file', 'flags' ]
     _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 'create_time', 'exit_time', 'kernel_time', 'user_time' ]
@@ -138,6 +137,8 @@ class XMLReport(object):
 
     _stackdump_fields = ['threadid', 'simplified', 'exception']
     _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
+    
+    _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'first_useful_modules', 'first_useful_functions']
 
     _fast_protect_version_info_fields = [
         'product_name',
@@ -160,7 +161,11 @@ class XMLReport(object):
         'jenkins_nodename'
         ]
 
-    _fast_protect_gfxcaps_fields = [
+    _fast_protect_system_info_fields = [
+        'hostname',
+        'domain',
+        'fqdn',
+        'username',
         'opengl_vendor',
         'opengl_renderer',
         'opengl_version',
@@ -2396,6 +2401,18 @@ class XMLReport(object):
                 return t.stackdump.involved_modules
             else:
                 return None
+            
+        @property
+        def params(self):
+            ret = []
+            if self.numparams >= 1:
+                ret.append(self.param0)
+            if self.numparams >= 2:
+                ret.append(self.param1)
+            if self.numparams >= 3:
+                ret.append(self.param2)
+            if self.numparams >= 4:
+                ret.append(self.param3)
 
         @property
         def name(self):
@@ -2424,7 +2441,16 @@ class XMLReport(object):
         def stackdump(self):
             ret = None
             for st in self._owner.stackdumps:
-                if st.threadid == self.id:
+                if st.threadid == self.id and not st.simplified:
+                    ret = st
+                    break
+            return ret
+
+        @property
+        def simplified_stackdump(self):
+            ret = None
+            for st in self._owner.stackdumps:
+                if st.threadid == self.id and st.simplified:
                     ret = st
                     break
             return ret
@@ -2475,13 +2501,23 @@ class XMLReport(object):
                 return 'file:///' + self.source
             else:
                 return None
+
+        @property
+        def params(self):
+            # for the moment there are always four parameters
+            ret = [ self.param0, self.param1, self.param2, self.param3]
+
+    class SimplifiedInfo(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.SimplifiedInfo, self).__init__(owner)
+
     class FastProtectVersionInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.FastProtectVersionInfo, self).__init__(owner)
 
-    class FastProtectGfxCaps(XMLReportEntity):
+    class FastProtectSystemInfo(XMLReportEntity):
         def __init__(self, owner):
-            super(XMLReport.FastProtectGfxCaps, self).__init__(owner)
+            super(XMLReport.FastProtectSystemInfo, self).__init__(owner)
 
     @staticmethod
     def _value_convert(value_str, data_type):
@@ -2628,7 +2664,6 @@ class XMLReport(object):
         ret = XMLReport.Exception(self) if i is not None else None
         if i is not None:
             for f in XMLReport._exception_fields:
-                print('field=%s' % f)
                 setattr(ret, f, XMLReport._get_node_value(i, f))
         return ret
 
@@ -2730,6 +2765,15 @@ class XMLReport(object):
         return ret
 
     @property
+    def simplified_info(self):
+        i = XMLReport._get_first_node(self._xml, 'crash_dump/simplified_info')
+        ret = XMLReport.SimplifiedInfo(self) if i is not None else None
+        if i is not None:
+            for f in XMLReport._simplified_info_fields:
+                setattr(ret, f, XMLReport._get_node_value(i, f))
+        return ret
+
+    @property
     def fast_protect_version_info(self):
         i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_version_info')
         ret = XMLReport.FastProtectVersionInfo(self) if i is not None else None
@@ -2739,11 +2783,11 @@ class XMLReport(object):
         return ret
 
     @property
-    def fast_protect_gfxcaps(self):
-        i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_gfxcaps')
-        ret = XMLReport.FastProtectGfxCaps(self) if i is not None else None
+    def fast_protect_system_info(self):
+        i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_system_info')
+        ret = XMLReport.FastProtectSystemInfo(self) if i is not None else None
         if i is not None:
-            for f in XMLReport._fast_protect_gfxcaps_fields:
+            for f in XMLReport._fast_protect_system_info_fields:
                 setattr(ret, f, XMLReport._get_node_value(i, f))
         return ret
 
@@ -2776,9 +2820,14 @@ if __name__ == '__main__':
     #for m in xmlreport.threads:
         #print(type(m.id))
 
-    print(xmlreport.fast_protect_version_info)
-    print(xmlreport.fast_protect_gfxcaps)
-    print(xmlreport.exception.involved_modules)
+    print('version_info=' + str(xmlreport.fast_protect_version_info))
+    print('system_info=' + str(xmlreport.fast_protect_system_info))
+    print('simplified_info=' + str(xmlreport.simplified_info))
+    print('involved_modules=' + str(xmlreport.exception.involved_modules))
     print('Stackdump')
     for (no, f) in enumerate(xmlreport.exception.thread.stackdump.callstack):
         print('%i: %s' % (no, f))
+    print('Simplified Stackdump')
+    for (no, f) in enumerate(xmlreport.exception.thread.simplified_stackdump.callstack):
+        print('%i: %s' % (no, f))
+        print('%i: %s' % (no, f.params))

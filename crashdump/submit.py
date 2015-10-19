@@ -248,8 +248,12 @@ class CrashDumpSubmit(Component):
         new_ticket = False
         if ticket_str == 'no':
             ticketobj = None
-        elif ticket_str[0] == '#':
-            tkt_id=int(ticket_str[1:])
+        elif '#' in ticket_str:
+            ticket_ids = []
+            for t in ticket_str.split(','):
+                if t[0] == '#':
+                    ticket_ids.append(int(t[1:]))
+            tkt_id = ticket_ids[0]
             try:
                 ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
             except ResourceNotFound:
@@ -275,7 +279,10 @@ class CrashDumpSubmit(Component):
             ticketobj = Ticket(env=self.env)
             new_ticket = True
         else:
-            return self._error_response(req, status=HTTPForbidden.code, body='Unrecognized ticket request %s for crash %s.' % (tkt_id, str(uuid)))
+            return self._error_response(req, status=HTTPForbidden.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
+        
+        print('ticket_str=%s' % ticket_str)
+        print('ticketobj=%s' % str(ticketobj))
 
         result = False
         ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
@@ -400,20 +407,23 @@ class CrashDumpSubmit(Component):
                 result = True if crashid else False
                 if result:
                     ex_thread = xmlreport.exception.thread
-                    if ex_thread and ex_thread.stackdump:
+                    if ex_thread is not None:
                         threadid = ex_thread.id
-                        for frameno, frm in enumerate(ex_thread.stackdump.callstack):
-                            frameobj = CrashDumpStackFrame(crashid, threadid,frameno, env=self.env)
-                            frameobj['module'] = frm.module
-                            frameobj['function'] = frm.function
-                            frameobj['funcoff'] = frm.funcoff
-                            frameobj['source'] = frm.source
-                            frameobj['line'] = frm.line
-                            frameobj['lineoff'] = frm.lineoff
-                            frameobj.insert()
+                        stackdump = ex_thread.simplified_stackdump if ex_thread.simplified_stackdump is not None else ex_thread.stackdump
+                        if stackdump:
+                            for frameno, frm in enumerate(stackdump.callstack):
+                                frameobj = CrashDumpStackFrame(crashid, threadid,frameno, env=self.env)
+                                frameobj['module'] = frm.module
+                                frameobj['function'] = frm.function
+                                frameobj['funcoff'] = frm.funcoff
+                                frameobj['source'] = frm.source
+                                frameobj['line'] = frm.line
+                                frameobj['lineoff'] = frm.lineoff
+                                frameobj.insert()
 
 
             else:
+                print('update crash %s' % crashobj)
                 result = crashobj.save_changes(author=crashobj['crashusername'])
 
             if result:
@@ -423,23 +433,43 @@ class CrashDumpSubmit(Component):
                 values['crashid'] = crashid
                 values['app'] = crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
                 linked_tickets = set()
-                if not new_crash and ticketobj:
+                if not new_crash:
+                    # Update all already linked tickets
                     for tkt_id in crashobj.linked_tickets:
                         try:
-                            ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
-                            comment = """The crash [[//crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been updated by **%(uploadusername)s**
+                            new_linked_ticketobj = Ticket(env=self.env, tkt_id=tkt_id)
+                            comment = """The crash [[/crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been updated by **%(uploadusername)s**
 from **%(uploadhostname)s** is already linked to this ticket.
 """ % values
 
-                            ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                            new_linked_ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
                             linked_tickets.add(tkt_id)
                         except ResourceNotFound:
                             pass
+                    # Now add the newly linked tickets as well
+                    if ticketobj is not None and ticketobj.id not in crashobj.linked_tickets:
+
+                        comment = """The crash [[/crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
+from **%(uploadhostname)s** and linked to this ticket.
+
+The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
+application was running as part of %(productname)s (%(productcodename)s) version %(productversion)s (%(producttargetversion)s, %(buildtype)s) on a
+%(systemname)s/%(machinetype)s with %(osversion)s (%(osrelease)s/%(osmachine)s).
+""" % values
+                        linked_crashes = set(ticketobj['linked_crash'].split(',')) if ticketobj['linked_crash'] else set()
+                        linked_crashes.add(str(crashid))
+                        ticketobj['linked_crash'] = ','.join(linked_crashes)
+                        ticketobj.save_changes(author=crashobj['reporter'], comment=comment)
+                        
+                        linked_tickets.add(ticketobj.id)
+                        links = CrashDumpTicketLinks(self.env, tkt=ticketobj)
+                        links.crashes.add(crashid)
+                        links.save(author=crashobj['reporter'])
 
                 else:
                     if ticketobj is not None:
 
-                        comment = """The crash [[//crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
+                        comment = """The crash [[/crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
 from **%(uploadhostname)s** and linked to this ticket.
 
 The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The

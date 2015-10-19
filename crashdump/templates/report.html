@@ -133,7 +133,6 @@
 </tr>
 <tr><td>CPU&nbsp;type</td><td class="fullrow">${format_cpu_type(system_info.cpu_type)}</td></tr>
 <tr><td>Number&nbsp;of&nbsp;CPUs</td><td class="fullrow">${system_info.number_of_cpus}</td></tr>
-<tr><td>CPU&nbsp;64-bit</td><td class="fullrow">${format_bool_yesno(system_info.cpu_64_bit)}</td></tr>
 <tr><td>CPU&nbsp;vendor</td><td class="fullrow">${format_cpu_vendor(system_info.cpu_vendor)}</td></tr>
 <tr><td>CPU&nbsp;name</td><td class="fullrow">${format_cpu_name(system_info.cpu_vendor, system_info.cpu_name)}</td></tr>
 <tr><td>CPU&nbsp;level</td><td class="fullrow">${ hex_format(system_info.cpu_level) }&nbsp;<a href="http://en.wikipedia.org/wiki/Stepping_level">More info</a></td></tr>
@@ -208,9 +207,14 @@
 <tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
 <tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
 <tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
-<tr><td>Involved modules</td><td class="fullrow"><ol>
-<py:for each="m in exception.involved_modules "><li>${m}</li></py:for>
+<py:if test="simplified_info">
+<tr><td>Involved functions</td><td class="fullrow"><ol>
+<py:for each="m in simplified_info.first_useful_functions"><li>${m}</li></py:for>
 </ol></td></tr>
+<tr><td>Involved modules</td><td class="fullrow"><ol>
+<py:for each="m in simplified_info.first_useful_modules"><li>${m}</li></py:for>
+</ol></td></tr>
+</py:if>
 </table>
 </div>
 </py:if>

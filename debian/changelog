@@ -1,3 +1,9 @@
+trac-crashdump (0.12) wily; urgency=medium
+
+  * fixed handling of newly linked tickets to crashes
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Mon, 19 Oct 2015 08:05:14 +0200
+
 trac-crashdump (0.11) wily; urgency=medium
 
   * adjust for latest crashdump xml report changes (now includes less
