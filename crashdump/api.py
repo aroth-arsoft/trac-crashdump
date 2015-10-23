@@ -335,5 +335,5 @@ class CrashDumpSystem(Component):
     def _prepare_links(self, tkt, db):
         links = CrashDumpTicketLinks(self.env, tkt, db)
         links.crashes = set(int(n) for n in self.NUMBERS_RE.findall(tkt['linked_crash'] or ''))
-        print('links for %i: %s' % (tkt.id, str(links.crashes)))
+        #print('links for %i: %s' % (tkt.id, str(links.crashes)))
         return links
