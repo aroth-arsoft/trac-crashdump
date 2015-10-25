@@ -282,8 +282,8 @@ class CrashDumpSubmit(Component):
         else:
             return self._error_response(req, status=HTTPForbidden.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
         
-        print('ticket_str=%s' % ticket_str)
-        print('ticketobjs=%s' % str(ticketobjs))
+        #print('ticket_str=%s' % ticket_str)
+        #print('ticketobjs=%s' % str(ticketobjs))
 
         # we require at least one crash dump file (either minidump or coredump)
         # and any number of report files
@@ -416,7 +416,7 @@ class CrashDumpSubmit(Component):
 
 
             else:
-                print('update crash %s' % crashobj)
+                #print('update crash %s' % crashobj)
                 result = crashobj.save_changes(author=crashobj['crashusername'])
 
             if result:
@@ -462,7 +462,10 @@ application was running as part of %(productname)s (%(productcodename)s) version
 """ % values
                         linked_crashes = tkt_obj['linked_crash'] if tkt_obj['linked_crash'] else ''
                         linked_crashes = set([int(x.strip()) for x in linked_crashes.split(',') if x.strip()])
+                        #print('crashid=%s' % crashid)
+                        #print('linked_crashes=%s' % linked_crashes)
                         linked_crashes.add(crashid)
+                        #print('linked_crashes=%s' % linked_crashes)
                         tkt_obj['linked_crash'] = ', '.join(str(x) for x in sorted(linked_crashes))
                         tkt_obj.save_changes(author=crashobj['reporter'], comment=comment)
                     
