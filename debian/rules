@@ -10,7 +10,8 @@ clean:
 	dh_testroot
 	rm -rf build-stamp *.egg-info
 	python setup.py clean
-	rm -rf build/
+	-rm -rf build/
+	-rm -rf dist/
 	dh_clean 
 
 build: build-arch build-indep
