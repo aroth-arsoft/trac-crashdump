@@ -89,7 +89,7 @@ class CrashDump(object):
             except:
                 return False
 
-    def __init__(self, id=None, uuid=None, env=None, version=None, must_exist=True):
+    def __init__(self, id=None, uuid=None, env=None, version=None, must_exist=True, row=None):
         self.id = None
         self.status = None
         self.uuid = uuid
@@ -110,6 +110,8 @@ class CrashDump(object):
             self._fetch_crash_by_uuid(uuid, must_exist=must_exist)
         elif id is not None:
             self._fetch_crash_by_id(int(id), must_exist=must_exist)
+        elif row is not None:
+            self._load_from_record(row)
         else:
             self._init_defaults()
         self._old = {}
@@ -439,6 +441,35 @@ class CrashDump(object):
                  newvalue or '', permanent)
                 for t, author, field, oldvalue, newvalue, permanent in
                 self.env.db_query(sql, args)]
+
+    @staticmethod
+    def query(env, status=None):
+        ret = []
+        where_clause = ''
+        if status is not None:
+            if status == 'active':
+                where_clause = ' WHERE status<>\'closed\''
+            elif status == 'closed':
+                where_clause = ' WHERE status=\'closed\''
+            elif status == 'new':
+                where_clause = ' WHERE status=\'new\''
+            else:
+                where_clause = ' WHERE status=\'%s\'' % status
+                
+        fields = CrashDumpSystem(env).get_crash_fields()
+        std_fields = []
+        for f in fields:
+            if f.get('custom'):
+                pass
+            else:
+                std_fields.append(f['name'])
+
+        print("SELECT id,%s FROM crashdump %s" % (','.join(std_fields), where_clause))
+        # Fetch the standard crashdump fields
+        for row in env.db_query("SELECT id,%s FROM crashdump %s" % (','.join(std_fields), where_clause)):
+            crash = CrashDump(env=env, must_exist=True, row=row)
+            ret.append(crash)
+        return ret
 
     @staticmethod
     def find_by_uuid(env, uuid):

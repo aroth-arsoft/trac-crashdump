@@ -4,7 +4,7 @@
 
 from trac.core import *
 from trac.util.html import html
-from trac.util.datefmt import utc
+from trac.util.datefmt import utc, to_utimestamp
 from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
@@ -17,6 +17,7 @@ import os
 import shutil
 import time
 import datetime
+from xml.sax.saxutils import escape
 
 from .model import CrashDump, CrashDumpStackFrame
 from .links import CrashDumpTicketLinks
@@ -69,6 +70,9 @@ class CrashDumpSubmit(Component):
     # IRequestHandler methods
     def match_request(self, req):
         if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
+            return True
+        elif req.method == 'GET' and (req.path_info == '/crashdump/list' or req.path_info == '/crashlist'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
         else:
@@ -213,6 +217,14 @@ class CrashDumpSubmit(Component):
 
     def process_request(self, req):
         self.log.debug('CrashDumpSubmit process_request: %s %s', req.method, req.path_info)
+        if req.path_info == '/crashdump/submit' or req.path_info == '/submit':
+            return self.process_request_submit(req)
+        elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist':
+            return self.process_request_crashlist(req)
+        else:
+            return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Invalid request path %s.' % req.path_info)
+
+    def process_request_submit(self, req):
         if req.method != "POST":
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
 
@@ -491,6 +503,48 @@ application was running as part of %(productname)s (%(productcodename)s) version
                 return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
         else:
             return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s' % uuid)
+
+    def process_request_crashlist(self, req):
+        if req.method != "GET":
+            return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
+
+        user_agent = req.get_header('User-Agent')
+        if user_agent is None:
+            return self._error_response(req, status=HTTPForbidden.code, body='No user-agent specified.')
+        if '/' in user_agent:
+            user_agent, agent_ver = user_agent.split('/', 1)
+        #if user_agent != 'terra3d-crashuploader':
+            #return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent)
+
+        req_status = req.args.get('status') or 'active'
+        
+        headers = {}
+        body = ''
+        body = body + '<?xml version="1.0" encoding="utf-8"?>\r\n<crashlist>\r\n'
+        for crashobj in CrashDump.query(env=self.env, status=req_status):
+            
+            body = body + '<crash id=\"%i\" uuid=\"%s\">\r\n' % (crashobj.id, crashobj['uuid'])
+            for field in crashobj.fields:
+                field_name = field['name']
+                if field_name == 'uuid':
+                    continue
+                field_type = field['type']
+                field_value = crashobj[field_name]
+                if field_type == 'time':
+                    field_value = str(to_utimestamp(field_value))
+
+                body = body + '<%s type=\"%s\">' % (field_name, field_type)
+                if field_value is not None:
+                    #print('%s=%s' % (field_name, field_value))
+                    body = body + escape(field_value)
+                body = body + '</%s>\r\n' % (field_name)
+            body = body + '<linked_tickets>\r\n'
+            for tkt in crashobj.linked_tickets:
+                body = body + '<ticket id=\"%i\"/>\r\n' % tkt
+            body = body + '</linked_tickets>\r\n'
+            body = body + '</crash>\r\n'
+        body = body + '</crashlist>\r\n'
+        return self._success_response(req, body=body.encode('utf-8'), headers=headers)
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
