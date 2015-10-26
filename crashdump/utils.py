@@ -168,6 +168,7 @@ def format_cpu_name(vendor, name):
             href = 'http://en.wikipedia.org/wiki/Xeon'
         else:
             title = 'Unknown Intel CPU'
+            href = 'https://en.wikipedia.org/wiki/Central_processing_unit'
     else:
         title = name
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'

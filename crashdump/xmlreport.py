@@ -2423,7 +2423,7 @@ class XMLReport(object):
                 else:
                     return 'Unknown(%x)' % (self._owner.platform_type, self.code)
             else:
-                return 'UnknownPlatform(%s, %x)' % self.code
+                return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
 
     class Assertion(XMLReportEntity):
         def __init__(self, owner):
