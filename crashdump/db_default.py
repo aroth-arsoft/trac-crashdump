@@ -134,8 +134,30 @@ FROM crashdump c
 LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
 WHERE c.status <> 'closed'
 ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
-                        """, ' List all active crashes by priority'),
-                    )
+                        """, """ * List all active crashes by priority.
+ * Color each row based on priority."""),
+                        ('All crashes', """
+SELECT p.value AS __color__,
+c.productname || " " || c.productversion || " (" || c.producttargetversion || ")" AS __group__,
+   c.uuid AS _crash,
+   c.crashtime AS crashtime,
+   c.crashusername AS 'Crash user',
+   c.crashhostname AS 'Crash hostname',
+   c.status,
+   c.priority,
+   c.component,
+   c.version,
+   c.milestone,
+   c.applicationname AS Application,
+   c.machinetype || "/" || c.systemname AS 'System name',
+   c.osversion AS 'OS Version',
+   c.buildtype AS 'Build Type',
+   (SELECT GROUP_CONCAT(ticket) from crashdump_ticket where crash=c.id) AS linked_tickets
+FROM crashdump c
+LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
+ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
+                        """, """ * List all active crashes by priority.
+ * Color each row based on priority."""),
             ),
         )
-
+    )
