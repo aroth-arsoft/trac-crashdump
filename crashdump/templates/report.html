@@ -79,6 +79,7 @@
 
 <div id="crashdump">
 <h2 id="crash_dump_info">Crash dump information</h2>
+<a name="crash_info"/>
 <table class="properties">
 <tr><th>Application&nbsp;file</th>
 <td class="fullrow">${object['applicationfile']}</td>
@@ -128,6 +129,7 @@
 
 <div id="crashdump">
 <h2>System information</h2>
+<a name="system_info"/>
 <table class="properties">
 <tr><td>Platform&nbsp;type</td><td class="fullrow">${system_info.platform_type}</td>
 </tr>
@@ -151,6 +153,7 @@
 <py:if test="fast_protect_version_info">
 <div id="crashdump">
 <h2>Version info</h2>
+<a name="fast_protect_version_info"/>
 <table class="properties">
 <tr><td>Product name</td><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
 <tr><td>Product code name</td><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
@@ -161,6 +164,7 @@
 <tr><td>External repository revision</td><td class="fullrow">${fast_protect_version_info.external_revision}</td></tr>
 <tr><td>Third-party repository revision</td><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
 <tr><td>${fast_protect_version_info.product_name} repository revision</td><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
+<py:if test="fast_protect_version_info.jenkins_job_name">
 <tr><td>Jenkins job name</td><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
 <tr><td>Jenkins build number</td><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
 <tr><td>Jenkins build id</td><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
@@ -170,25 +174,27 @@
 <tr><td>Jenkins Git branch</td><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
 <tr><td>Jenkins master</td><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
 <tr><td>Jenkins nodename</td><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
+</py:if>
 </table>
 </div>
 </py:if>
 
-<py:if test="fast_protect_gfxcaps">
+<py:if test="fast_protect_system_info">
 <div id="crashdump">
 <h2>Version info</h2>
+<a name="fast_protect_system_info"/>
 <table class="properties">
-<tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_gfxcaps.opengl_vendor}</td></tr>
-<tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_gfxcaps.opengl_renderer}</td></tr>
-<tr><td>OpenGL version</td><td class="fullrow">${fast_protect_gfxcaps.opengl_version}</td></tr>
-<tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_gfxcaps.opengl_vendor_id}</td></tr>
-<tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_gfxcaps.opengl_driver_id}</td></tr>
-<tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_gfxcaps.opengl_chip_class}</td></tr>
-<tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_gfxcaps.opengl_driver_version}</td></tr>
-<tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_gfxcaps.opengl_hardware_ok}</td></tr>
-<tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_gfxcaps.opengl_use_pbuffer}</td></tr>
-<tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_hardware_error}</td></tr>
-<tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_gfxcaps.opengl_pbuffer_error}</td></tr>
+<tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_system_info.opengl_vendor}</td></tr>
+<tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_system_info.opengl_renderer}</td></tr>
+<tr><td>OpenGL version</td><td class="fullrow">${fast_protect_system_info.opengl_version}</td></tr>
+<tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_system_info.opengl_vendor_id}</td></tr>
+<tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_system_info.opengl_driver_id}</td></tr>
+<tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_system_info.opengl_chip_class}</td></tr>
+<tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_system_info.opengl_driver_version}</td></tr>
+<tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_ok}</td></tr>
+<tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
+<tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_error}</td></tr>
+<tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
 </table>
 </div>
 </py:if>
@@ -196,6 +202,7 @@
 <py:if test="exception">
 <div id="crashdump">
 <h2>Exception</h2>
+<a name="exception"/>
 <table class="properties">
 <tr><td>Thread</td>
     <td class="fullrow">
@@ -221,6 +228,7 @@
 
 <py:if test="assertion">
 <div id="crashdump">
+<a name="assertion"/>
 <h2>Assertion</h2>
 <table class="properties">
 <tr><td>Expression</td><td class="fullrow">${assertion.expression}</td></tr>
@@ -230,8 +238,9 @@
 </div>
 </py:if>
 
-<div id="crashdump">
-<h2>Modules</h2>
+<div id="crashdump" class="collapsed">
+<h2 class="foldable">Modules</h2>
+<a name="modules"/>
 <table class="properties">
 <tr>
 <th>Base</th>
@@ -258,8 +267,9 @@
 </table>
 </div>
 
-<div id="crashdump">
-<h2>Threads</h2>
+<div id="crashdump" class="collapsed">
+<a name="threads"/>
+<h2 class="foldable">Threads</h2>
 <table class="properties">
 <tr>
 <th>Id</th>
