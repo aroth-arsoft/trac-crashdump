@@ -288,23 +288,42 @@ class CrashDumpModule(Component):
 
             return 'report.html', data, None
         elif action == 'minidump_raw':
-            self._send_file(req, crashobj, 'minidumpfile')
+            return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':
-            self._send_file(req, crashobj, 'minidumpreporttextfile')
+            return self._send_file(req, crashobj, 'minidumpreporttextfile')
         elif action == 'minidump_xml':
-            self._send_file(req, crashobj, 'minidumpreportxmlfile')
+            return self._send_file(req, crashobj, 'minidumpreportxmlfile')
         elif action == 'minidump_html':
-            self._send_file(req, crashobj, 'minidumpreporthtmlfile')
+            return self._send_file(req, crashobj, 'minidumpreporthtmlfile')
         elif action == 'coredump_raw':
-            self._send_file(req, crashobj, 'coredumpfile')
+            return self._send_file(req, crashobj, 'coredumpfile')
         elif action == 'coredump_text':
-            self._send_file(req, crashobj, 'coredumpreporttextfile')
+            return self._send_file(req, crashobj, 'coredumpreporttextfile')
         elif action == 'coredump_xml':
-            self._send_file(req, crashobj, 'coredumpreportxmlfile')
+            return self._send_file(req, crashobj, 'coredumpreportxmlfile')
         elif action == 'coredump_html':
-            self._send_file(req, crashobj, 'coredumpreporthtmlfile')
-        else:
-            raise ResourceNotFound(_("Invalid action %(action)s for crash %(uuid)s specified.", action=str(action), uuid=str(crashobj.uuid)))
+            return self._send_file(req, crashobj, 'coredumpreporthtmlfile')
+        elif action == 'raw':
+            if crashobj['minidumpfile']:
+                return self._send_file(req, crashobj, 'minidumpfile')
+            elif crashobj['coredumpfile']:
+                return self._send_file(req, crashobj, 'coredumpfile')
+        elif action == 'xml':
+            if crashobj['minidumpreportxmlfile']:
+                return self._send_file(req, crashobj, 'minidumpreportxmlfile')
+            elif crashobj['coredumpreportxmlfile']:
+                return self._send_file(req, crashobj, 'coredumpreportxmlfile')
+        elif action == 'html':
+            if crashobj['minidumpreporthtmlfile']:
+                return self._send_file(req, crashobj, 'minidumpreporthtmlfile')
+            elif crashobj['coredumpreporthtmlfile']:
+                return self._send_file(req, crashobj, 'coredumpreporthtmlfile')
+        elif action == 'text':
+            if crashobj['minidumpreporttextfile']:
+                return self._send_file(req, crashobj, 'minidumpreporttextfile')
+            elif crashobj['coredumpreporttextfile']:
+                return self._send_file(req, crashobj, 'coredumpreporttextfile')
+        raise ResourceNotFound(_("Invalid action %(action)s for crash %(uuid)s specified.", action=str(action), uuid=str(crashobj.uuid)))
 
     def _send_file(self, req, crashobj, name):
         filename = self._get_dump_filename(crashobj, name)

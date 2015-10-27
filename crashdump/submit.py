@@ -137,7 +137,7 @@ class CrashDumpSubmit(Component):
     def _find_component_from_involved_modules(self, module_list, buildpostfix):
         possible_components = []
         for m in module_list:
-            module_base = os.path.basename(m)
+            module_base = os.path.basename(m) if '/' in m else m
             module_name, module_ext = os.path.splitext(module_base)
             if buildpostfix and module_name.endswith(buildpostfix):
                 module_name = module_name[:-len(buildpostfix)]
@@ -523,7 +523,13 @@ application was running as part of %(productname)s (%(productcodename)s) version
         body = body + '<?xml version="1.0" encoding="utf-8"?>\r\n<crashlist>\r\n'
         for crashobj in CrashDump.query(env=self.env, status=req_status):
             
-            body = body + '<crash id=\"%i\" uuid=\"%s\">\r\n' % (crashobj.id, crashobj['uuid'])
+            body = body + '<crash id=\"%i\" uuid=\"%s\" url=\"%s\" xmlreport=\"%s\" rawfile=\"%s\">\r\n' % \
+                (crashobj.id, crashobj['uuid'], 
+                    req.href('crash', crashobj['uuid']),
+                    req.href('crash', crashobj['uuid'], 'xml'),
+                    req.href('crash', crashobj['uuid'], 'raw'),
+                    )
+
             for field in crashobj.fields:
                 field_name = field['name']
                 if field_name == 'uuid':
@@ -540,7 +546,8 @@ application was running as part of %(productname)s (%(productcodename)s) version
                 body = body + '</%s>\r\n' % (field_name)
             body = body + '<linked_tickets>\r\n'
             for tkt in crashobj.linked_tickets:
-                body = body + '<ticket id=\"%i\"/>\r\n' % tkt
+                body = body + '<ticket id=\"%i\" url=\"%s\">\r\n' % (tkt, req.href.ticket(tkt))
+                body = body + '</ticket>\r\n'
             body = body + '</linked_tickets>\r\n'
             body = body + '</crash>\r\n'
         body = body + '</crashlist>\r\n'
