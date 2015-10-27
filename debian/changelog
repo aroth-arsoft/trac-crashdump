@@ -1,3 +1,10 @@
+trac-crashdump (0.16) wily; urgency=medium
+
+  * improve crash report display
+  * fixed some xml parsing mistakes
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 27 Oct 2015 07:52:57 +0100
+
 trac-crashdump (0.15) wily; urgency=medium
 
   * improve XML parsing performance
