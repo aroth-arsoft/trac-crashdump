@@ -116,9 +116,10 @@ class MemoryBlock(object):
 
 class XMLReport(object):
 
-    _main_fields = ['crash_info', 'system_info', 'file_info', 'exception',
+    _main_fields = ['crash_info', 'platform_type', 'system_info', 'file_info', 'exception',
                     'assertion', 'modules', 'threads', 'memory_regions',
-                    'memory_blocks', 'handles', 'stackdumps', 'simplified_info' ]
+                    'memory_blocks', 'handles', 'stackdumps', 'simplified_info', 'processstatuslinux',
+                    'fast_protect_version_info', 'fast_protect_system_info']
 
     _crash_dump_fields = ['uuid', 'crash_timestamp', 'report_time', 'report_fqdn',
                           'report_username', 'application', 'command_line',
@@ -141,6 +142,15 @@ class XMLReport(object):
     _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
     
     _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'first_useful_modules', 'first_useful_functions']
+    
+    _processstatuslinux_fields = ['name', 'state', 'thread_group', 'pid', 
+            'parent_pid', 'tracer_pid', 'real_uid', 'real_gid',
+            'effective_uid', 'effective_gid', 'saved_set_uid', 'saved_set_gid',
+            'filesystem_uid', 'filesystem_gid', 'num_file_descriptors', 'supplement_groups',
+            'vmpeak', 'vmsize', 'vmlocked', 'vmpinned', 'vmhighwatermark',
+            'vmresidentsetsize', 'vmdata', 'vmstack', 'vmexe', 'vmlib', 'vmpte',
+            'vmswap', 'num_threads', 'voluntary_context_switches', 'nonvoluntary_context_switches',
+        ]
 
     _fast_protect_version_info_fields = [
         'product_name',
@@ -210,6 +220,7 @@ class XMLReport(object):
         self._handles = None
         self._stackdumps = None
         self._simplified_info = None
+        self._processstatuslinux = None
         self._fast_protect_version_info = None
         self._fast_protect_system_info = None
 
@@ -346,7 +357,8 @@ class XMLReport(object):
         def involved_modules(self):
             module_order = []
             for frm in self.callstack:
-                module_order.append(frm.module)
+                if frm.module:
+                    module_order.append(frm.module)
             return XMLReport.unique(module_order)
 
     class StackFrame(XMLReportEntity):
@@ -377,6 +389,10 @@ class XMLReport(object):
     class FastProtectSystemInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.FastProtectSystemInfo, self).__init__(owner)
+
+    class ProcessStatusLinux(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.ProcessStatusLinux, self).__init__(owner)
 
     @staticmethod
     def _value_convert(value_str, data_type):
@@ -643,6 +659,17 @@ class XMLReport(object):
                 for f in XMLReport._simplified_info_fields:
                     setattr(self._simplified_info, f, XMLReport._get_node_value(i, f))
         return self._simplified_info
+    
+
+    @property
+    def processstatuslinux(self):
+        if self._processstatuslinux is None:
+            i = XMLReport._get_first_node(self._xml, 'crash_dump/processstatuslinux')
+            self._processstatuslinux = XMLReport.ProcessStatusLinux(self) if i is not None else None
+            if i is not None:
+                for f in XMLReport._processstatuslinux_fields:
+                    setattr(self._processstatuslinux, f, XMLReport._get_node_value(i, f))
+        return self._processstatuslinux
 
     @property
     def fast_protect_version_info(self):
@@ -691,8 +718,8 @@ if __name__ == '__main__':
         #fmt = '0x%%0%ix: %%s - %%s' % m.hexdump.offset_width
         #for l in m.hexdump:
             #print(fmt % (l.offset, l.hex, l.ascii))
-    for m in xmlreport.memory_blocks:
-        print(m.threadid)
+    #for m in xmlreport.memory_blocks:
+        #print(m.threadid)
 
     #for m in xmlreport.threads:
         #print(type(m.id))
@@ -701,6 +728,11 @@ if __name__ == '__main__':
         for (k,v) in entity.__dict__.items():
             if k[0] != '_':
                 print((' ' * indent) + '%s=%s' % (k,v))
+
+    def dump_report_list(list, indent=0):
+        for num, data_elem in enumerate(list):
+            print((' ' * indent) + '%i:' % num)
+            dump_report_entity(data_elem, indent + 2)
         
     def dump_report(rep, field, indent=0):
         print((' ' * indent) + field + ':')
@@ -708,9 +740,7 @@ if __name__ == '__main__':
         if data is None:
             print('  None')
         elif isinstance(data, list):
-            for num, data_elem in enumerate(data):
-                print((' ' * (indent+2)) + '%i:' % num)
-                dump_report_entity(data_elem, indent + 4)
+            dump_report_list(data, indent+2)
         else:
             dump_report_entity(data, indent + 2)
 
@@ -720,7 +750,9 @@ if __name__ == '__main__':
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')
     #dump_report(xmlreport, 'simplified_info')
-    #dump_report(xmlreport, 'modules')
+    dump_report(xmlreport, 'modules')
+    
+    print(xmlreport.exception.involved_modules)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
     #dump_report(xmlreport, 'exception')
