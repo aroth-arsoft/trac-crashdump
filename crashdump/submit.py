@@ -411,7 +411,7 @@ class CrashDumpSubmit(Component):
                 crashid = crashobj.insert()
                 result = True if crashid else False
                 if result:
-                    ex_thread = xmlreport.exception.thread
+                    ex_thread = xmlreport.exception.thread if xmlreport.exception else None
                     if ex_thread is not None:
                         threadid = ex_thread.id
                         stackdump = ex_thread.simplified_stackdump if ex_thread.simplified_stackdump is not None else ex_thread.stackdump

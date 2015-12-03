@@ -119,10 +119,12 @@ class XMLReport(object):
     _main_fields = ['crash_info', 'platform_type', 'system_info', 'file_info', 'exception',
                     'assertion', 'modules', 'threads', 'memory_regions',
                     'memory_blocks', 'handles', 'stackdumps', 'simplified_info', 'processstatuslinux',
+                    'misc_info',
                     'fast_protect_version_info', 'fast_protect_system_info']
 
-    _crash_dump_fields = ['uuid', 'crash_timestamp', 'report_time', 'report_fqdn',
-                          'report_username', 'application', 'command_line',
+    _crash_dump_fields = ['uuid', 'crash_timestamp', 
+                          'report_time', 'report_fqdn', 'report_username', 'report_hostname', 'report_domain', 
+                          'application', 'command_line',
                           'symbol_directories', 'image_directories', 'usefulness_id', 'environment']
 
     _system_info_fields = ['platform_type', 'platform_type_id', 'cpu_type', 'cpu_type_id', 'cpu_name', 'cpu_level', 'cpu_revision', 'cpu_vendor',
@@ -133,7 +135,11 @@ class XMLReport(object):
     _assertion_fields = ['expression', 'function', 'source', 'line', 'typeid']
 
     _module_fields = ['base', 'size', 'timestamp', 'product_version', 'file_version', 'name', 'symbol_file', 'flags' ]
-    _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 'create_time', 'exit_time', 'kernel_time', 'user_time' ]
+    _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 
+                      'create_time', 'exit_time', 'kernel_time', 'user_time',
+                      'exit_status', 'cpu_affinity', 'stack_addr', 
+                      'suspend_count', 'priority_class', 'priority', 'teb'
+        ]
     _memory_region_fields = ['base_addr', 'size', 'alloc_base', 'alloc_prot', 'type', 'protect', 'state' ]
     _memory_block_fields = ['num', 'base', 'size', 'memory']
     _handle_fields = ['handle', 'type', 'name', 'count', 'pointers' ]
@@ -150,6 +156,25 @@ class XMLReport(object):
             'vmpeak', 'vmsize', 'vmlocked', 'vmpinned', 'vmhighwatermark',
             'vmresidentsetsize', 'vmdata', 'vmstack', 'vmexe', 'vmlib', 'vmpte',
             'vmswap', 'num_threads', 'voluntary_context_switches', 'nonvoluntary_context_switches',
+        ]
+    _processstatuswin32_fields = ['dll_path', 'image_path',
+            'window_title', 'desktop_name', 'shell_info',
+            'runtime_data', 'drive_letter_cwd', 
+            'stdin_handle', 'stdout_handle', 'stderr_handle',
+            'debug_flags', 'console_handle', 'console_flags',
+            'session_id',
+        ]
+    
+    _misc_info_fields = ['processid', 'process_create_time',
+            'user_time', 'kernel_time',
+            'processor_max_mhz', 'processor_current_mhz', 'processor_mhz_limit',
+            'processor_max_idle_state', 'processor_current_idle_state',
+            'process_integrity_level',
+            'process_execute_flags', 'protected_process',
+            'timezone_id', 'timezone_bias',
+            'timezone_standard_name', 'timezone_standard_bias', 'timezone_standard_date',
+            'timezone_daylight_name', 'timezone_daylight_bias', 'timezone_daylight_date',
+            'build_info', 'debug_build_info'
         ]
 
     _fast_protect_version_info_fields = [
@@ -221,6 +246,8 @@ class XMLReport(object):
         self._stackdumps = None
         self._simplified_info = None
         self._processstatuslinux = None
+        self._processstatuswin32 = None
+        self._misc_info = None
         self._fast_protect_version_info = None
         self._fast_protect_system_info = None
 
@@ -382,6 +409,10 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.SimplifiedInfo, self).__init__(owner)
 
+    class MiscInfo(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.MiscInfo, self).__init__(owner)
+
     class FastProtectVersionInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.FastProtectVersionInfo, self).__init__(owner)
@@ -393,6 +424,10 @@ class XMLReport(object):
     class ProcessStatusLinux(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.ProcessStatusLinux, self).__init__(owner)
+
+    class ProcessStatusWin32(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.ProcessStatusWin32, self).__init__(owner)
 
     @staticmethod
     def _value_convert(value_str, data_type):
@@ -659,7 +694,6 @@ class XMLReport(object):
                 for f in XMLReport._simplified_info_fields:
                     setattr(self._simplified_info, f, XMLReport._get_node_value(i, f))
         return self._simplified_info
-    
 
     @property
     def processstatuslinux(self):
@@ -670,6 +704,26 @@ class XMLReport(object):
                 for f in XMLReport._processstatuslinux_fields:
                     setattr(self._processstatuslinux, f, XMLReport._get_node_value(i, f))
         return self._processstatuslinux
+
+    @property
+    def processstatuswin32(self):
+        if self._processstatuswin32 is None:
+            i = XMLReport._get_first_node(self._xml, 'crash_dump/processstatuswin32')
+            self._processstatuswin32 = XMLReport.ProcessStatusWin32(self) if i is not None else None
+            if i is not None:
+                for f in XMLReport._processstatuswin32_fields:
+                    setattr(self._processstatuswin32, f, XMLReport._get_node_value(i, f))
+        return self._processstatuswin32
+
+    @property
+    def misc_info(self):
+        if self._misc_info is None:
+            i = XMLReport._get_first_node(self._xml, 'crash_dump/misc_info')
+            self._misc_info = XMLReport.MiscInfo(self) if i is not None else None
+            if i is not None:
+                for f in XMLReport._processstatuslinux_fields:
+                    setattr(self._misc_info, f, XMLReport._get_node_value(i, f))
+        return self._misc_info
 
     @property
     def fast_protect_version_info(self):
@@ -744,15 +798,16 @@ if __name__ == '__main__':
         else:
             dump_report_entity(data, indent + 2)
 
-    #dump_report(xmlreport, 'crash_info')
+    dump_report(xmlreport, 'crash_info')
     #dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')
     #dump_report(xmlreport, 'simplified_info')
-    dump_report(xmlreport, 'modules')
+    #dump_report(xmlreport, 'modules')
     
-    print(xmlreport.exception.involved_modules)
+    if xmlreport.exception is not None:
+        print(xmlreport.exception.involved_modules)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
     #dump_report(xmlreport, 'exception')

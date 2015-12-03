@@ -1,3 +1,10 @@
+trac-crashdump (0.17) wily; urgency=medium
+
+  * add new fields to xml report reader
+  * fixed some errors
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 03 Dec 2015 20:38:06 +0100
+
 trac-crashdump (0.16) wily; urgency=medium
 
   * improve crash report display

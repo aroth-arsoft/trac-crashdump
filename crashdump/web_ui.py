@@ -221,12 +221,16 @@ class CrashDumpModule(Component):
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}
+        xmlfile = None
+        xmlfile_from_db = None
         if crashobj['minidumpreportxmlfile']:
+            xmlfile_from_db = crashobj['minidumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
         elif crashobj['coredumpreportxmlfile']:
+            xmlfile_from_db = crashobj['coredumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
-        else:
-            xmlfile = None
+        data['xmlfile_from_db'] = xmlfile_from_db
+        data['xmlfile'] = xmlfile
         if xmlfile:
             start = time.time()
             xmlreport = XMLReport(xmlfile)
@@ -264,6 +268,13 @@ class CrashDumpModule(Component):
         action = req.args.get('action') or 'view'
         if action == 'view':
             data = self._prepare_data(req, crashobj)
+            
+            xmlfile = data['xmlfile'] if 'xmlfile' in data else None
+            if xmlfile is None:
+                xmlfile_from_db = data['xmlfile_from_db'] if 'xmlfile_from_db' in data else None
+                raise ResourceNotFound(_("No XML file \"%(xmlfile_from_db)s\" found for crash %(id)s.", xmlfile_from_db=xmlfile_from_db,
+                                        id=req.args['crashuuid']), _("No XML file found"))
+                
             data['dbtime'] = end - start
 
             linked_tickets = []
