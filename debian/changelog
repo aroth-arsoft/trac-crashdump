@@ -1,3 +1,10 @@
+trac-crashdump (0.18) wily; urgency=medium
+
+  * fixed some syntax errors
+  * more CPU info
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Fri, 04 Dec 2015 07:41:49 +0100
+
 trac-crashdump (0.17) wily; urgency=medium
 
   * add new fields to xml report reader

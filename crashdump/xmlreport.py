@@ -432,11 +432,17 @@ class XMLReport(object):
     @staticmethod
     def _value_convert(value_str, data_type):
         if data_type == 'uuid':
-            return UUID(value_str)
+            try:
+                return UUID(value_str)
+            except ValueError:
+                return None
         elif data_type == 'QString':
             return value_str
         elif data_type == 'QDateTime':
-            return datetime.strptime(value_str, '%Y-%m-%d %H:%M:%S')
+            try:
+                return datetime.strptime(value_str, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                return None
         elif data_type == 'bool':
             if value_str == 'true':
                 return True
@@ -445,9 +451,15 @@ class XMLReport(object):
             else:
                 return None
         elif data_type == 'int' or data_type == 'qlonglong':
-            return int(value_str, 10)
+            try:
+                return int(value_str, 10)
+            except ValueError:
+                return None
         elif data_type == 'uint' or data_type == 'qulonglong':
-            return int(value_str, 16)
+            try:
+                return int(value_str, 16)
+            except ValueError:
+                return None
         else:
             return str(value_str)
 
@@ -799,7 +811,7 @@ if __name__ == '__main__':
             dump_report_entity(data, indent + 2)
 
     dump_report(xmlreport, 'crash_info')
-    #dump_report(xmlreport, 'system_info')
+    dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')

@@ -152,25 +152,45 @@ def format_cpu_name(vendor, name):
         if name.startswith('AMD FX'):
             href = 'http://en.wikipedia.org/wiki/List_of_AMD_FX_microprocessors'
             title = 'AMD FX-series'
+        elif name.startswith('AMD Phenom'):
+            href = 'https://en.wikipedia.org/wiki/List_of_AMD_Phenom_microprocessors'
+            title = 'AMD Phenom family'
+        elif name.startswith('AMD Opteron'):
+            href = 'https://en.wikipedia.org/wiki/List_of_AMD_Opteron_microprocessors'
+            title = 'AMD Opteron family'
+        elif name.startswith('AMD Sempron'):
+            href = 'https://en.wikipedia.org/wiki/List_of_AMD_Sempron_microprocessors'
+            title = 'AMD Sempron family'
+        elif name.startswith('AMD Turion'):
+            href = 'https://en.wikipedia.org/wiki/List_of_AMD_Turion_microprocessors'
+            title = 'AMD Turion family'
+        elif name.startswith('AMD A'):
+            href = 'https://en.wikipedia.org/wiki/List_of_AMD_accelerated_processing_unit_microprocessors'
+            title = 'AMD APU series'
         else:
+            title = 'Unknown AMD CPU'
             href = 'http://en.wikipedia.org/wiki/Advanced_Micro_Devices'
+        title = title + ' (%s)' % name
     elif vendor == 'GenuineIntel':
-        if name.startswith('Intel(R) Core(TM)'):
+        if name.startswith('Intel(R) Core(TM) i3'):
+            title = 'Intel Core i3 series'
             href = 'http://en.wikipedia.org/wiki/Intel_Core'
-            if name.startswith('Intel(R) Core(TM) i3'):
-                title = 'Intel Core i3 series'
-            elif name.startswith('Intel(R) Core(TM) i5'):
-                title = 'Intel Core i5 series'
-            elif name.startswith('Intel(R) Core(TM) i7'):
-                title = 'Intel Core i7 series'
-            else:
-                title = 'Unknown Intel Core series'
+        elif name.startswith('Intel(R) Core(TM) i5'):
+            title = 'Intel Core i5 series'
+            href = 'http://en.wikipedia.org/wiki/Intel_Core'
+        elif name.startswith('Intel(R) Core(TM) i7'):
+            title = 'Intel Core i7 series'
+            href = 'http://en.wikipedia.org/wiki/Intel_Core'
+        elif name.startswith('Intel(R) Core(TM)'):
+            title = 'Unknown Intel Core series'
+            href = 'http://en.wikipedia.org/wiki/Intel_Core'
         elif name.startswith('Intel(R) Xeon(R)') or name.startswith('Intel(R) Xeon(TM)'):
             title = 'Intel Xeon series'
             href = 'http://en.wikipedia.org/wiki/Xeon'
         else:
             title = 'Unknown Intel CPU'
-            href = 'https://en.wikipedia.org/wiki/Central_processing_unit'
+            href = 'https://en.wikipedia.org/wiki/List_of_Intel_microprocessors'
+        title = title + ' (%s)' % name
     else:
         title = name
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'
