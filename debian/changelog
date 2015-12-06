@@ -1,3 +1,9 @@
+trac-crashdump (0.19) wily; urgency=medium
+
+  * various improvements, see git log
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Sun, 06 Dec 2015 16:41:43 +0100
+
 trac-crashdump (0.18) wily; urgency=medium
 
   * fixed some syntax errors
