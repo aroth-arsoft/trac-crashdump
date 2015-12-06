@@ -1,3 +1,9 @@
+trac-crashdump (0.20) wily; urgency=medium
+
+  * fixed win32 syntax errors
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Sun, 06 Dec 2015 18:16:23 +0100
+
 trac-crashdump (0.19) wily; urgency=medium
 
   * various improvements, see git log

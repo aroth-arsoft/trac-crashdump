@@ -2192,7 +2192,7 @@ def _exception_info_win32(ex):
     elif ex.code == 0xC0000005: # EXCEPTION_ACCESS_VIOLATION:
         readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
         address = ex.params[1] if len(ex.params) >= 2 else 0
-        ret = "access violation (%s) at %s flags %s" % \
+        ret = "access violation (%s) %s at %s flags %s" % \
             (hex_format(ex.code), 
                 ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
                 hex_format(address),
@@ -2201,21 +2201,16 @@ def _exception_info_win32(ex):
         readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
         address = ex.params[1] if len(ex.params) >= 2 else 0
         ntstatus_code = ex.params[2] if len(ex.params) >= 3 else 0
-        ret = "inpage error (0x%X) status %s at %s flags %s" % \
+        ret = "inpage error (%s) status %s %s at %s flags %s" % \
             (hex_format(ex.code), 
                 hex_format(ntstatus_code),
                 ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
                 hex_format(address),
                 hex_format(ex.flags))
     else:
-        readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
-        address = ex.params[1] if len(ex.params) >= 2 else 0
-        ntstatus_code = ex.params[2] if len(ex.params) >= 3 else 0
-        ret = "%s (%s) status 0x%08X at %s flags %s" % \
+        ret = "%s (%s) at %s flags %s" % \
             (ex.name, hex_format(ex.code), 
-                hex_format(ntstatus_code),
-                ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
-                hex_format(address),
+                hex_format(ex.address),
                 hex_format(ex.flags))
     return ret
 
