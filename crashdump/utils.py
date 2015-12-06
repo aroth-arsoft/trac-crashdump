@@ -5,9 +5,19 @@
 from genshi.builder import tag
 from trac.util.translation import _
 
-def hex_format(number, prefix='0x', width=None):
+def _hex_format(number, prefix='0x', width=None, bits=None):
     if number is None:
         return '(none)'
+    if bits is not None:
+        if bits == 32:
+            number = number & 0xffffffff
+            if width is None:
+                width = 8
+        elif bits == 64:
+            number = number & 0xffffffffffffffff
+            if width is None:
+                width = 16
+
     if width is None:
         if number > 2**48:
             width = 16
@@ -25,6 +35,15 @@ def hex_format(number, prefix='0x', width=None):
             width = 2
     fmt = '%%0%ix' % width
     return prefix + fmt % number
+    
+def hex_format(number, prefix='0x', width=None, bits=None):
+    if isinstance(number, list):
+        nums = []
+        for n in number:
+            nums.append(_hex_format(n, prefix, width, bits))
+        return ','.join(nums)
+    else:
+        return _hex_format(number, prefix, width, bits)
 
 def exception_code(platform_type, code, name):
     if platform_type is None:
@@ -219,3 +238,73 @@ def format_distribution_codename(distro_id, distro_codename):
         name = distro_id
         href = 'http://distrowatch.com/' + distro_id
     return tag.a(name, title=distro_id, href=href)
+
+def format_seconds(s):
+    if s is None:
+        return 'None'
+    elif s >= 3600:
+        hr = int(float(s) / 3600.0)
+        m = fmod(float(s), 3600.0) / 60.0
+        return '%ihr %0.1fmin' % (hr, m)
+    elif s >= 60:
+        m = float(s) / 60.0
+        return '%0.1fmin' % m
+    elif s >= 1:
+        return  '%0.1fs' % s
+    else:
+        return  '%0.1fms' % ( s * 1000.0 )
+
+def format_milliseconds(ms):
+    if ms is None:
+        return 'None'
+    elif ms > 1000:
+        s = float(ms) / 1000.0
+        return format_seconds(s)
+    else:
+        return  '%ims' % ms
+
+def format_trust_level(tl):
+    if tl == 0:
+        return 'Unknown'
+    elif tl == 1:
+        return 'Stack scan'
+    elif tl == 2:
+        return 'CFI scan'
+    elif tl == 3:
+        return 'FP'
+    elif tl == 4:
+        return 'CFI'
+    elif tl == 5:
+        return 'External'
+    elif tl == 6:
+        return 'IP'
+    else:
+        return 'unknown(%i)' % tl
+
+_suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+def format_size(nbytes):
+    if nbytes == 0: return '0 B'
+    i = 0
+    while nbytes >= 1024 and i < len(_suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, _suffixes[i])
+
+def format_memory_usagetype(usage):
+    if usage == 0:
+        return 'Unknown'
+    elif usage == 1:
+        return 'Stack'
+    elif usage == 2:
+        return 'TEB'
+    elif usage == 3:
+        return 'PEB'
+    elif usage == 4:
+        return 'Process Parameters'
+    elif usage == 5:
+        return 'Environment'
+    elif usage == 6:
+        return 'IP'
+    else:
+        return 'unknown(%i)' % usage

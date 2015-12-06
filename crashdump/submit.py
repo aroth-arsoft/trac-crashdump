@@ -4,7 +4,7 @@
 
 from trac.core import *
 from trac.util.html import html
-from trac.util.datefmt import utc, to_utimestamp
+from trac.util.datefmt import utc, to_utimestamp, parse_date
 from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
@@ -306,8 +306,6 @@ class CrashDumpSubmit(Component):
         ok, crashobj['minidumpreporttextfile'] = self._store_dump_file(uuid, req, 'minidumpreport', force)
         ok, crashobj['minidumpreportxmlfile'] = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
         ok, crashobj['minidumpreporthtmlfile'] = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
-        if ok:
-            result = True
         ok, crashobj['coredumpfile'] = self._store_dump_file(uuid, req, 'coredump', force)
         if ok:
             result = True
@@ -317,10 +315,19 @@ class CrashDumpSubmit(Component):
 
         crashobj['applicationfile'] = req.args.get('applicationfile')
 
-        crashtimestamp = datetime.datetime.strptime(req.args.get('crashtimestamp'), "%Y-%m-%dT%H:%M:%S" )
-        crashtimestamp = crashtimestamp.replace(tzinfo = utc)
-        reporttimestamp = datetime.datetime.strptime(req.args.get('reporttimestamp'), "%Y-%m-%dT%H:%M:%S" )
-        reporttimestamp = reporttimestamp.replace(tzinfo = utc)
+        self.log.debug('crashtimestamp from http form %s' % req.args.get('crashtimestamp'))
+        self.log.debug('reporttimestamp from http form %s' % req.args.get('reporttimestamp'))
+
+        try:
+            crashtimestamp = parse_date(req.args.get('crashtimestamp'), hint='iso8601' )
+        except TracError:
+            crashtimestamp = None
+            self.log.warn('invalid crash timestamp %s' % (req.args.get('crashtimestamp')))
+        try:
+            reporttimestamp = parse_date(req.args.get('reporttimestamp'), hint='iso8601' )
+        except TracError:
+            reporttimestamp = None
+            self.log.warn('invalid crash report timestamp %s' % (req.args.get('reporttimestamp')))
 
         crashobj['crashtime'] = crashtimestamp if crashtimestamp else None
         crashobj['reporttime'] = reporttimestamp if reporttimestamp else None
@@ -411,7 +418,10 @@ class CrashDumpSubmit(Component):
                 crashid = crashobj.insert()
                 result = True if crashid else False
                 if result:
-                    ex_thread = xmlreport.exception.thread if xmlreport.exception else None
+                    if xmlreport is not None and xmlreport.exception is not None:
+                        ex_thread = xmlreport.exception.thread
+                    else:
+                        ex_thread = None
                     if ex_thread is not None:
                         threadid = ex_thread.id
                         stackdump = ex_thread.simplified_stackdump if ex_thread.simplified_stackdump is not None else ex_thread.stackdump

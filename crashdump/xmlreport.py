@@ -8,7 +8,7 @@ from datetime import datetime
 from uuid import UUID
 from lxml import etree
 
-from exception_info import exception_code_names_per_platform_type
+from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
 
 class MemoryBlock(object):
     def __init__(self, memory):
@@ -118,7 +118,7 @@ class XMLReport(object):
 
     _main_fields = ['crash_info', 'platform_type', 'system_info', 'file_info', 'exception',
                     'assertion', 'modules', 'threads', 'memory_regions',
-                    'memory_blocks', 'handles', 'stackdumps', 'simplified_info', 'processstatuslinux',
+                    'memory_blocks', 'handles', 'stackdumps', 'simplified_info', 'processstatuslinux', 'processstatuswin32',
                     'misc_info',
                     'fast_protect_version_info', 'fast_protect_system_info']
 
@@ -131,21 +131,22 @@ class XMLReport(object):
                             'number_of_cpus', 'os_version', 'os_version_number', 'os_version_info',
                             'distribution_id', 'distribution_release', 'distribution_codename', 'distribution_description' ]
     _file_info_fields = ['log']
-    _exception_fields = ['threadid', 'code', 'info', 'address', 'flags', 'numparams', 'param0', 'param1', 'param2', 'param3']
+    _exception_fields = ['threadid', 'code', 'address', 'flags', 'numparams', 'param0', 'param1', 'param2', 'param3']
     _assertion_fields = ['expression', 'function', 'source', 'line', 'typeid']
 
     _module_fields = ['base', 'size', 'timestamp', 'product_version', 'file_version', 'name', 'symbol_file', 'flags' ]
-    _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 
+    _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 'main_thread',
                       'create_time', 'exit_time', 'kernel_time', 'user_time',
-                      'exit_status', 'cpu_affinity', 'stack_addr', 
-                      'suspend_count', 'priority_class', 'priority', 'teb'
+                      'exit_status', 'cpu_affinity', 'stack_addr',
+                      'suspend_count', 'priority_class', 'priority', 'teb', 'dump_flags', 'dump_error', 'rpc_thread'
         ]
     _memory_region_fields = ['base_addr', 'size', 'alloc_base', 'alloc_prot', 'type', 'protect', 'state' ]
+    _memory_region_usage_fields = ['threadid', 'usagetype' ]
     _memory_block_fields = ['num', 'base', 'size', 'memory']
     _handle_fields = ['handle', 'type', 'name', 'count', 'pointers' ]
 
     _stackdump_fields = ['threadid', 'simplified', 'exception']
-    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
+    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'trust_level', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
     
     _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'first_useful_modules', 'first_useful_functions']
     
@@ -231,8 +232,7 @@ class XMLReport(object):
 
     def __init__(self, filename=None):
         self._filename = filename
-        #print(self._filename)
-        self._xml = etree.parse(self._filename) if self._filename else None
+        self._xml = None
         self._crash_info = None
         self._system_info = None
         self._file_info = None
@@ -250,6 +250,13 @@ class XMLReport(object):
         self._misc_info = None
         self._fast_protect_version_info = None
         self._fast_protect_system_info = None
+        self._is_64_bit = None
+
+        if self._filename:
+            try:
+                self._xml = etree.parse(self._filename)
+            except IOError:
+                pass
 
     class XMLReportEntity(object):
         def __init__(self, owner):
@@ -296,7 +303,7 @@ class XMLReport(object):
                 return t.stackdump.involved_modules
             else:
                 return None
-            
+
         @property
         def params(self):
             ret = []
@@ -308,6 +315,7 @@ class XMLReport(object):
                 ret.append(self.param2)
             if self.numparams >= 4:
                 ret.append(self.param3)
+            return ret
 
         @property
         def name(self):
@@ -319,6 +327,13 @@ class XMLReport(object):
                     return 'Unknown(%x)' % (self._owner.platform_type, self.code)
             else:
                 return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
+        @property
+        def info(self):
+            if self._owner.platform_type in exception_info_per_platform_type:
+                ex_info_func = exception_info_per_platform_type[self._owner.platform_type]
+                return ex_info_func(self)
+            else:
+                return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
 
     class Assertion(XMLReportEntity):
         def __init__(self, owner):
@@ -327,6 +342,19 @@ class XMLReport(object):
     class Module(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.Module, self).__init__(owner)
+            self._basename = None
+
+        @property
+        def basename(self):
+            if self._basename is None:
+                idx = self.name.rfind('/')
+                if idx < 0:
+                    idx = self.name.rfind('\\')
+                if idx >= 0:
+                    self._basename = self.name[idx+1:]
+                else:
+                    self._basename = self.name
+            return self._basename
 
     class Thread(XMLReportEntity):
         def __init__(self, owner):
@@ -354,6 +382,20 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.MemoryRegion, self).__init__(owner)
 
+    class MemoryRegionUsage(XMLReportEntity):
+        def __init__(self, owner, region):
+            super(XMLReport.MemoryRegionUsage, self).__init__(owner)
+            self._region = region
+
+        @property
+        def thread(self):
+            ret = None
+            for thread in self._owner.threads:
+                if thread.id == self.threadid:
+                    ret = thread
+                    break
+            return ret
+
     class MemoryBlock(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.MemoryBlock, self).__init__(owner)
@@ -379,6 +421,16 @@ class XMLReport(object):
     class StackDump(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.StackDump, self).__init__(owner)
+            self._thread = None
+
+        @property
+        def thread(self):
+            if self._thread is None:
+                for thread in self._owner.threads:
+                    if thread.id == self.threadid:
+                        self._thread = thread
+                        break
+            return self._thread
 
         @property
         def involved_modules(self):
@@ -404,6 +456,7 @@ class XMLReport(object):
         def params(self):
             # for the moment there are always four parameters
             ret = [ self.param0, self.param1, self.param2, self.param3]
+            return ret
 
     class SimplifiedInfo(XMLReportEntity):
         def __init__(self, owner):
@@ -465,6 +518,8 @@ class XMLReport(object):
 
     @staticmethod
     def _get_node_value(node, child, default_value=None):
+        if node is None:
+            return default_value
         r = node.xpath(child + '/@type')
         data_type = r[0] if r else None
 
@@ -510,6 +565,8 @@ class XMLReport(object):
 
     @staticmethod
     def _get_attribute(node, attr_name, default_value=None):
+        if node is None:
+            return default_value
         r = node.xpath('@' + attr_name)
         attr_value = r[0] if r else None
 
@@ -543,6 +600,8 @@ class XMLReport(object):
 
     @staticmethod
     def _get_first_node(node, child):
+        if node is None:
+            return None
         r = node.xpath('/' + str(child))
         return r[0] if r else None
 
@@ -562,6 +621,48 @@ class XMLReport(object):
         if s is None:
             return None
         return s.platform_type
+    
+    @property
+    def is_64_bit(self):
+        if self._is_64_bit is None:
+            s = self.system_info
+            if s is None:
+                return None
+            # CPUTypeUnknown=-1
+            # CPUTypeX86=0
+            # CPUTypeMIPS=1
+            # CPUTypeAlpha=2
+            # CPUTypePowerPC=3
+            # CPUTypeSHX=4
+            # CPUTypeARM=5
+            # CPUTypeIA64=6
+            # CPUTypeAlpha64=7
+            # CPUTypeMSIL=8
+            # CPUTypeAMD64=9
+            # CPUTypeX64_Win64=10
+            # CPUTypeSparc=11
+            # CPUTypePowerPC64=12
+            # CPUTypeARM64=13
+            if s.cpu_type_id == 0 or \
+                s.cpu_type_id == 1 or \
+                s.cpu_type_id == 2 or \
+                s.cpu_type_id == 3 or \
+                s.cpu_type_id == 4 or \
+                s.cpu_type_id == 5 or \
+                s.cpu_type_id == -1:
+                self._is_64_bit = False
+            elif s.cpu_type_id == 6 or \
+                s.cpu_type_id == 7 or \
+                s.cpu_type_id == 8 or \
+                s.cpu_type_id == 9 or \
+                s.cpu_type_id == 10 or \
+                s.cpu_type_id == 11 or \
+                s.cpu_type_id == 12 or \
+                s.cpu_type_id == 13:
+                self._is_64_bit = True
+            else:
+                self._is_64_bit = False
+        return self._is_64_bit
 
     @property
     def system_info(self):
@@ -628,13 +729,15 @@ class XMLReport(object):
                     m = XMLReport.Thread(self)
                     for f in XMLReport._thread_fields:
                         setattr(m, f, XMLReport._get_node_value(item, f))
+                    if not self._threads:
+                        m.main_thread = True
                     self._threads.append(m)
         return self._threads
 
     @property
     def memory_regions(self):
         if self._memory_regions is None:
-            i = XMLReport._get_first_node(self._xml, 'crash_dump/memory')
+            i = XMLReport._get_first_node(self._xml, 'crash_dump/memory_info')
             self._memory_regions = []
             all_subitems = i.xpath('memory') if i is not None else None
             if all_subitems is not None:
@@ -642,6 +745,16 @@ class XMLReport(object):
                     m = XMLReport.MemoryRegion(self)
                     for f in XMLReport._memory_region_fields:
                         setattr(m, f, XMLReport._get_node_value(item, f))
+
+                    m.usage = []
+                    all_subitems = item.xpath('usage')
+                    if all_subitems is not None:
+                        for item in all_subitems:
+                            usage = XMLReport.MemoryRegionUsage(self, m)
+                            for f in XMLReport._memory_region_usage_fields:
+                                setattr(usage, f, XMLReport._get_node_value(item, f))
+                            m.usage.append(usage)
+
                     self._memory_regions.append(m)
         return self._memory_regions
 
@@ -820,8 +933,11 @@ if __name__ == '__main__':
     
     if xmlreport.exception is not None:
         print(xmlreport.exception.involved_modules)
+    print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
+    dump_report(xmlreport, 'memory_regions')
+    
     #dump_report(xmlreport, 'exception')
 
     #if xmlreport.exception.thread.stackdump:

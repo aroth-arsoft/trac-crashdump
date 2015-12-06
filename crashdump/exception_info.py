@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
+from .utils import hex_format
+
 _exception_code_names_linux = {
     1: 'SIGHUP',
     2: 'SIGINT',
@@ -2154,11 +2156,71 @@ _exception_code_names_win32 = {
     0xC0E70009: 'STATUS_SPACES_INTERLEAVE_LENGTH_INVALID',
     0xC0E7000A: 'STATUS_SPACES_NUMBER_OF_COLUMNS_INVALID',
     0xC0E7000B: 'STATUS_SPACES_NOT_ENOUGH_DRIVES',
-
+    0xE06D7363: 'C++ exception',
+    0xe0434352: 'CLR exception',
 }
 
 exception_code_names_per_platform_type = {
     'Linux': _exception_code_names_linux,
     'Win32': _exception_code_names_win32,
     'Windows NT': _exception_code_names_win32,
+}
+
+def _exception_info_linux(ex):
+    signal_code = ex.params[0] if len(ex.params) >= 1 else 0
+    signal_errno = ex.params[1] if len(ex.params) >= 2 else 0
+
+    ret = ex.name + '(%s)' % hex_format(ex.code)
+    if ex.code == 11: # SIGSEGV
+        if signal_code == 1: # SEGV_MAPERR
+            ret += ' address %s not mapped' % hex_format(ex.address)
+        elif signal_code == 2: # SEGV_ACCERR
+            ret += ' address %s invalid permissions' % hex_format(ex.address)
+        elif signal_code == 3: # SEGV_BNDERR
+            ret += ' address %s failed address bound checks' % hex_format(ex.address)
+    else:
+        ret += ' code %i, errno %i' % (signal_code, signal_errno)
+    return ret
+
+def _exception_info_win32(ex):
+    if ex.code == 0xE06D7363:
+        ret = "Unknown C++ exception"
+    # CLR exception
+    # See http://ig2600.blogspot.de/2009/07/finding-clr-exceptions-with-visual.html
+    elif ex.code == 0xe0434352:
+        ret = "CLR exception";
+    elif ex.code == 0xC0000005: # EXCEPTION_ACCESS_VIOLATION:
+        readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
+        address = ex.params[1] if len(ex.params) >= 2 else 0
+        ret = "access violation (%s) at %s flags %s" % \
+            (hex_format(ex.code), 
+                ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
+                hex_format(address),
+                hex_format(ex.flags))
+    elif ex.code == 0xC0000006: # EXCEPTION_IN_PAGE_ERROR:
+        readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
+        address = ex.params[1] if len(ex.params) >= 2 else 0
+        ntstatus_code = ex.params[2] if len(ex.params) >= 3 else 0
+        ret = "inpage error (0x%X) status %s at %s flags %s" % \
+            (hex_format(ex.code), 
+                hex_format(ntstatus_code),
+                ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
+                hex_format(address),
+                hex_format(ex.flags))
+    else:
+        readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
+        address = ex.params[1] if len(ex.params) >= 2 else 0
+        ntstatus_code = ex.params[2] if len(ex.params) >= 3 else 0
+        ret = "%s (%s) status 0x%08X at %s flags %s" % \
+            (ex.name, hex_format(ex.code), 
+                hex_format(ntstatus_code),
+                ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
+                hex_format(address),
+                hex_format(ex.flags))
+    return ret
+
+exception_info_per_platform_type = {
+    'Linux': _exception_info_linux,
+    'Win32': _exception_info_win32,
+    'Windows NT': _exception_info_win32,
 }
