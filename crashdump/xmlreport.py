@@ -257,6 +257,8 @@ class XMLReport(object):
                 self._xml = etree.parse(self._filename)
             except IOError:
                 pass
+            except etree.XMLSyntaxError:
+                pass
 
     class XMLReportEntity(object):
         def __init__(self, owner):
@@ -933,7 +935,7 @@ if __name__ == '__main__':
     
     if xmlreport.exception is not None:
         print(xmlreport.exception.involved_modules)
-    print(xmlreport.exception.params)
+        print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
     dump_report(xmlreport, 'memory_regions')
