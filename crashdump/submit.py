@@ -363,14 +363,16 @@ class CrashDumpSubmit(Component):
 
         if result:
 
-            if crashobj['minidumpreportxmlfile']:
-                xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
-                xmlreport = XMLReport(xmlfile)
-            elif crashobj['coredumpreportxmlfile']:
-                xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
-                xmlreport = XMLReport(xmlfile)
-            else:
-                xmlreport = None
+            xmlreport = None
+            try:
+                if crashobj['minidumpreportxmlfile']:
+                    xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
+                    xmlreport = XMLReport(xmlfile)
+                elif crashobj['coredumpreportxmlfile']:
+                    xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
+                    xmlreport = XMLReport(xmlfile)
+            except XMLReport.XMLReportException as e:
+                return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s: %s' % (uuid, str(e)))
 
             new_crash = True if crashid is None else False
             if new_crash:

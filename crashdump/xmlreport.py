@@ -217,6 +217,23 @@ class XMLReport(object):
         'opengl_pbuffer_error',
         'rawdata'
         ]
+    
+    class XMLReportException(Exception):
+        def __init__(self, report, message):
+            super(XMLReport.XMLReportException, self).__init__(message)
+            self.report = report
+
+        def __str__(self):
+            return '%s(%s): %s' % (type(self).__name__, self.report._filename, self.message)
+
+
+    class XMLReportIOError(XMLReportException):
+        def __init__(self, report, message):
+            super(XMLReport.XMLReportIOError, self).__init__(report, message)
+
+    class XMLReportParserError(XMLReportException):
+        def __init__(self, report, message):
+            super(XMLReport.XMLReportParserError, self).__init__(report, message)
 
     @staticmethod
     def unique(items):
@@ -255,10 +272,10 @@ class XMLReport(object):
         if self._filename:
             try:
                 self._xml = etree.parse(self._filename)
-            except IOError:
-                pass
-            except etree.XMLSyntaxError:
-                pass
+            except IOError as e:
+                raise XMLReport.XMLReportIOError(self, str(e))
+            except etree.XMLSyntaxError as e:
+                raise XMLReport.XMLReportParserError(self, str(e))
 
     class XMLReportEntity(object):
         def __init__(self, owner):

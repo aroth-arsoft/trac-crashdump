@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
-from .utils import hex_format
+from crashdump.utils import hex_format
 
 _exception_code_names_linux = {
     1: 'SIGHUP',
