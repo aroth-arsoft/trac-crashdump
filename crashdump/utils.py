@@ -306,5 +306,13 @@ def format_memory_usagetype(usage):
         return 'Environment'
     elif usage == 6:
         return 'IP'
+    elif usage == 7:
+        return 'Process Heap Handles'
+    elif usage == 8:
+        return 'Process Heap'
+    elif usage == 9:
+        return 'TLS'
+    elif usage == 10:
+        return 'Thread info block'
     else:
         return 'unknown(%i)' % usage
