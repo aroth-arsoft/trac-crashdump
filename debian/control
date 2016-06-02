@@ -1,10 +1,11 @@
 Source: trac-crashdump
 Section: web
 Priority: optional
-Build-Depends: python-setuptools, python-all, debhelper (>= 9)
-Maintainer: Andreas Roth <aroth@arsoft-online.com>
-Standards-Version: 3.9.5
 Homepage: https://github.com/aroth-arsoft/trac-crashdump
+Maintainer: Andreas Roth <aroth@arsoft-online.com>
+Standards-Version: 3.9.7
+Build-Depends: debhelper (>= 9), python (>= 2.7), dh-python, python-setuptools
+X-Python-Version: >=2.7
 
 Package: trac-crashdump
 Architecture: all
