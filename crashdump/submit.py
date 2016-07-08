@@ -11,7 +11,8 @@ from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.config import Option, BoolOption, ChoiceOption, ListOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version
-from pkg_resources import resource_filename
+from trac.util import get_pkginfo
+from pkg_resources import resource_filename, get_distribution
 from uuid import UUID
 import os
 import shutil
@@ -67,12 +68,18 @@ class CrashDumpSubmit(Component):
     ignored_modules = Option('crashdump', 'ignore_modules', 'libc, kernel32, ntdll, user32, gdi32',
         """List of modules to ignore for component matching.""")
 
+    max_upload_size = Option('crashdump', 'max_upload_size', default=16 * 1024 * 1024,
+                      doc='Maximum allowed upload size')
+
     # IRequestHandler methods
     def match_request(self, req):
         if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
         elif req.method == 'GET' and (req.path_info == '/crashdump/list' or req.path_info == '/crashlist'):
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
+            return True
+        elif req.method == 'GET' and (req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
         else:
@@ -221,8 +228,27 @@ class CrashDumpSubmit(Component):
             return self.process_request_submit(req)
         elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist':
             return self.process_request_crashlist(req)
+        elif req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities':
+            return self.process_request_capabilities(req)
         else:
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Invalid request path %s.' % req.path_info)
+
+    def process_request_capabilities(self, req):
+        if req.method != "GET":
+            return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
+        user_agent = req.get_header('User-Agent')
+        if user_agent is None:
+            return self._error_response(req, status=HTTPForbidden.code, body='No user-agent specified.')
+
+
+        headers = {}
+        headers['Max-Upload-Size'] = self.max_upload_size
+        # This is a plain Python source file, not an egg
+        dist = get_distribution('TracCrashDump')
+        if dist:
+            headers['Crashdump-Plugin-Version'] = dist.version
+        body = 'OK'
+        return self._success_response(req, body=body.encode('utf-8'), headers=headers)
 
     def process_request_submit(self, req):
         if req.method != "POST":

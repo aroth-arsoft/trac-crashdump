@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name = 'TracCrashDump',
-    version = '0.21',
+    version = '0.22',
     packages = ['crashdump'],
     package_data = { 'crashdump': ['templates/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
 
@@ -15,6 +15,7 @@ setup(
     description = 'Simple crashdump management.',
     long_description = open(os.path.join(os.path.dirname(__file__), 'README')).read(),
     license = 'BSD',
+    platforms = ['Linux'],
     keywords = 'trac plugin crash dump',
     url = 'https://github.com/aroth-arsoft/trac-crashdump',
     classifiers = [
