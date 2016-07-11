@@ -79,6 +79,12 @@ class CrashDumpSubmit(Component):
         if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
+        elif req.method == 'GET' and (req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist'):
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
+            return True
+        elif req.method == 'GET' and (req.path_info == '/crashdump/submit/capabilities' or req.path_info == '/submit/capabilities'):
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
+            return True
         elif req.method == 'GET' and (req.path_info == '/crashdump/list' or req.path_info == '/crashlist'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
@@ -250,9 +256,9 @@ class CrashDumpSubmit(Component):
         self.log.debug('CrashDumpSubmit process_request: %s %s', req.method, req.path_info)
         if req.path_info == '/crashdump/submit' or req.path_info == '/submit':
             return self.process_request_submit(req)
-        elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist':
+        elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist' or req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist':
             return self.process_request_crashlist(req)
-        elif req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities':
+        elif req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities' or req.path_info == '/crashdump/submit/capabilities' or req.path_info == '/submit/capabilities':
             return self.process_request_capabilities(req)
         else:
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Invalid request path %s.' % req.path_info)
