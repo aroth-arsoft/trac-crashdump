@@ -8,7 +8,7 @@ from trac.util.datefmt import utc, to_utimestamp, parse_date
 from trac.web import IRequestHandler, IRequestFilter
 from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
 from trac.web.chrome import INavigationContributor, ITemplateProvider
-from trac.config import Option, BoolOption, ChoiceOption, ListOption
+from trac.config import Option, IntOption, BoolOption, PathOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version
 from trac.util import get_pkginfo
@@ -29,7 +29,7 @@ class CrashDumpSubmit(Component):
 
     implements(IRequestHandler, IRequestFilter, ITemplateProvider)
 
-    dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
+    dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='dumpdata',
                       doc='Path to the crash dump data directory.')
 
     default_priority = Option('crashdump', 'default_priority', default='major',
@@ -68,8 +68,11 @@ class CrashDumpSubmit(Component):
     ignored_modules = Option('crashdump', 'ignore_modules', 'libc, kernel32, ntdll, user32, gdi32',
         """List of modules to ignore for component matching.""")
 
-    max_upload_size = Option('crashdump', 'max_upload_size', default=16 * 1024 * 1024,
-                      doc='Maximum allowed upload size')
+    max_upload_size = IntOption('crashdump', 'max_upload_size', default=16 * 1024 * 1024,
+                      doc="""Maximum allowed upload size""")
+
+    upload_disabled = BoolOption('crashdump', 'upload_disabled', 'false',
+                      doc="""Disable upload. No further crashdumps can be submitted.""")
 
     # IRequestHandler methods
     def match_request(self, req):
@@ -85,10 +88,31 @@ class CrashDumpSubmit(Component):
         else:
             return False
 
-    def _error_response(self, req, status, body=None):
-        req.send_error(None, template='', content_type='text/plain', status=status, env=None, data=body)
+    def _error_response(self, req, status, body=None, content_type='text/plain', headers=None):
+
+        if isinstance(body, unicode):
+            body = body.encode('utf-8')
+
+        req.send_response(status)
+        req._outheaders = []
+        req.send_header('Cache-Control', 'must-revalidate')
+        req.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
+        req.send_header('Content-Type', content_type + ';charset=utf-8')
+        req.send_header('Content-Length', len(body))
+        if headers:
+            for k,v in headers.items():
+                req.send_header(k, v)
+        req._send_cookie_headers()
+
+        if req.method != 'HEAD':
+            req.write(body)
+        raise RequestDone
 
     def _success_response(self, req, body=None, content_type='text/plain', status=200, headers=None):
+
+        if isinstance(body, unicode):
+            body = body.encode('utf-8')
+
         req.send_response(status)
         req.send_header('Cache-Control', 'must-revalidate')
         req.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
@@ -240,14 +264,19 @@ class CrashDumpSubmit(Component):
         if user_agent is None:
             return self._error_response(req, status=HTTPForbidden.code, body='No user-agent specified.')
 
-
         headers = {}
         headers['Max-Upload-Size'] = self.max_upload_size
+        headers['Upload-Disabled'] = '1' if self.upload_disabled else '0'
+
         # This is a plain Python source file, not an egg
         dist = get_distribution('TracCrashDump')
         if dist:
             headers['Crashdump-Plugin-Version'] = dist.version
-        body = 'OK'
+            headers['Upload-Disabled'] = '1' if self.upload_disabled else '0'
+        if self.upload_disabled:
+            body = 'Disabled'
+        else:
+            body = 'OK'
         return self._success_response(req, body=body.encode('utf-8'), headers=headers)
 
     def process_request_submit(self, req):
@@ -262,9 +291,21 @@ class CrashDumpSubmit(Component):
         if user_agent != 'terra3d-crashuploader':
             return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent)
 
+        headers = {}
+        headers['Max-Upload-Size'] = self.max_upload_size
+        headers['Upload-Disabled'] = '1' if self.upload_disabled else '0'
+
+        if self.upload_disabled:
+            return self._error_response(req, status=HTTPInternalError.code, body='Crashdump upload has been disabled by the administrator.', headers=headers)
+
         id_str = req.args.get('id')
         if not id_str or not CrashDump.uuid_is_valid(id_str):
-            return self._error_response(req, status=HTTPForbidden.code, body='Invalid crash identifier %s specified.' % id_str)
+            return self._error_response(req, status=HTTPInternalError.code, body='Invalid crash identifier %s specified.' % id_str)
+
+        total_upload_size = self._get_total_upload_size(req)
+        self.log.debug('total_upload_size %i' % total_upload_size)
+        if total_upload_size > self.max_upload_size:
+            return self._error_response(req, status=HTTPInternalError.code, body='Upload size %i bytes exceed the upload limit of %i bytes' % (total_upload_size, self.max_upload_size), headers=headers)
 
         uuid = UUID(id_str)
         crashid = None
@@ -279,7 +320,7 @@ class CrashDumpSubmit(Component):
         # for easy testing
         force = True
         if crashid is not None and not force:
-            return self._error_response(req, status=HTTPForbidden.code, body='Crash identifier %s already uploaded.' % id_str)
+            return self._error_response(req, status=HTTPInternalError.code, body='Crash identifier %s already uploaded.' % id_str)
 
         ticket_str = req.args.get('ticket') or 'no'
 
@@ -318,7 +359,7 @@ class CrashDumpSubmit(Component):
             new_ticket = Ticket(env=self.env)
             ticketobjs = [ new_ticket ]
         else:
-            return self._error_response(req, status=HTTPForbidden.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
+            return self._error_response(req, status=HTTPInternalError.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
         
         #print('ticket_str=%s' % ticket_str)
         #print('ticketobjs=%s' % str(ticketobjs))
@@ -620,6 +661,25 @@ application was running as part of %(productname)s (%(productcodename)s) version
         if hasattr(os, 'O_BINARY'):
             flags += os.O_BINARY
         return os.fdopen(os.open(filename, flags, 0660), 'w')
+
+    def _get_total_upload_size(self, req):
+        ret = 0
+        files_fields = ['minidump', 'minidumpreport', 'minidumpreportxml', 'minidumpreporthtml',
+                        'coredump', 'coredumpreport', 'coredumpreportxml', 'coredumpreporthtml']
+
+        for name in files_fields:
+            file = req.args.get(name) if name in req.args else None
+            if file is None:
+                continue
+            if hasattr(file, 'fileno'):
+                size = os.fstat(file.fileno())[6]
+            else:
+                file.file.seek(0, 2) # seek to end of file
+                size = file.file.tell()
+                file.file.seek(0)
+            self.log.debug('found file name %s, size %i' % (name, size))
+            ret = ret + size
+        return ret
 
     def _store_dump_file(self, uuid, req, name, force):
         item_name = None
