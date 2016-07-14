@@ -1,3 +1,9 @@
+trac-crashdump (0.23) xenial; urgency=medium
+
+  * improve error handling and error messages
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 14 Jul 2016 08:24:33 +0200
+
 trac-crashdump (0.22) xenial; urgency=medium
 
   * fixed missing SOURCES.txt

@@ -69,7 +69,7 @@ class CrashDumpSubmit(Component):
         """List of modules to ignore for component matching.""")
 
     max_upload_size = IntOption('crashdump', 'max_upload_size', default=16 * 1024 * 1024,
-                      doc="""Maximum allowed upload size""")
+                      doc="""Maximum allowed upload size. If set to zero the upload limit is disabled and all uploads will be accepted.""")
 
     upload_disabled = BoolOption('crashdump', 'upload_disabled', 'false',
                       doc="""Disable upload. No further crashdumps can be submitted.""")
@@ -309,9 +309,11 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPInternalError.code, body='Invalid crash identifier %s specified.' % id_str)
 
         total_upload_size = self._get_total_upload_size(req)
-        self.log.debug('total_upload_size %i' % total_upload_size)
-        if total_upload_size > self.max_upload_size:
+        if self.max_upload_size > 0 and total_upload_size > self.max_upload_size:
+            self.log.debug('total_upload_size %i > max_upload_size %i' % (total_upload_size, self.max_upload_size) )
             return self._error_response(req, status=HTTPInternalError.code, body='Upload size %i bytes exceed the upload limit of %i bytes' % (total_upload_size, self.max_upload_size), headers=headers)
+        else:
+            self.log.debug('total_upload_size %i <= max_upload_size %i' % (total_upload_size, self.max_upload_size) )
 
         uuid = UUID(id_str)
         crashid = None
@@ -372,35 +374,40 @@ class CrashDumpSubmit(Component):
 
         # we require at least one crash dump file (either minidump or coredump)
         # and any number of report files
+        failure_message = None
         result = False
-        ok, crashobj['minidumpfile'] = self._store_dump_file(uuid, req, 'minidump', force)
+        ok, crashobj['minidumpfile'], errmsg = self._store_dump_file(uuid, req, 'minidump', force)
         if ok:
             result = True
-        ok, crashobj['minidumpreporttextfile'] = self._store_dump_file(uuid, req, 'minidumpreport', force)
-        ok, crashobj['minidumpreportxmlfile'] = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
-        ok, crashobj['minidumpreporthtmlfile'] = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
-        ok, crashobj['coredumpfile'] = self._store_dump_file(uuid, req, 'coredump', force)
+        elif failure_message is None:
+            failure_message = errmsg
+        ok, crashobj['minidumpreporttextfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreport', force)
+        ok, crashobj['minidumpreportxmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
+        ok, crashobj['minidumpreporthtmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
+        ok, crashobj['coredumpfile'], errmsg = self._store_dump_file(uuid, req, 'coredump', force)
         if ok:
             result = True
-        ok, crashobj['coredumpreporttextfile'] = self._store_dump_file(uuid, req, 'coredumpreport', force)
-        ok, crashobj['coredumpreportxmlfile'] = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
-        ok, crashobj['coredumpreporthtmlfile'] = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
+        elif failure_message is None:
+            failure_message = errmsg
+        ok, crashobj['coredumpreporttextfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreport', force)
+        ok, crashobj['coredumpreportxmlfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
+        ok, crashobj['coredumpreporthtmlfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
 
         crashobj['applicationfile'] = req.args.get('applicationfile')
 
-        self.log.debug('crashtimestamp from http form %s' % req.args.get('crashtimestamp'))
-        self.log.debug('reporttimestamp from http form %s' % req.args.get('reporttimestamp'))
+        self.log.debug('crashtimestamp from http form \'%s\'' % req.args.get('crashtimestamp'))
+        self.log.debug('reporttimestamp from http form \'%s\'' % req.args.get('reporttimestamp'))
 
         try:
-            crashtimestamp = parse_date(req.args.get('crashtimestamp'), hint='iso8601' )
+            crashtimestamp = parse_date(req.args.get('crashtimestamp', ''), hint='iso8601' )
         except TracError:
             crashtimestamp = None
-            self.log.warn('invalid crash timestamp %s' % (req.args.get('crashtimestamp')))
+            self.log.warn('invalid crash timestamp \'%s\'' % (req.args.get('crashtimestamp')))
         try:
-            reporttimestamp = parse_date(req.args.get('reporttimestamp'), hint='iso8601' )
+            reporttimestamp = parse_date(req.args.get('reporttimestamp', ''), hint='iso8601' )
         except TracError:
             reporttimestamp = None
-            self.log.warn('invalid crash report timestamp %s' % (req.args.get('reporttimestamp')))
+            self.log.warn('invalid crash report timestamp \'%s\'' % (req.args.get('reporttimestamp')))
 
         crashobj['crashtime'] = crashtimestamp if crashtimestamp else None
         crashobj['reporttime'] = reporttimestamp if reporttimestamp else None
@@ -587,7 +594,11 @@ application was running as part of %(productname)s (%(productcodename)s) version
             else:
                 return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
         else:
-            return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s' % uuid)
+            if failure_message is None:
+                body = 'Failed to process crash dump %s' % uuid
+            else:
+                body = 'The following occured while processing the crash dump %s: %s' % (uuid, failure_message)
+            return self._error_response(req, status=HTTPInternalError.code, body=body)
 
     def process_request_crashlist(self, req):
         if req.method != "GET":
@@ -691,7 +702,10 @@ application was running as part of %(productname)s (%(productcodename)s) version
         item_name = None
         ret = False
         file = req.args.get(name) if name in req.args else None
-        if file is not None:
+        errmsg = None
+        if file is None:
+            errmsg = 'Field %s not available'
+        else:
             filename = file.filename
             fileobj = file.file
             item_name = os.path.join(str(uuid), filename)
@@ -702,13 +716,38 @@ application was running as part of %(productname)s (%(productcodename)s) version
             self.log.debug('_store_dump_file crash_file %s' % (crash_file))
             if not os.path.isdir(crash_dir):
                 os.makedirs(crash_dir)
-            targetfileobj = self._create_crash_file(crash_file, force)
+
+            flags = os.O_CREAT + os.O_WRONLY
+            if force:
+                flags += os.O_TRUNC
+            else:
+                if os.path.isfile(crash_file):
+                    errmsg = 'File %s already exists.' % crash_file
+                    return (False, item_name, errmsg)
+                flags += os.O_EXCL
+            if hasattr(os, 'O_BINARY'):
+                flags += os.O_BINARY
+            targetfileobj = None
+            try:
+                targetfileobj = os.fdopen(os.open(crash_file, flags, 0660), 'w')
+            except OSError as e:
+                errmsg = str(e)
+            except IOError as e:
+                errmsg = str(e)
+
             if targetfileobj is None:
                 ret = False
+                if errmsg is None:
+                    errmsg = 'Cannot open file %s.' % crash_file
             else:
-                shutil.copyfileobj(fileobj, targetfileobj)
-                ret = True
-        return (ret, item_name)
+                try:
+                    shutil.copyfileobj(fileobj, targetfileobj)
+                    ret = True
+                except OSError as e:
+                    errmsg = str(e)
+                except IOError as e:
+                    errmsg = str(e)
+        return (ret, item_name, errmsg)
 
     def _get_dump_filename(self, crashobj, name):
         item_name = crashobj[name]
