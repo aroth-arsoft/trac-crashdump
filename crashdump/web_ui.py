@@ -21,7 +21,7 @@ from trac.web import (
 )
 from trac.ticket.model import Milestone, Ticket, group_milestones
 from trac.ticket.query import Query
-from trac.config import Option, BoolOption, ChoiceOption
+from trac.config import Option, PathOption
 from trac.attachment import AttachmentModule
 from trac.mimeview.api import Mimeview, IContentConverter
 from trac.resource import (
@@ -53,8 +53,8 @@ class CrashDumpModule(Component):
     implements(IRequestHandler, IRequestFilter, ITemplateStreamFilter,
                ITemplateProvider)
 
-    dumpdata_dir = Option('crashdump', 'dumpdata_dir', default='dumpdata',
-                      doc='Path to the crash dump data directory.')
+    dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='../dumpdata',
+                      doc='Path to the crash dump data directory relative to the environment conf directory.')
 
     crashlink_query = Option('crashdump', 'crashlink_query',
         default='?status=!closed',
@@ -236,17 +236,24 @@ class CrashDumpModule(Component):
             xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
         data['xmlfile_from_db'] = xmlfile_from_db
         data['xmlfile'] = xmlfile
+        data['xmlfile_error'] = None
         data['show_debug_info'] = True
         data['parsetime'] = 0
         data['is_64_bit'] = False
         if xmlfile:
             start = time.time()
-            xmlreport = XMLReport(xmlfile)
-            for f in xmlreport.fields:
-                data[f] = getattr(xmlreport, f)
+            if os.path.isfile(xmlfile):
+                try:
+                    xmlreport = XMLReport(xmlfile)
+                    for f in xmlreport.fields:
+                        data[f] = getattr(xmlreport, f)
+                    data['is_64_bit'] = xmlreport.is_64_bit
+                except XMLReportIOError as e:
+                    data['xmlfile_error'] = str(e)
+            else:
+                data['xmlfile_error'] = 'XML file %s does not exist' % xmlfile
             end = time.time()
             data['parsetime'] = end - start
-            data['is_64_bit'] = xmlreport.is_64_bit
         data['bits'] = 64 if data['is_64_bit'] else 32
         return data
 

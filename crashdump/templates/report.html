@@ -39,11 +39,13 @@
                 (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
                 </span>
             </h2>
-
-
 <table class="properties">
-<h2></h2>
 <tr>
+<py:if test="xmlfile_error">
+<tr>
+<th>Error:</th><td colspan="3">${xmlfile_error}</td>
+</tr>
+</py:if>
 <th>Reported by:</th><td>${object['reporter']}</td>
 <th>Owned by:</th><td>${object['owner']}</td>
 </tr>

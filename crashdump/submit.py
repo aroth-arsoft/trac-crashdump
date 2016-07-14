@@ -29,8 +29,8 @@ class CrashDumpSubmit(Component):
 
     implements(IRequestHandler, IRequestFilter, ITemplateProvider)
 
-    dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='dumpdata',
-                      doc='Path to the crash dump data directory.')
+    dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='../dumpdata',
+                      doc='Path to the crash dump data directory relative to the environment conf directory.')
 
     default_priority = Option('crashdump', 'default_priority', default='major',
                       doc='Default priority for submitted crash reports.')
@@ -711,6 +711,9 @@ application was running as part of %(productname)s (%(productcodename)s) version
             item_name = os.path.join(str(uuid), filename)
             crash_dir = os.path.join(self.env.path, self.dumpdata_dir, str(uuid))
             crash_file = os.path.join(crash_dir, filename)
+            self.log.debug('_store_dump_file env.path %s' % (self.env.path))
+            self.log.debug('_store_dump_file self.dumpdata_dir %s' % (self.dumpdata_dir))
+            
             self.log.debug('_store_dump_file item_name %s' % (item_name))
             self.log.debug('_store_dump_file crash_dir %s' % (crash_dir))
             self.log.debug('_store_dump_file crash_file %s' % (crash_file))

@@ -61,7 +61,7 @@ schema = [
     ],
     Table('crashdump_change', key=('crash', 'time', 'field'))[
         Column('crash', type='int'),
-        Column('time', type='int'),
+        Column('time', type='int64'),
         Column('author', size=256),
         Column('field', size=64),
         Column('oldvalue'),
