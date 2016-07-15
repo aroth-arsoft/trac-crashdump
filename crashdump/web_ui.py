@@ -65,6 +65,7 @@ class CrashDumpModule(Component):
             (''since 0.12'')""")
 
     crashdump_fields = set(['_crash'])
+    crashdump_uuid_fields = set(['_crash_uuid'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
     crashdump_link_fields = set(['linked_crash'])
     crashdump_ticket_fields = set(['linked_tickets'])
@@ -86,6 +87,9 @@ class CrashDumpModule(Component):
                     for f in self.crashdump_fields:
                         if field['name'] == f and data['ticket'][f]:
                             field['rendered'] = self._link_crash(req, data['ticket'][f])
+                    for f in self.crashdump_uuid_fields:
+                        if field['name'] == f and data['ticket'][f]:
+                            field['rendered'] = self._link_crash(req, data['ticket'][f], show_uuid=True)
                     for f in self.crashdump_link_fields:
                         if field['name'] == f and data['ticket'][f]:
                             field['rendered'] = self._link_crashes_by_id(req, data['ticket'][f])
@@ -96,6 +100,9 @@ class CrashDumpModule(Component):
                         for f in self.crashdump_fields:
                             if f in ticket:
                                 ticket[f] = self._link_crash(req, ticket[f])
+                        for f in self.crashdump_uuid_fields:
+                            if f in ticket:
+                                ticket[f] = self._link_crash(req, ticket[f], show_uuid=True)
                         for f in self.crashdump_ticket_fields:
                             if f in ticket:
                                 ticket[f] = self._link_tickets(req, ticket[f])
@@ -112,6 +119,11 @@ class CrashDumpModule(Component):
                                     self.log.debug('got cell header %s' % str(cell.get('header', {}).get('col')))
                                     if cell.get('header', {}).get('col') in self.crashdump_fields:
                                         cell['value'] = self._link_crash(req, cell['value'])
+                                        cell['header']['hidden'] = False
+                                        cell['header']['title'] = 'Crashdump'
+                                        self.log.debug('got crash cell %s' % str(cell))
+                                    elif cell.get('header', {}).get('col') in self.crashdump_uuid_fields:
+                                        cell['value'] = self._link_crash(req, cell['value'], show_uuid=True)
                                         cell['header']['hidden'] = False
                                         cell['header']['title'] = 'Crashdump'
                                         self.log.debug('got crash cell %s' % str(cell))
@@ -231,17 +243,41 @@ class CrashDumpModule(Component):
         if crashobj['minidumpreportxmlfile']:
             xmlfile_from_db = crashobj['minidumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
+            reporttextfile = self._get_dump_filename(crashobj, 'minidumpreporttextfile')
+            reporthtmlfile = self._get_dump_filename(crashobj, 'minidumpreporthtmlfile')
+            dumpfile = self._get_dump_filename(crashobj, 'minidumpfile')
         elif crashobj['coredumpreportxmlfile']:
             xmlfile_from_db = crashobj['coredumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
+            reporttextfile = self._get_dump_filename(crashobj, 'coredumpreporttextfile')
+            reporthtmlfile = self._get_dump_filename(crashobj, 'coredumpreporthtmlfile')
+            dumpfile = self._get_dump_filename(crashobj, 'coredumpfile')
         data['xmlfile_from_db'] = xmlfile_from_db
         data['xmlfile'] = xmlfile
         data['xmlfile_error'] = None
+        data['minidump_xml_size'] = 0
+        data['coredump_xml_size'] = 0
         data['show_debug_info'] = True
         data['parsetime'] = 0
         data['is_64_bit'] = False
         if xmlfile:
             start = time.time()
+            try:
+                data['dumpfile_size'] = os.path.getsize(dumpfile)
+            except OSError:
+                pass
+            try:
+                data['xmlfile_size'] = os.path.getsize(xmlfile)
+            except OSError:
+                pass
+            try:
+                data['reporttextfile_size'] = os.path.getsize(reporttextfile)
+            except OSError:
+                pass
+            try:
+                data['reporthtmlfile_size'] = os.path.getsize(reporthtmlfile)
+            except OSError:
+                pass
             if os.path.isfile(xmlfile):
                 try:
                     xmlreport = XMLReport(xmlfile)
@@ -486,17 +522,27 @@ class CrashDumpModule(Component):
         else:
             return None
 
-    def _link_crash(self, req, uuid):
+    def _link_crash(self, req, uuid, show_uuid=False):
         ret = None
         try:
             crash = CrashDump(env=self.env, uuid=uuid)
-            ret = \
-                tag.a(
-                    'CrashId#%i' % crash.id,
-                    class_=crash['status'],
-                    href=req.href('crash', crash['uuid']),
-                    title=crash['uuid']
-                )
+            if show_uuid:
+                ret = \
+                    tag.a(
+                        str(crash['uuid']),
+                        class_=crash['status'],
+                        href=req.href('crash', crash['uuid']),
+                        title='CrashId#%i (%s)' % (crash.id, crash['uuid']),
+                        style="white-space: nowrap"
+                    )
+            else:
+                ret = \
+                    tag.a(
+                        'CrashId#%i' % crash.id,
+                        class_=crash['status'],
+                        href=req.href('crash', crash['uuid']),
+                        title=crash['uuid']
+                    )
         except ResourceNotFound:
             pass
         return ret

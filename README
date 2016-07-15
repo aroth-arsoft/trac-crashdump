@@ -2,7 +2,7 @@ Notes
 =====
 Adds simple crash management for Trac.
 
-Note: TracCrashDump 0.8 requires Trac 0.12 or higher.
+Note: TracCrashDump requires Trac 0.12 or higher.
 
 The following report can be used for crashes group by product and version:
 

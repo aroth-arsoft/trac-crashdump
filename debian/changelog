@@ -1,3 +1,10 @@
+trac-crashdump (0.25) xenial; urgency=medium
+
+  * show size of download files in tooltip
+  * add report to show the crash uuid
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Fri, 15 Jul 2016 07:24:59 +0200
+
 trac-crashdump (0.24) xenial; urgency=medium
 
   * fixed wrong dumpdata dir
