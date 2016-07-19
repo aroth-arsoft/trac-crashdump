@@ -550,6 +550,9 @@ from **%(uploadhostname)s** is already linked to this ticket.
                 if new_ticket is not None:
                     new_ticket['type'] = self.default_ticket_type
                     new_ticket['summary'] = "Crash %(uuid)s in %(app)s" % values
+                    comment = """The crash [[/crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
+from **%(uploadhostname)s** and this ticket has been automatically created to track the progress in finding and resolving the cause of the crash.
+""" % values
                     new_ticket['description'] = comment
                     # copy over some fields from the crash itself
                     for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',

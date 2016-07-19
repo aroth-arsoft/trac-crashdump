@@ -1,3 +1,9 @@
+trac-crashdump (0.26) xenial; urgency=medium
+
+  * fixed issue when creating new ticket for crash
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 19 Jul 2016 08:07:56 +0200
+
 trac-crashdump (0.25) xenial; urgency=medium
 
   * show size of download files in tooltip
