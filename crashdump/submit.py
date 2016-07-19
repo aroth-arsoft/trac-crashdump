@@ -328,7 +328,11 @@ class CrashDumpSubmit(Component):
         # for easy testing
         force = True
         if crashid is not None and not force:
-            return self._error_response(req, status=HTTPInternalError.code, body='Crash identifier %s already uploaded.' % id_str)
+            headers = {}
+            headers['Crash-URL'] = req.abs_href('crash', str(uuid))
+            headers['CrashId'] = str(crashid)
+            self.log.debug('crash %s already uploaded %s' % (uuid, self.headers['Crash-URL']) )
+            return self._error_response(req, status=HTTPInternalError.code, body='Crash identifier %s already uploaded.' % id_str, headers=headers)
 
         ticket_str = req.args.get('ticket') or 'no'
 
@@ -592,7 +596,10 @@ application was running as part of %(productname)s (%(productcodename)s) version
             elif new_crash:
                 return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
-                return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid)
+                headers = {}
+                headers['Crash-URL'] = req.abs_href('crash', str(uuid))
+                headers['CrashId'] = str(crashid)
+                return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid, headers=headers)
         else:
             if failure_message is None:
                 body = 'Failed to process crash dump %s' % uuid
