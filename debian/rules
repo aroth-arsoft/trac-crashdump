@@ -10,6 +10,7 @@ export PYBUILD_NAME=trac-crashdump
 override_dh_clean:
 	dh_clean
 	[ -d *.egg-info ] && rm -rf *.egg-info || true
+	[ -d dist ] && rm -rf dist || true
 
 override_dh_fixperms:
 	cp *.egg-info/SOURCES.txt $(shell readlink -f debian/$(PYBUILD_NAME)/usr/lib/python*/dist-packages/*.egg-info)/SOURCES.txt
