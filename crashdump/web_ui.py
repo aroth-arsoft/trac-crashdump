@@ -257,6 +257,10 @@ class CrashDumpModule(Component):
         data['xmlfile_error'] = None
         data['minidump_xml_size'] = 0
         data['coredump_xml_size'] = 0
+        data['dumpfile_size'] = 0
+        data['xmlfile_size'] = 0
+        data['reporttextfile_size'] = 0
+        data['reporthtmlfile_size'] = 0
         data['show_debug_info'] = True
         data['parsetime'] = 0
         data['is_64_bit'] = False

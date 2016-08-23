@@ -284,6 +284,7 @@ def format_trust_level(tl):
 _suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def format_size(nbytes):
     if nbytes == 0: return '0 B'
+    elif nbytes is None: return 'None'
     i = 0
     while nbytes >= 1024 and i < len(_suffixes)-1:
         nbytes /= 1024.
