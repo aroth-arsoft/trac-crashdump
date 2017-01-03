@@ -11,13 +11,12 @@ from datetime import datetime
 class CrashDumpTicketLinks(object):
     """A model for the ticket to crash links used TracCrashDump."""
 
-    def __init__(self, env, tkt, db=None):
+    def __init__(self, env, tkt, db):
         self.env = env
         if not isinstance(tkt, Ticket):
             tkt = Ticket(self.env, tkt)
         self.tkt = tkt
 
-        db = db or self.env.get_db_cnx()
         cursor = db.cursor()
 
         cursor.execute('SELECT crash FROM crashdump_ticket WHERE ticket=%s ORDER BY crash', (self.tkt.id,))
@@ -32,7 +31,7 @@ class CrashDumpTicketLinks(object):
 
         handle_commit = False
         if db is None:
-            db = self.env.get_db_cnx()
+            raise RuntimeError("need to pass db parameter")
             handle_commit = True
         cursor = db.cursor()
 

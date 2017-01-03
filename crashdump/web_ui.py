@@ -175,46 +175,47 @@ class CrashDumpModule(Component):
     def pre_process_request(self, req, handler):
         return handler
 
-    def post_process_request(self, req, template, data, content_type):
+    def post_process_request(self, req, template, data, content_type, method=None):
         if req.path_info.startswith('/ticket/'):
             # In case of an invalid ticket, the data is invalid
             if not data:
                 return template, data, content_type
             tkt = data['ticket']
-            links = CrashDumpTicketLinks(self.env, tkt)
+            with self.env.db_query as db:
+                links = CrashDumpTicketLinks(self.env, tkt, db=db)
 
-            for change in data.get('changes', {}):
-                if not change.has_key('fields'):
-                    continue
-                for field, field_data in change['fields'].iteritems():
-                    if field in self.crashdump_link_fields:
-                        if field_data['new'].strip():
-                            new = set([int(n) for n in field_data['new'].split(',')])
-                        else:
-                            new = set()
-                        if field_data['old'].strip():
-                            old = set([int(n) for n in field_data['old'].split(',')])
-                        else:
-                            old = set()
-                        add = new - old
-                        sub = old - new
-                        elms = tag()
-                        if add:
-                            elms.append(
-                                tag.em(u', '.join([unicode(n) for n in sorted(add)]))
-                            )
-                            elms.append(u' added')
-                        if add and sub:
-                            elms.append(u'; ')
-                        if sub:
-                            elms.append(
-                                tag.em(u', '.join([unicode(n) for n in sorted(sub)]))
-                            )
-                            elms.append(u' removed')
-                        field_data['rendered'] = elms
-                        links.crashes = new
+                for change in data.get('changes', {}):
+                    if not change.has_key('fields'):
+                        continue
+                    for field, field_data in change['fields'].iteritems():
+                        if field in self.crashdump_link_fields:
+                            if field_data['new'].strip():
+                                new = set([int(n) for n in field_data['new'].split(',')])
+                            else:
+                                new = set()
+                            if field_data['old'].strip():
+                                old = set([int(n) for n in field_data['old'].split(',')])
+                            else:
+                                old = set()
+                            add = new - old
+                            sub = old - new
+                            elms = tag()
+                            if add:
+                                elms.append(
+                                    tag.em(u', '.join([unicode(n) for n in sorted(add)]))
+                                )
+                                elms.append(u' added')
+                            if add and sub:
+                                elms.append(u'; ')
+                            if sub:
+                                elms.append(
+                                    tag.em(u', '.join([unicode(n) for n in sorted(sub)]))
+                                )
+                                elms.append(u' removed')
+                            field_data['rendered'] = elms
+                            links.crashes = new
 
-        return template, data, content_type
+        return template, data, content_type, method
 
     def _prepare_data(self, req, crashobj, absurls=False):
         data = {'object': crashobj,

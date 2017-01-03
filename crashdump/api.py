@@ -8,7 +8,7 @@ import copy
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
-from trac.perm import IPermissionRequestor, PermissionCache, PermissionSystem
+from trac.perm import IPermissionRequestor, PermissionSystem
 from trac.ticket.api import ITicketChangeListener
 from trac.resource import Resource, ResourceNotFound
 from trac.util.compat import set, sorted
@@ -31,7 +31,8 @@ class CrashDumpSystem(Component):
     restrict_owner = True
 
     def environment_created(self):
-        self._upgrade_db(self.env.get_db_cnx())
+        with self.env.db_transaction as db:
+            self._upgrade_db(db)
 
     def environment_needs_upgrade(self, db):
         schema_ver = db_default.get_current_schema_version(db)
@@ -104,17 +105,10 @@ class CrashDumpSystem(Component):
         return copy.deepcopy(self.custom_fields)
 
     @cached
-    def custom_fields(self, db):
+    def custom_fields(self):
         """Return the list of custom crash fields available for crashes."""
         fields = []
         return fields
-
-    def get_crash_field_labels(self):
-        """Produce a (name,label) mapping from `get_crash_fields`."""
-        labels = dict((f['name'], f['label'])
-                      for f in self.get_crash_fields())
-        labels['attachment'] = _("Attachment")
-        return labels
 
     def get_crash_fields(self):
         """Returns list of fields available for tickets.
@@ -124,7 +118,9 @@ class CrashDumpSystem(Component):
         It may in addition contain the 'custom' key, the 'optional' and the
         'options' keys. When present 'custom' and 'optional' are always `True`.
         """
-        fields = copy.deepcopy(self.fields)
+        fields = {}
+        with self.env.db_query as db:
+            fields = copy.deepcopy(self.fields)
         label = 'label' # workaround gettext extraction bug
         for f in fields:
             f[label] = gettext(f[label])
@@ -135,7 +131,7 @@ class CrashDumpSystem(Component):
         del self.fields
 
     @cached
-    def fields(self, db):
+    def fields(self):
         """Return the list of fields available for crashes."""
         from trac.ticket import model
 
@@ -198,7 +194,7 @@ class CrashDumpSystem(Component):
                    ('severity', N_('Severity'), model.Severity),
                    ('resolution', N_('Resolution'), model.Resolution)]
         for name, label, cls in selects:
-            options = [val.name for val in cls.select(self.env, db=db)]
+            options = [val.name for val in cls.select(self.env)]
             if not options:
                 # Fields without possible values are treated as if they didn't
                 # exist
@@ -287,49 +283,48 @@ class CrashDumpSystem(Component):
         self.ticket_changed(tkt, '', tkt['reporter'], {})
 
     def ticket_changed(self, tkt, comment, author, old_values):
-        db = self.env.get_db_cnx()
-        links = self._prepare_links(tkt, db)
-        links.save(author, comment, tkt.time_changed, db)
-        from .model import CrashDump
-        if tkt['status'] == 'closed':
-            for crashid in links.crashes:
-                try:
-                    crashobj = CrashDump(env=self.env, id=crashid)
-                except ResourceNotFound:
-                    crashobj = None
-                    # No such component exists
-                    pass
-                if crashobj is not None and crashobj['status'] != 'closed':
-                    all_ticket_for_crash = CrashDumpTicketLinks.tickets_for_crash(db, crashid)
-                    all_tickets_closed = True
-                    for crash_tkt_id in all_ticket_for_crash:
-                        if crash_tkt_id == tkt.id:
-                            continue
-                        else:
-                            try:
-                                t = Ticket(self.env, crash_tkt_id)
-                                if t['status'] != 'closed':
-                                    all_tickets_closed = False
-                                    break
-                            except ResourceNotFound:
-                                # No such component exists
-                                pass
-                    if all_tickets_closed:
-                        crashobj['closetime'] = tkt.time_changed
-                        crashobj['resolution'] = tkt['resolution']
-                        crashobj['status'] = 'closed'
-                        crashobj.save_changes(author=author, comment=comment, when=tkt.time_changed, db=db)
+        with self.env.db_transaction as db:
+            links = self._prepare_links(tkt, db)
+            links.save(author, comment, tkt.time_changed, db)
+            from .model import CrashDump
+            if tkt['status'] == 'closed':
+                for crashid in links.crashes:
+                    try:
+                        crashobj = CrashDump(env=self.env, id=crashid)
+                    except ResourceNotFound:
+                        crashobj = None
+                        # No such component exists
+                        pass
+                    if crashobj is not None and crashobj['status'] != 'closed':
+                        all_ticket_for_crash = CrashDumpTicketLinks.tickets_for_crash(db, crashid)
+                        all_tickets_closed = True
+                        for crash_tkt_id in all_ticket_for_crash:
+                            if crash_tkt_id == tkt.id:
+                                continue
+                            else:
+                                try:
+                                    t = Ticket(self.env, crash_tkt_id)
+                                    if t['status'] != 'closed':
+                                        all_tickets_closed = False
+                                        break
+                                except ResourceNotFound:
+                                    # No such component exists
+                                    pass
+                        if all_tickets_closed:
+                            crashobj['closetime'] = tkt.time_changed
+                            crashobj['resolution'] = tkt['resolution']
+                            crashobj['status'] = 'closed'
+                            crashobj.save_changes(author=author, comment=comment, when=tkt.time_changed, db=db)
 
-        db.commit()
+            db.commit()
 
     def ticket_deleted(self, tkt):
-        db = self.env.get_db_cnx()
+        with self.env.db_transaction as db:
+            links = CrashDumpTicketLinks(self.env, tkt, db)
+            links.crashes = set()
+            links.save('trac', 'Ticket #%s deleted'%tkt.id, when=None, db=db)
 
-        links = CrashDumpTicketLinks(self.env, tkt, db)
-        links.crashes = set()
-        links.save('trac', 'Ticket #%s deleted'%tkt.id, when=None, db=db)
-
-        db.commit()
+            db.commit()
 
     # Internal methods
     def _prepare_links(self, tkt, db):

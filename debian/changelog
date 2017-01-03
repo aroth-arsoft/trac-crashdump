@@ -1,3 +1,9 @@
+trac-crashdump (0.27) yakkety; urgency=medium
+
+  * adjustments for trac 1.2
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 03 Jan 2017 15:34:20 +0100
+
 trac-crashdump (0.26) xenial; urgency=medium
 
   * fixed issue when creating new ticket for crash

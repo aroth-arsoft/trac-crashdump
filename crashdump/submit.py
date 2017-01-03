@@ -250,7 +250,7 @@ class CrashDumpSubmit(Component):
         return handler
 
     def post_process_request(self, req, template, data, content_type, method=None):
-        True
+        return template, data, content_type, method
 
     def process_request(self, req):
         self.log.debug('CrashDumpSubmit process_request: %s %s', req.method, req.path_info)
@@ -581,7 +581,7 @@ application was running as part of %(productname)s (%(productcodename)s) version
                         tkt_obj.save_changes(author=crashobj['reporter'], comment=comment)
                     
                         linked_tickets.add(tkt_obj.id)
-                        links = CrashDumpTicketLinks(self.env, tkt=tkt_obj)
+                        links = CrashDumpTicketLinks(self.env, tkt=tkt_obj, db=tkt_obj.db)
                         links.crashes.add(crashid)
                         links.save(author=crashobj['reporter'])
 
