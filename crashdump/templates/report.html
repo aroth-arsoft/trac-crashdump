@@ -8,10 +8,17 @@
   <xi:include href="layout.html" />
   <head>
     <title>CrashId#${object.id} - ${object['uuid']}</title>
-    <script type="text/javascript" py:choose="">
+    <script type="text/javascript">
+    function extra_click(node, expanded) {
+        if (expanded == true) {
+            var url = window.location.href;
+            $( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+            alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+        }
+    }
       jQuery(document).ready(function($) {
         $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
-        $(".foldable").enableFolding(false, true);
+        $(".foldable").delayLoadFolding(false, true, extra_click);
       });
     </script>
   </head>
@@ -142,6 +149,12 @@
 </div>
 
 <py:if test="system_info">
+
+<div id="late_sysinfo" class="collapsed">
+<h2 class="foldable" id='late_sysinfo'>Late System information</h2>
+<div id="placeholder"></div>
+</div>
+
 <div id="crashdump">
 <h2 class="foldable">System information</h2>
 <a name="system_info"/>

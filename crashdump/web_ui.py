@@ -349,6 +349,7 @@ class CrashDumpModule(Component):
             add_script_data(req, {'comments_prefs': self._get_prefs(req)})
             add_stylesheet(req, 'crashdump/crashdump.css')
             add_script(req, 'common/js/folding.js')
+            add_script(req, 'crashdump/crashdump.js')
 
             return 'report.html', data, None
         elif action == 'minidump_raw':
