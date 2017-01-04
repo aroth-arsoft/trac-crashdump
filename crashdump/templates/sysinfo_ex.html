@@ -27,7 +27,31 @@
     <tr py:if="processstatuswin32.desktop_name"><td>Desktop name</td><td class="fullrow">${processstatuswin32.desktop_name}</td></tr>
     <tr py:if="processstatuswin32.session_id"><td>Session id</td><td class="fullrow">${processstatuswin32.session_id}</td></tr>
 </py:if>
-<py:if test="not fast_protect_system_info and not processstatuswin32">
+<py:if test="processstatuslinux">
+    <tr><td>Process name</td><td class="fullrow">${processstatuslinux.name} (state ${processstatuslinux.state})</td></tr>
+    <tr><td>Process id</td><td class="fullrow">${processstatuslinux.pid} (parent ${processstatuslinux.parent_pid})</td></tr>
+    <tr><td>User id</td><td class="fullrow">${processstatuslinux.real_uid}, ${processstatuslinux.real_gid}</td></tr>
+    <tr><td>User groups</td><td class="fullrow">
+    <ol py:if="processstatuslinux.supplement_groups">
+        <py:for each="grp in processstatuslinux.supplement_groups"><li>${grp}</li></py:for>
+    </ol>
+    </td></tr>
+
+    <tr><td>VM peak</td><td class="fullrow">${format_size(processstatuslinux.vmpeak)}</td></tr>
+    <tr><td>VM size</td><td class="fullrow">${format_size(processstatuslinux.vmsize)}</td></tr>
+    <tr><td>VM locked</td><td class="fullrow">${format_size(processstatuslinux.vmlocked)}</td></tr>
+    <tr><td>VM pinned</td><td class="fullrow">${format_size(processstatuslinux.vmpinned)}</td></tr>
+    <tr><td>VM RSS</td><td class="fullrow">${format_size(processstatuslinux.vmresidentsetsize)}</td></tr>
+    <tr><td>VM data</td><td class="fullrow">${format_size(processstatuslinux.vmdata)}</td></tr>
+    <tr><td>VM stack</td><td class="fullrow">${format_size(processstatuslinux.vmstack)}</td></tr>
+    <tr><td>VM executable</td><td class="fullrow">${format_size(processstatuslinux.vmexe)}</td></tr>
+    <tr><td>VM library</td><td class="fullrow">${format_size(processstatuslinux.vmlib)}</td></tr>
+    <tr><td>VM PTE</td><td class="fullrow">${processstatuslinux.vmpte}</td></tr>
+    <tr><td>VM swap</td><td class="fullrow">${format_size(processstatuslinux.vmswap)}</td></tr>
+    <tr><td>Number of threads</td><td class="fullrow">${processstatuslinux.num_threads}</td></tr>
+    <tr><td>Context switches</td><td class="fullrow">${processstatuslinux.voluntary_context_switches} voluntary, ${processstatuslinux.nonvoluntary_context_switches} non-voluntary</td></tr>
+</py:if>
+<py:if test="not fast_protect_system_info and not processstatuswin32 and not processstatuslinux">
     <tr><td class="fullrow">No additional system information available in this crashdump.</td></tr>
 </py:if>
 </table>
