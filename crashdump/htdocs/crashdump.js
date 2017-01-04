@@ -13,11 +13,16 @@
       // Use first child <a> as a trigger, or generate a trigger from the text
       var trigger = $(this).children("a").eq(0);
       if (trigger.length == 0) {
-        trigger = $("<a" + (snap? " id='dno" + count + "'": "")
+        trigger = $("<a" + (snap? " class='delay_folding' id='dno" + count + "'": "")
             + " href='#dno" + count + "'></a>");
         trigger.html($(this).html());
         $(this).text("");
         $(this).append(trigger);
+        $(this.parentNode).append("<div id='placeholder'></div>");
+        var expanded = snap && !$(this.parentNode).hasClass("collapsed");
+        if(expanded == true) {
+            click_func(this.parentNode, expanded);
+        }
       }
 
       trigger.click(function() {

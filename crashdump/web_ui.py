@@ -167,7 +167,13 @@ class CrashDumpModule(Component):
                 req.args['crashid'], action  = match.groups()
                 ret = True
         if ret:
-            req.args['action'] = action[1:] if action else None
+            if action:
+                e = action[1:].split('/')
+                req.args['action'] = e[0]
+                req.args['params'] = e[1:] if len(e) > 1 else None
+            else:
+                req.args['action'] = None
+                req.args['params'] = None
         self.log.debug('match_request %s' % str(req.args))
         return ret
 
@@ -324,6 +330,7 @@ class CrashDumpModule(Component):
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
         action = req.args.get('action') or 'view'
+        params = req.args.get('params')
         if action == 'view':
             data = self._prepare_data(req, crashobj)
             
@@ -338,6 +345,7 @@ class CrashDumpModule(Component):
 
             field_changes = {}
             data.update({'action': action,
+                         'params': params,
                         # Store a timestamp for detecting "mid air collisions"
                         'start_time': crashobj['changetime'],
                         'linked_tickets':linked_tickets
@@ -346,12 +354,24 @@ class CrashDumpModule(Component):
             self._insert_crashdump_data(req, crashobj, data,
                                     get_reporter_id(req, 'author'), field_changes)
 
-            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
-            add_stylesheet(req, 'crashdump/crashdump.css')
-            add_script(req, 'common/js/folding.js')
-            add_script(req, 'crashdump/crashdump.js')
+            if params is None:
+                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                add_stylesheet(req, 'crashdump/crashdump.css')
+                add_script(req, 'common/js/folding.js')
+                add_script(req, 'crashdump/crashdump.js')
 
-            return 'report.html', data, None
+                return 'report.html', data, None
+            else:
+                if params[0] in ['sysinfo', 'sysinfo_ex', 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
+                    return params[0] + '.html', data, None
+                elif params[0] == 'memory_block':
+                    data.update({'selected_memory_block_base': int(params[1]) })
+                    return 'memory_block.html', data, None
+                elif params[0] == 'stackdump':
+                    data.update({'selected_stackdump_threadid': int(params[1]) })
+                    return 'stackdump.html', data, None
+                else:
+                    raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':

@@ -1,0 +1,36 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<tr>
+<th>Base address</th>
+<th>Size</th>
+<th>Usage</th>
+<th>Alloc base</th>
+<th>Alloc protect</th>
+<th>Type</th>
+<th>Protect</th>
+<th>State</th>
+</tr>
+<py:for each="memory_region in memory_regions">
+<tr>
+<td>${ hex_format(memory_region.base_addr) }</td>
+<td>${ format_size(memory_region.size) } </td>
+<td>
+<ol py:if="memory_region.usage">
+    <py:for each="m in memory_region.usage"><li>
+        <a py:if="m.threadid" href="#thread_${m.threadid}" title="Go to thread ${ hex_format(m.threadid) }">Thread ${ hex_format(m.threadid) }&nbsp;-&nbsp;${ format_memory_usagetype(m.usagetype) }</a>
+        <div py:if="not m.threadid">${ format_memory_usagetype(m.usagetype) }</div>
+    </li></py:for>
+</ol>
+<div py:if="not memory_region.usage">N/A</div>
+</td>
+<td>${ hex_format(memory_region.alloc_base) }</td>
+<td>${ hex_format(memory_region.alloc_prot) }</td>
+<td>${ hex_format(memory_region.type) }</td>
+<td>${ hex_format(memory_region.protect) }</td>
+<td>${ hex_format(memory_region.state) }</td>
+</tr>
+</py:for>
+</table>

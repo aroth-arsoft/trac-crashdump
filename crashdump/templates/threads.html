@@ -1,0 +1,33 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<tr>
+<th>Id</th>
+<th>Name</th>
+<th>Memory</th>
+<th>Start address</th>
+<th>Create time</th>
+<th>Exit time</th>
+<th>Kernel time</th>
+<th>User time</th>
+<th>CPU affinity</th>
+</tr>
+<py:for each="thread in threads">
+<tr>
+<td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.mainthread">@</py:if><py:if test="thread.exception">*</py:if></a></td>
+<td>${ thread.name if thread.name else 'N/A' }</td>
+<td>
+    <py:if test="thread.memory"><a href="#memory_block_${thread.memory}">${ hex_format(thread.memory) }</a></py:if>
+    <py:if test="not thread.mainthread">N/A</py:if>
+</td>
+<td>${ hex_format(thread.start_addr) }</td>
+<td>${pretty_dateinfo(thread.create_time) if thread.create_time else 'N/A'}</td>
+<td>${pretty_dateinfo(thread.exit_time) if thread.exit_time else 'N/A'}</td>
+<td>${ format_milliseconds(thread.kernel_time) }</td>
+<td>${ format_milliseconds(thread.user_time) }</td>
+<td>${ hex_format(thread.cpu_affinity) }</td>
+</tr>
+</py:for>
+</table>

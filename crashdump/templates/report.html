@@ -12,8 +12,14 @@
     function extra_click(node, expanded) {
         if (expanded == true) {
             var url = window.location.href;
-            $( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url);
-            alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+            var path = window.location.pathname;
+            var target_url = path + '/view/' + node.id.replace('___', '/');
+            $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
+            //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
+            $( '#' + node.id).children('div#placeholder').load(target_url);
+            //alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+        } else {
+            $( '#' + node.id).children('div#placeholder').text('');
         }
     }
       jQuery(document).ready(function($) {
@@ -149,215 +155,45 @@
 </div>
 
 <py:if test="system_info">
-
-<div id="late_sysinfo" class="collapsed">
-<h2 class="foldable" id='late_sysinfo'>Late System information</h2>
-<div id="placeholder"></div>
-</div>
-
-<div id="crashdump">
-<h2 class="foldable">System information</h2>
+<div id="sysinfo">
+<h2 class="foldable" id='late_sysinfo'>System information</h2>
 <a name="system_info"/>
-<table class="properties">
-<tr><td>Platform&nbsp;type</td><td class="fullrow">${system_info.platform_type}</td>
-</tr>
-<tr><td>CPU&nbsp;type</td><td class="fullrow">${format_cpu_type(system_info.cpu_type)}</td></tr>
-<tr><td>Number&nbsp;of&nbsp;CPUs</td><td class="fullrow">${system_info.number_of_cpus}</td></tr>
-<tr><td>CPU&nbsp;vendor</td><td class="fullrow">${format_cpu_vendor(system_info.cpu_vendor)}</td></tr>
-<tr><td>CPU&nbsp;name</td><td class="fullrow">${format_cpu_name(system_info.cpu_vendor, system_info.cpu_name)}</td></tr>
-<tr><td>CPU&nbsp;level</td><td class="fullrow">${ hex_format(system_info.cpu_level) }&nbsp;<a href="http://en.wikipedia.org/wiki/Stepping_level">More info</a></td></tr>
-<tr><td>CPU&nbsp;revision</td><td class="fullrow">${ hex_format(system_info.cpu_revision) }</td></tr>
-<tr><td>OS&nbsp;version</td><td class="fullrow">${system_info.os_version}</td></tr>
-<tr><td>OS&nbsp;version&nbsp;info</td><td class="fullrow">${system_info.os_version_info}</td></tr>
-<py:if test="system_info.distribution_id">
-<tr><td>Distribution&nbsp;id</td><td class="fullrow">${format_distribution_id(system_info.distribution_id)}</td></tr>
-<tr><td>Distribution&nbsp;release</td><td class="fullrow">${system_info.distribution_release}</td></tr>
-<tr><td>Distribution&nbsp;codename</td><td class="fullrow">${format_distribution_codename(system_info.distribution_id, system_info.distribution_codename)}</td></tr>
-<tr><td>Distribution&nbsp;description</td><td class="fullrow">${system_info.distribution_description}</td></tr>
-</py:if>
-</table>
 </div>
 </py:if>
 
 <py:if test="system_info">
-<div id="crashdump" class="collapsed">
+<div id="sysinfo_ex" class="collapsed">
 <h2 class="foldable">More system information</h2>
 <a name="more_system_info"/>
-<table class="properties">
-<py:if test="fast_protect_system_info">
-<tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_system_info.opengl_vendor}</td></tr>
-<tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_system_info.opengl_renderer}</td></tr>
-<tr><td>OpenGL version</td><td class="fullrow">${fast_protect_system_info.opengl_version}</td></tr>
-<tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_system_info.opengl_vendor_id}</td></tr>
-<tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_system_info.opengl_driver_id}</td></tr>
-<tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_system_info.opengl_chip_class}</td></tr>
-<tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_system_info.opengl_driver_version}</td></tr>
-<tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_ok}</td></tr>
-<tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
-<tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_error}</td></tr>
-<tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
-</py:if>
-<py:if test="processstatuswin32">
-<tr><td>DLL path</td><td class="fullrow">
-<ol py:if="processstatuswin32.dll_path">
-    <py:for each="m in processstatuswin32.dll_path"><li>${m}</li></py:for>
-</ol>
-</td></tr>
-<tr py:if="processstatuswin32.image_path"><td>Image path</td><td class="fullrow">${processstatuswin32.image_path}</td></tr>
-<tr py:if="processstatuswin32.window_title"><td>Window title</td><td class="fullrow">${processstatuswin32.window_title}</td></tr>
-<tr py:if="processstatuswin32.desktop_name"><td>Desktop name</td><td class="fullrow">${processstatuswin32.desktop_name}</td></tr>
-<tr py:if="processstatuswin32.session_id"><td>Session id</td><td class="fullrow">${processstatuswin32.session_id}</td></tr>
-</py:if>
-</table>
 </div>
 </py:if>
 
 <py:if test="fast_protect_version_info">
-<div id="crashdump">
+<div id="fast_protect_version_info">
 <h2 class="foldable">Version info</h2>
 <a name="fast_protect_version_info"/>
-<table class="properties">
-<tr><td>Product name</td><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
-<tr><td>Product code name</td><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
-<tr><td>Product version</td><td class="fullrow">${fast_protect_version_info.product_version}</td></tr>
-<tr><td>Product target version</td><td class="fullrow">${fast_protect_version_info.product_target_version}</td></tr>
-<tr><td>Root repository revision</td><td class="fullrow">${fast_protect_version_info.root_revision}</td></tr>
-<tr><td>Build tools repository revision</td><td class="fullrow">${fast_protect_version_info.buildtools_revision}</td></tr>
-<tr><td>External repository revision</td><td class="fullrow">${fast_protect_version_info.external_revision}</td></tr>
-<tr><td>Third-party repository revision</td><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
-<tr><td>${fast_protect_version_info.product_name} repository revision</td><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
-</table>
-<py:if test="fast_protect_version_info.jenkins_job_name">
-<table class="properties">
-<tr><td>Jenkins job name</td><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
-<tr><td>Jenkins build number</td><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
-<tr><td>Jenkins build id</td><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
-<tr><td>Jenkins build tag</td><td class="fullrow">${fast_protect_version_info.jenkins_build_tag}</td></tr>
-<tr><td>Jenkins build url</td><td class="fullrow"><a href="${fast_protect_version_info.jenkins_build_url}">${fast_protect_version_info.jenkins_build_url}</a></td></tr>
-<tr><td>Jenkins Git revision</td><td class="fullrow">${fast_protect_version_info.jenkins_git_revision}</td></tr>
-<tr><td>Jenkins Git branch</td><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
-<tr><td>Jenkins master</td><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
-<tr><td>Jenkins nodename</td><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
-</table>
-</py:if>
 </div>
 </py:if>
 
 <py:if test="exception">
-<div id="crashdump">
+<div id="exception">
 <h2 class="foldable" py:if="not assertion">Exception</h2>
 <h2 class="foldable" py:if="assertion">Assertion</h2>
 <a name="exception"/>
-<table class="properties">
-<tr><td>Thread</td>
-    <td class="fullrow">
-        <a href="#thread_${exception.threadid}">Thread info ${ hex_format(exception.threadid) }</a>
-        <a href="#stackdump_${exception.threadid}">Stackdump ${ hex_format(exception.threadid) }</a>
-    </td>
-</tr>
-<tr><td>Name</td><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
-<tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
-<tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
-<tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
-<tr><td>Parameters</td><td class="fullrow">
-<ol py:if="exception.params">
-    <py:for each="m in exception.params"><li>${ hex_format(m, bits=bits) }</li></py:for>
-</ol>
-</td></tr>
-<py:if test="assertion">
-<tr><td>Expression</td><td class="fullrow">${assertion.expression}</td></tr>
-<tr><td>Function</td><td class="fullrow">${assertion.function}</td></tr>
-<tr><td>Source</td><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
-</py:if>
-<py:if test="simplified_info">
-<tr><td>Missing symbols</td><td class="fullrow">
-<ol py:if="simplified_info.missing_debug_symbols">
-    <py:for each="m in simplified_info.missing_debug_symbols"><li>${m}</li></py:for>
-</ol>
-<div py:if="not simplified_info.missing_debug_symbols">N/A</div>
-</td></tr>
-<tr><td>Involved functions</td><td class="fullrow">
-<ol py:if="simplified_info.first_useful_functions">
-    <py:for each="m in simplified_info.first_useful_functions"><li>${m}</li></py:for>
-</ol>
-<div py:if="not simplified_info.first_useful_functions">N/A</div>
-</td></tr>
-<tr><td>Involved modules</td><td class="fullrow">
-<ol py:if="simplified_info.first_useful_modules">
-    <py:for each="m in simplified_info.first_useful_modules"><li>${m}</li></py:for>
-</ol>
-<div py:if="not simplified_info.first_useful_modules">N/A</div>
-</td></tr>
-</py:if>
-</table>
 </div>
 </py:if>
 
 <py:if test="modules">
-<div id="crashdump" class="collapsed">
+<div id="modules" class="collapsed">
 <h2 class="foldable">Modules</h2>
 <a name="modules"/>
-<table class="properties">
-<tr>
-<th>Base</th>
-<th>Size</th>
-<th>Timestamp</th>
-<th>Product version</th>
-<th>File version</th>
-<th>Flags</th>
-<th>Name</th>
-<th>Symbol&nbsp;file</th>
-</tr>
-<py:for each="module in modules">
-<tr>
-<td><a name="module_${module.basename}"/>
-${ hex_format(module.base)}</td>
-<td>${ format_size(module.size) }</td>
-<td>${module.timestamp}</td>
-<td>${module.product_version}</td>
-<td>${module.file_version}</td>
-<td>${module.flags}</td>
-<td>${module.name}</td>
-<td>${module.symbol_file}</td>
-</tr>
-</py:for>
-</table>
 </div>
 </py:if>
 
 <py:if test="threads">
-<div id="crashdump" class="collapsed">
+<div id="threads" class="collapsed">
 <a name="threads"/>
 <h2 class="foldable">Threads</h2>
-<table class="properties">
-<tr>
-<th>Id</th>
-<th>Name</th>
-<th>Memory</th>
-<th>Start address</th>
-<th>Create time</th>
-<th>Exit time</th>
-<th>Kernel time</th>
-<th>User time</th>
-<th>CPU affinity</th>
-</tr>
-<py:for each="thread in threads">
-<tr>
-<td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.mainthread">@</py:if><py:if test="thread.exception">*</py:if></a></td>
-<td>${ thread.name if thread.name else 'N/A' }</td>
-<td>
-    <py:if test="thread.memory"><a href="#memory_block_${thread.memory}">${ hex_format(thread.memory) }</a></py:if>
-    <py:if test="not thread.mainthread">N/A</py:if>
-</td>
-<td>${ hex_format(thread.start_addr) }</td>
-<td>${pretty_dateinfo(thread.create_time) if thread.create_time else 'N/A'}</td>
-<td>${pretty_dateinfo(thread.exit_time) if thread.exit_time else 'N/A'}</td>
-<td>${ format_milliseconds(thread.kernel_time) }</td>
-<td>${ format_milliseconds(thread.user_time) }</td>
-<td>${ hex_format(thread.cpu_affinity) }</td>
-</tr>
-</py:for>
-</table>
 </div>
 </py:if>
 
@@ -367,50 +203,13 @@ ${ hex_format(module.base)}</td>
 <py:for each="stackdump in stackdumps">
 <py:if test="not stackdump.simplified">
 <a name="stackdump_${stackdump.threadid}"/>
-<div class="${ '' if stackdump.exception else 'collapsed' }">
+<div id="stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
 <h3 class="foldable">
 <py:if test="stackdump.thread.main_thread">Main thread</py:if>
 <py:if test="not stackdump.thread.main_thread and stackdump.thread.rpc_thread">RPC Thread</py:if>
 <py:if test="not stackdump.thread.main_thread and not stackdump.thread.rpc_thread">Thread</py:if>
 &nbsp;${ hex_format(stackdump.threadid) }<py:if test="stackdump.exception"> with exception</py:if>
 </h3>
-<div id="stackdump_${stackdump.threadid}">
-    <div class="crashdump-nav">
-        <a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
-    </div>
-    <table class="properties">
-        <tr>
-        <th width="3%">Num</th>
-        <th width="3%">Info src</th>
-        <th width="5%">Addr</th>
-        <th width="5%">RetAddr</th>
-        <th width="20%">Parameters</th>
-        <th width="15%">Module</th>
-        <th width="15%">Function</th>
-        <th width="24%">Source</th>
-        </tr>
-        <py:for each="frame in stackdump.callstack">
-        <tr>
-        <td>${frame.num}</td>
-        <td>${ format_trust_level(frame.trust_level) }</td>
-        <td>${ hex_format(frame.addr, bits=bits) }</td>
-        <td>${ hex_format(frame.retaddr, bits=bits) }</td>
-        <td>${ hex_format(frame.params, bits=bits) }</td>
-        <td><a py:if="frame.module" href="#module_${frame.module}">${frame.module}</a>
-            <div py:if="not frame.module">N/A</div>
-        </td>
-        <td>${format_function_plus_offset(frame.function, frame.funcoff)}</td>
-        <td>
-        ${format_source_line(frame.source, frame.line, frame.lineoff, frame.source_url)}
-        </td>
-        </tr>
-        </py:for>
-    </table>
-    <div class="crashdump-nav">
-        <a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
-    </div>
-    <br/>
-</div>
 </div>
 </py:if>
 </py:for>
@@ -418,75 +217,24 @@ ${ hex_format(module.base)}</td>
 </py:if>
 
 <py:if test="memory_regions and len(memory_regions) != 0">
-<div id="crashdump">
-<h2>Memory regions</h2>
-<table class="properties">
-<tr>
-<th>Base address</th>
-<th>Size</th>
-<th>Usage</th>
-<th>Alloc base</th>
-<th>Alloc protect</th>
-<th>Type</th>
-<th>Protect</th>
-<th>State</th>
-</tr>
-<py:for each="memory_region in memory_regions">
-<tr>
-<td>${ hex_format(memory_region.base_addr) }</td>
-<td>${ format_size(memory_region.size) } </td>
-<td>
-<ol py:if="memory_region.usage">
-    <py:for each="m in memory_region.usage"><li>
-        <a py:if="m.threadid" href="#thread_${m.threadid}" title="Go to thread ${ hex_format(m.threadid) }">Thread ${ hex_format(m.threadid) }&nbsp;-&nbsp;${ format_memory_usagetype(m.usagetype) }</a>
-        <div py:if="not m.threadid">${ format_memory_usagetype(m.usagetype) }</div>
-    </li></py:for>
-</ol>
-<div py:if="not memory_region.usage">N/A</div>
-</td>
-<td>${ hex_format(memory_region.alloc_base) }</td>
-<td>${ hex_format(memory_region.alloc_prot) }</td>
-<td>${ hex_format(memory_region.type) }</td>
-<td>${ hex_format(memory_region.protect) }</td>
-<td>${ hex_format(memory_region.state) }</td>
-</tr>
-</py:for>
-</table>
+<div id="memory_regions" class="collapsed">
+<h2 class="foldable">Memory regions</h2>
 </div>
 </py:if>
 
 <py:if test="memory_blocks">
-<div id="crashdump">
+<div id="memory_blocks">
 <h2>Memory blocks</h2>
 <py:for each="memory_block in memory_blocks">
 <a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
-<div class="collapsed">
+    <div id="memory_block___${memory_block.base}" class="collapsed">
     <h3 class="foldable" id="memory_block_${memory_block.base}_title">
         Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${ format_size(memory_block.size) }
         <py:if test="memory_block.threadid is not None">
             (memory of thread ${ hex_format(memory_block.threadid) })
         </py:if>
     </h3>
-    <div id="memory_block_${memory_block.base}">
-        <py:if test="memory_block.threadid is not None">
-            <div class="crashdump-nav">
-                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
-            </div>
-        </py:if>
-        <table class="memory_block">
-        <tr>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_offset}</pre></td>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_hex}</pre></td>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_ascii}</pre></td>
-        </tr>
-        </table>
-        <py:if test="memory_block.threadid is not None">
-            <div class="crashdump-nav">
-                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
-            </div>
-        </py:if>
     </div>
-</div>
 </py:for>
 </div>
 </py:if>

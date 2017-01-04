@@ -1,0 +1,33 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<py:if test="fast_protect_system_info">
+    <tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_system_info.opengl_vendor}</td></tr>
+    <tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_system_info.opengl_renderer}</td></tr>
+    <tr><td>OpenGL version</td><td class="fullrow">${fast_protect_system_info.opengl_version}</td></tr>
+    <tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_system_info.opengl_vendor_id}</td></tr>
+    <tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_system_info.opengl_driver_id}</td></tr>
+    <tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_system_info.opengl_chip_class}</td></tr>
+    <tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_system_info.opengl_driver_version}</td></tr>
+    <tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_ok}</td></tr>
+    <tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
+    <tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_error}</td></tr>
+    <tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
+</py:if>
+<py:if test="processstatuswin32">
+    <tr><td>DLL path</td><td class="fullrow">
+    <ol py:if="processstatuswin32.dll_path">
+        <py:for each="m in processstatuswin32.dll_path"><li>${m}</li></py:for>
+    </ol>
+    </td></tr>
+    <tr py:if="processstatuswin32.image_path"><td>Image path</td><td class="fullrow">${processstatuswin32.image_path}</td></tr>
+    <tr py:if="processstatuswin32.window_title"><td>Window title</td><td class="fullrow">${processstatuswin32.window_title}</td></tr>
+    <tr py:if="processstatuswin32.desktop_name"><td>Desktop name</td><td class="fullrow">${processstatuswin32.desktop_name}</td></tr>
+    <tr py:if="processstatuswin32.session_id"><td>Session id</td><td class="fullrow">${processstatuswin32.session_id}</td></tr>
+</py:if>
+<py:if test="not fast_protect_system_info and not processstatuswin32">
+    <tr><td class="fullrow">No additional system information available in this crashdump.</td></tr>
+</py:if>
+</table>
