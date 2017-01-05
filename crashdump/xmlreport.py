@@ -119,7 +119,7 @@ class XMLReport(object):
     _main_fields = ['crash_info', 'platform_type', 'system_info', 'file_info', 'exception',
                     'assertion', 'modules', 'threads', 'memory_regions',
                     'memory_blocks', 'handles', 'stackdumps', 'simplified_info', 'processstatuslinux', 'processstatuswin32',
-                    'misc_info',
+                    'processmemoryinfowin32', 'misc_info',
                     'fast_protect_version_info', 'fast_protect_system_info']
 
     _crash_dump_fields = ['uuid', 'crash_timestamp', 
@@ -131,14 +131,20 @@ class XMLReport(object):
                             'number_of_cpus', 'os_version', 'os_version_number', 'os_version_info',
                             'distribution_id', 'distribution_release', 'distribution_codename', 'distribution_description' ]
     _file_info_fields = ['log']
+    _file_info_log_message_fields = ['time', 'text']
     _exception_fields = ['threadid', 'code', 'address', 'flags', 'numparams', 'param0', 'param1', 'param2', 'param3']
     _assertion_fields = ['expression', 'function', 'source', 'line', 'typeid']
 
-    _module_fields = ['base', 'size', 'timestamp', 'product_version', 'file_version', 'name', 'symbol_file', 'flags' ]
+    _module_fields = ['base', 'size', 'timestamp', 'product_version',
+                      'file_version', 'name', 'symbol_file', 'symbol_id', 'symbol_type', 'symbol_type_number',
+                      'image_name', 'module_name', 'module_id',
+                      'flags' ]
+
     _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 'main_thread',
                       'create_time', 'exit_time', 'kernel_time', 'user_time',
                       'exit_status', 'cpu_affinity', 'stack_addr',
-                      'suspend_count', 'priority_class', 'priority', 'teb', 'dump_flags', 'dump_error', 'rpc_thread'
+                      'suspend_count', 'priority_class', 'priority', 'teb', 'tls', 'tib',
+                      'dump_flags', 'dump_error', 'rpc_thread'
         ]
     _memory_region_fields = ['base_addr', 'size', 'alloc_base', 'alloc_prot', 'type', 'protect', 'state' ]
     _memory_region_usage_fields = ['threadid', 'usagetype' ]
@@ -148,7 +154,7 @@ class XMLReport(object):
     _stackdump_fields = ['threadid', 'simplified', 'exception']
     _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'trust_level', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
     
-    _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'first_useful_modules', 'first_useful_functions']
+    _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'missing_image_files', 'first_useful_modules', 'first_useful_functions']
     
     _processstatuslinux_fields = ['name', 'state', 'thread_group', 'pid', 
             'parent_pid', 'tracer_pid', 'real_uid', 'real_gid',
@@ -164,6 +170,13 @@ class XMLReport(object):
             'stdin_handle', 'stdout_handle', 'stderr_handle',
             'debug_flags', 'console_handle', 'console_flags',
             'session_id',
+        ]
+    _processmemoryinfowin32_fields = [
+        'page_fault_count', 'peak_working_set_size',
+        'working_set_size', 'quota_peak_paged_pool_usage',
+        'quota_paged_pool_usage', 'quota_peak_non_paged_pool_usage',
+        'quota_non_paged_pool_usage', 'pagefile_usage',
+        'peak_pagefile_usage', 'private_usage'
         ]
     
     _misc_info_fields = ['processid', 'process_create_time',
@@ -204,6 +217,14 @@ class XMLReport(object):
         'domain',
         'fqdn',
         'username',
+        'timestamp',
+        'system_temp_path',
+        'user_temp_path',
+        'user_persistent_path',
+        'terminal_session_id',
+        'virtual_machine',
+        'remote_session',
+        'machine_type',
         'opengl_vendor',
         'opengl_renderer',
         'opengl_version',
@@ -215,6 +236,11 @@ class XMLReport(object):
         'opengl_use_pbuffer',
         'opengl_hardware_error',
         'opengl_pbuffer_error',
+        'cpu_name',
+        'cpu_vendor',
+        'num_logical_cpus',
+        'num_physical_cpus',
+        'hyperthread',
         'rawdata'
         ]
     
@@ -264,6 +290,7 @@ class XMLReport(object):
         self._simplified_info = None
         self._processstatuslinux = None
         self._processstatuswin32 = None
+        self._processmemoryinfowin32 = None
         self._misc_info = None
         self._fast_protect_version_info = None
         self._fast_protect_system_info = None
@@ -298,9 +325,14 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.SystemInfo, self).__init__(owner)
 
+    class FileInfoLogMessage(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.FileInfoLogMessage, self).__init__(owner)
+
     class FileInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.FileInfo, self).__init__(owner)
+            self.log = []
 
     class Exception(XMLReportEntity):
         def __init__(self, owner):
@@ -501,6 +533,10 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.ProcessStatusWin32, self).__init__(owner)
 
+    class ProcessMemoryInfoWin32(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.ProcessMemoryInfoWin32, self).__init__(owner)
+
     @staticmethod
     def _value_convert(value_str, data_type):
         if data_type == 'uuid':
@@ -700,7 +736,17 @@ class XMLReport(object):
             self._file_info = XMLReport.FileInfo(self) if i is not None else None
             if i is not None:
                 for f in XMLReport._file_info_fields:
-                    setattr(self._file_info, f, XMLReport._get_node_value(i, f))
+                    if f != 'log':
+                        setattr(self._file_info, f, XMLReport._get_node_value(i, f))
+                i = XMLReport._get_first_node(self._xml, 'crash_dump/file_info/log')
+                all_subitems = i.xpath('message') if i is not None else None
+                if all_subitems is not None:
+                    for item in all_subitems:
+                        m = XMLReport.FileInfoLogMessage(self)
+                        for f in XMLReport._file_info_log_message_fields:
+                            setattr(m, f, XMLReport._get_node_value(item, f))
+                        self._file_info.log.append(m)
+
         return self._file_info
 
     @property
@@ -860,6 +906,16 @@ class XMLReport(object):
         return self._processstatuswin32
 
     @property
+    def processmemoryinfowin32(self):
+        if self._processmemoryinfowin32 is None:
+            i = XMLReport._get_first_node(self._xml, 'crash_dump/processmemoryinfowin32')
+            self._processmemoryinfowin32 = XMLReport.ProcessMemoryInfoWin32(self) if i is not None else None
+            if i is not None:
+                for f in XMLReport._processmemoryinfowin32_fields:
+                    setattr(self._processmemoryinfowin32, f, XMLReport._get_node_value(i, f))
+        return self._processmemoryinfowin32
+
+    @property
     def misc_info(self):
         if self._misc_info is None:
             i = XMLReport._get_first_node(self._xml, 'crash_dump/misc_info')
@@ -925,7 +981,10 @@ if __name__ == '__main__':
     def dump_report_entity(entity, indent=0):
         for (k,v) in entity.__dict__.items():
             if k[0] != '_':
-                print((' ' * indent) + '%s=%s' % (k,v))
+                if isinstance(v, list):
+                    dump_report_list(v, indent+2)
+                else:
+                    print((' ' * indent) + '%s=%s' % (k,v))
 
     def dump_report_list(list, indent=0):
         for num, data_elem in enumerate(list):
@@ -942,22 +1001,24 @@ if __name__ == '__main__':
         else:
             dump_report_entity(data, indent + 2)
 
-    dump_report(xmlreport, 'crash_info')
-    dump_report(xmlreport, 'system_info')
+    #dump_report(xmlreport, 'crash_info')
+    #dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')
     #dump_report(xmlreport, 'simplified_info')
     #dump_report(xmlreport, 'modules')
     
-    if xmlreport.exception is not None:
-        print(xmlreport.exception.involved_modules)
-        print(xmlreport.exception.params)
+    #if xmlreport.exception is not None:
+        #print(xmlreport.exception.involved_modules)
+        #print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
-    dump_report(xmlreport, 'memory_regions')
+    #dump_report(xmlreport, 'memory_regions')
     
     #dump_report(xmlreport, 'exception')
+
+    dump_report(xmlreport, 'processmemoryinfowin32')
 
     #if xmlreport.exception.thread.stackdump:
         #for (no, f) in enumerate(xmlreport.exception.thread.stackdump.callstack):
