@@ -1,3 +1,10 @@
+trac-crashdump (0.29) yakkety; urgency=medium
+
+  * use proxy object to avoid loading entire XML data
+  * allow to download the system info INI file
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 05 Jan 2017 18:40:54 +0100
+
 trac-crashdump (0.28) yakkety; urgency=medium
 
   * use jquery to load parts of a crash report on demand

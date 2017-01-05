@@ -293,9 +293,9 @@ class CrashDumpModule(Component):
                 try:
                     xmlreport = XMLReport(xmlfile)
                     for f in xmlreport.fields:
-                        data[f] = getattr(xmlreport, f)
+                        data[f] = XMLReport.ProxyObject(xmlreport, f)
                     data['is_64_bit'] = xmlreport.is_64_bit
-                except XMLReportIOError as e:
+                except XMLReport.XMLReportIOError as e:
                     data['xmlfile_error'] = str(e)
             else:
                 data['xmlfile_error'] = 'XML file %s does not exist' % xmlfile
@@ -372,6 +372,19 @@ class CrashDumpModule(Component):
                     return 'stackdump.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
+        elif action == 'systeminfo_raw':
+            data = self._prepare_data(req, crashobj)
+
+            xmlfile = data['xmlfile'] if 'xmlfile' in data else None
+            data['dbtime'] = end - start
+
+            fast_protect_system_info = data['fast_protect_system_info'] if 'fast_protect_system_info' in data else None
+            if fast_protect_system_info:
+                filename = "%s_system_info.ini" % str(crashobj.uuid)
+                if fast_protect_system_info.rawdata:
+                    return self._send_data(req, fast_protect_system_info.rawdata.raw, filename=filename)
+            raise ResourceNotFound(_("No system information available for crash %(uuid)s.", uuid=str(crashobj.uuid)))
+
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':
@@ -409,6 +422,14 @@ class CrashDumpModule(Component):
             elif crashobj['coredumpreporttextfile']:
                 return self._send_file(req, crashobj, 'coredumpreporttextfile')
         raise ResourceNotFound(_("Invalid action %(action)s for crash %(uuid)s specified.", action=str(action), uuid=str(crashobj.uuid)))
+
+    def _send_data(self, req, data, filename):
+        # Force browser to download files instead of rendering
+        # them, since they might contain malicious code enabling
+        # XSS attacks
+        req.send_header('Content-Disposition', 'attachment; filename=%s' % filename)
+        req.send_header('Content-Length', '%i' % len(data))
+        req.send(content=data, content_type='application/force-download', status=200)
 
     def _send_file(self, req, crashobj, name):
         filename = self._get_dump_filename(crashobj, name)

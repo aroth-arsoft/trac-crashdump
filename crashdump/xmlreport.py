@@ -20,6 +20,10 @@ class MemoryBlock(object):
         return self._memory
 
     @property
+    def size(self):
+        return len(self._memory)
+
+    @property
     def hexdump(self):
         if not self._hexdump:
             self._hexdump = self._generate_hexdump()
@@ -260,6 +264,50 @@ class XMLReport(object):
     class XMLReportParserError(XMLReportException):
         def __init__(self, report, message):
             super(XMLReport.XMLReportParserError, self).__init__(report, message)
+
+    class ProxyObject(object):
+        def __init__(self, report, field_name):
+            object.__setattr__(self, '_report', report)
+            object.__setattr__(self, '_field_name', field_name)
+            object.__setattr__(self, '_real_object', None)
+
+        def __getattr__(self, key):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return getattr(self._real_object, key)
+
+        def __setattr__(self, key, value):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return setattr(self._real_object, key, value)
+
+        def __iter__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return iter(self._real_object)
+
+        def __nonzero__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return False
+            return bool(self._real_object)
+
+        def __len__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            if hasattr(self._real_object, '__len__'):
+                return len(self._real_object)
+            else:
+                return 0
 
     @staticmethod
     def unique(items):
@@ -1038,7 +1086,17 @@ if __name__ == '__main__':
 
     #dump_report(xmlreport, 'processmemoryinfowin32')
 
-    print(xmlreport.crash_info.path)
+    pp = XMLReport.ProxyObject(xmlreport, 'memory_regions')
+    print(len(pp))
+
+    pp = XMLReport.ProxyObject(xmlreport, 'memory_blocks')
+    print(len(pp))
+#for m in pp:
+        #print(m)
+    #dump_report(xmlreport, 'memory_regions')
+
+    #print(xmlreport.crash_info.path)
+    #sys.stdout.write(xmlreport.fast_protect_system_info.rawdata.raw)
 
     #if xmlreport.exception.thread.stackdump:
         #for (no, f) in enumerate(xmlreport.exception.thread.stackdump.callstack):

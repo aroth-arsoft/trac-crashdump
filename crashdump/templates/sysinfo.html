@@ -18,4 +18,9 @@
 <tr><th>Distribution&nbsp;codename</th><td class="fullrow">${format_distribution_codename(system_info.distribution_id, system_info.distribution_codename)}</td></tr>
 <tr><th>Distribution&nbsp;description</th><td class="fullrow">${system_info.distribution_description}</td></tr>
 </py:if>
+<py:if test="fast_protect_system_info">
+<tr><td colspan="2">
+    <a href="${href('crash', object.uuid, 'systeminfo_raw')}" title="${object.uuid} system information">Download full system information</a>
+</td></tr>
+</py:if>
 </table>
