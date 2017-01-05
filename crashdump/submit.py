@@ -581,9 +581,10 @@ application was running as part of %(productname)s (%(productcodename)s) version
                         tkt_obj.save_changes(author=crashobj['reporter'], comment=comment)
                     
                         linked_tickets.add(tkt_obj.id)
-                        links = CrashDumpTicketLinks(self.env, tkt=tkt_obj, db=tkt_obj.db)
-                        links.crashes.add(crashid)
-                        links.save(author=crashobj['reporter'])
+                        with self.env.db_transaction as db:
+                            links = CrashDumpTicketLinks(self.env, tkt=tkt_obj, db=db)
+                            links.crashes.add(crashid)
+                            links.save(author=crashobj['reporter'], db=db)
 
             if result:
                 headers = {}
