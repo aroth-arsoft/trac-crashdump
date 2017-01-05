@@ -304,6 +304,10 @@ class XMLReport(object):
             except etree.XMLSyntaxError as e:
                 raise XMLReport.XMLReportParserError(self, str(e))
 
+    @property
+    def is_platform_windows(self):
+        return self.platform_type == 'Win32' or self.platform_type == 'Windows NT'
+
     class XMLReportEntity(object):
         def __init__(self, owner):
             self._owner = owner
@@ -320,6 +324,20 @@ class XMLReport(object):
     class CrashInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.CrashInfo, self).__init__(owner)
+
+        @property
+        def path(self):
+            ret = None
+            env = getattr(self, 'environment', None)
+            if env:
+                for (k,v) in env.iteritems():
+                    if k.lower() == 'path':
+                        if self._owner.is_platform_windows:
+                            ret = v.split(';')
+                        else:
+                            ret = v.split(':')
+                        break
+            return ret
 
     class SystemInfo(XMLReportEntity):
         def __init__(self, owner):
@@ -1018,7 +1036,9 @@ if __name__ == '__main__':
     
     #dump_report(xmlreport, 'exception')
 
-    dump_report(xmlreport, 'processmemoryinfowin32')
+    #dump_report(xmlreport, 'processmemoryinfowin32')
+
+    print(xmlreport.crash_info.path)
 
     #if xmlreport.exception.thread.stackdump:
         #for (no, f) in enumerate(xmlreport.exception.thread.stackdump.callstack):

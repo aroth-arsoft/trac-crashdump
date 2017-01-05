@@ -145,10 +145,19 @@
 <tr><th>Report&nbsp;username</th><td class="fullrow">${crash_info.report_username}</td></tr>
 <tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
 <tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><th>Path</th><td class="fullrow">
+<ol class="path">
+<py:for each="p in crash_info.path">
+    <li>${p}</li>
+</py:for>
+</ol>
+</td></tr>
 <tr><th>Environment</th><td class="fullrow">
 <ul class="environment">
 <py:for each="k in sorted(crash_info.environment.keys())">
-<li>${k}&nbsp;=&nbsp;${crash_info.environment[k]}</li>
+    <py:if test="k.lower() != 'path'">
+        <li>${k}&nbsp;=&nbsp;${crash_info.environment[k]}</li>
+    </py:if>
 </py:for>
 </ul>
 </td></tr>
