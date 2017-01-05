@@ -285,6 +285,15 @@ class CrashDumpSubmit(Component):
             body = 'OK'
         return self._success_response(req, body=body.encode('utf-8'), headers=headers)
 
+    def escape_ticket_values(self, values):
+        ret = {}
+        for k,v in values.items():
+            if isinstance(v, str) or isinstance(v, basestring):
+                ret[k] = v.replace('#', '!#')
+            else:
+                ret[k] = v
+        return ret
+
     def process_request_submit(self, req):
         if req.method != "POST":
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
@@ -564,13 +573,15 @@ from **%(uploadhostname)s** and this ticket has been automatically created to tr
                 # Now add the newly linked tickets as well
                 for tkt_obj in ticketobjs:
                     if tkt_obj.id not in crashobj.linked_tickets:
+                        ticket_values = self.escape_ticket_values(values)
+                        #self.log.debug('ticket_values=%s' % str(ticket_values))
                         comment = """The crash [[/crash/%(uuid)s|CrashId#%(crashid)s - %(uuid)s]] has been uploaded by **%(uploadusername)s**
 from **%(uploadhostname)s** and linked to this ticket.
 
-The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running %(applicationfile)s. The
+The crash occured at //%(crashtimestamp)s UTC// on **%(crashhostname)s** with user **%(crashusername)s** while running `%(applicationfile)s`. The
 application was running as part of %(productname)s (%(productcodename)s) version %(productversion)s (%(producttargetversion)s, %(buildtype)s) on a
 %(systemname)s/%(machinetype)s with %(osversion)s (%(osrelease)s/%(osmachine)s).
-""" % values
+""" % ticket_values
                         linked_crashes = tkt_obj['linked_crash'] if tkt_obj['linked_crash'] else ''
                         linked_crashes = set([int(x.strip()) for x in linked_crashes.split(',') if x.strip()])
                         #print('crashid=%s' % crashid)
