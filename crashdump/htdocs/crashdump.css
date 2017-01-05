@@ -185,7 +185,7 @@ pre.hexdump, pre.cmdline {
     margin-left: 0px;
     margin-right: 0px;
 }
-div.memory_block {
+div.memory_block, div.stackdump {
     padding-left: 16pt;
 }
 td.memory_block, tr.memory_block, table.memory_block {

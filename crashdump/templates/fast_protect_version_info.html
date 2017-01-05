@@ -3,24 +3,24 @@
     xmlns="http://www.w3.org/1999/xhtml"
     xmlns:i18n="http://genshi.edgewall.org/i18n"
     xmlns:py="http://genshi.edgewall.org/">
-<tr><td>Product name</td><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
-<tr><td>Product code name</td><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
-<tr><td>Product version</td><td class="fullrow">${fast_protect_version_info.product_version}</td></tr>
-<tr><td>Product target version</td><td class="fullrow">${fast_protect_version_info.product_target_version}</td></tr>
-<tr><td>Root repository revision</td><td class="fullrow">${fast_protect_version_info.root_revision}</td></tr>
-<tr><td>Build tools repository revision</td><td class="fullrow">${fast_protect_version_info.buildtools_revision}</td></tr>
-<tr><td>External repository revision</td><td class="fullrow">${fast_protect_version_info.external_revision}</td></tr>
-<tr><td>Third-party repository revision</td><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
-<tr><td>${fast_protect_version_info.product_name} repository revision</td><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
+<tr><th>Product name</th><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
+<tr><th>Product code name</th><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
+<tr><th>Product version</th><td class="fullrow">${fast_protect_version_info.product_version}</td></tr>
+<tr><th>Product target version</th><td class="fullrow">${fast_protect_version_info.product_target_version}</td></tr>
+<tr><th>Root repository revision</th><td class="fullrow">${fast_protect_version_info.root_revision}</td></tr>
+<tr><th>Build tools repository revision</th><td class="fullrow">${fast_protect_version_info.buildtools_revision}</td></tr>
+<tr><th>External repository revision</th><td class="fullrow">${fast_protect_version_info.external_revision}</td></tr>
+<tr><th>Third-party repository revision</th><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
+<tr><th>${fast_protect_version_info.product_name} repository revision</th><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
 <py:if test="fast_protect_version_info.jenkins_job_name">
-<tr><td>Jenkins job name</td><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
-<tr><td>Jenkins build number</td><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
-<tr><td>Jenkins build id</td><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
-<tr><td>Jenkins build tag</td><td class="fullrow">${fast_protect_version_info.jenkins_build_tag}</td></tr>
-<tr><td>Jenkins build url</td><td class="fullrow"><a href="${fast_protect_version_info.jenkins_build_url}">${fast_protect_version_info.jenkins_build_url}</a></td></tr>
-<tr><td>Jenkins Git revision</td><td class="fullrow">${fast_protect_version_info.jenkins_git_revision}</td></tr>
-<tr><td>Jenkins Git branch</td><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
-<tr><td>Jenkins master</td><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
-<tr><td>Jenkins nodename</td><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
+<tr><th>Jenkins job name</th><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
+<tr><th>Jenkins build number</th><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
+<tr><th>Jenkins build id</th><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
+<tr><th>Jenkins build tag</th><td class="fullrow">${fast_protect_version_info.jenkins_build_tag}</td></tr>
+<tr><th>Jenkins build url</th><td class="fullrow"><a href="${fast_protect_version_info.jenkins_build_url}">${fast_protect_version_info.jenkins_build_url}</a></td></tr>
+<tr><th>Jenkins Git revision</th><td class="fullrow">${fast_protect_version_info.jenkins_git_revision}</td></tr>
+<tr><th>Jenkins Git branch</th><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
+<tr><th>Jenkins master</th><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
+<tr><th>Jenkins nodename</th><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
 </py:if>
 </table>

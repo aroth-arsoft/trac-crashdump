@@ -103,15 +103,13 @@
 <h2 class="foldable" id="crash_dump_info">Crash dump information</h2>
 <a name="crash_info"/>
 <table class="properties">
-<tr><th>Application&nbsp;file</th>
-<td class="fullrow">${object['applicationfile']}</td>
-</tr>
-<tr><td>Command&nbsp;line</td><td class="fullrow">
+<tr><th>Application&nbsp;file</th><td class="fullrow">${object['applicationfile']}</td></tr>
+<tr><th>Command&nbsp;line</th><td class="fullrow">
     <pre py:if="crash_info" class="cmdline"><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre>
     <div py:if="not crash_info">N/A</div>
 </td></tr>
 <py:if test="object['minidumpfile']">
-    <tr><td>Minidump file</td><td class="fullrow">
+    <tr><th>Minidump file</th><td class="fullrow">
         <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
         <py:if test="object['minidumpreporttextfile']">
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
@@ -125,7 +123,7 @@
     </td></tr>
 </py:if>
 <py:if test="object['coredumpfile']">
-    <tr><td>Coredump file</td><td class="fullrow">
+    <tr><th>Coredump file</th><td class="fullrow">
         <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
         <py:if test="object['coredumpreporttextfile']">
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
@@ -138,12 +136,16 @@
         </py:if>
     </td></tr>
 </py:if>
+<py:if test="fast_protect_system_info">
+<tr><th>Crash&nbsp;FQDN</th><td class="fullrow">${fast_protect_system_info.fqdn}</td></tr>
+<tr><th>Crash&nbsp;username</th><td class="fullrow">${fast_protect_system_info.username}</td></tr>
+</py:if>
 <py:if test="crash_info">
-<tr><td>Report&nbsp;FQDN</td><td class="fullrow">${crash_info.report_fqdn}</td></tr>
-<tr><td>Report&nbsp;username</td><td class="fullrow">${crash_info.report_username}</td></tr>
-<tr><td>Symbol&nbsp;directories</td><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
-<tr><td>Image&nbsp;directories</td><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
-<tr><td>Environment</td><td class="fullrow">
+<tr><th>Report&nbsp;FQDN</th><td class="fullrow">${crash_info.report_fqdn}</td></tr>
+<tr><th>Report&nbsp;username</th><td class="fullrow">${crash_info.report_username}</td></tr>
+<tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><th>Environment</th><td class="fullrow">
 <ul class="environment">
 <py:for each="k in sorted(crash_info.environment.keys())">
 <li>${k}&nbsp;=&nbsp;${crash_info.environment[k]}</li>

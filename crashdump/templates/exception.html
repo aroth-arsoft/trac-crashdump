@@ -3,40 +3,40 @@
     xmlns="http://www.w3.org/1999/xhtml"
     xmlns:i18n="http://genshi.edgewall.org/i18n"
     xmlns:py="http://genshi.edgewall.org/">
-<tr><td>Thread</td>
+<tr><th>Thread</th>
     <td class="fullrow">
         <a href="#thread_${exception.threadid}">Thread info ${ hex_format(exception.threadid) }</a>
         <a href="#stackdump_${exception.threadid}">Stackdump ${ hex_format(exception.threadid) }</a>
     </td>
 </tr>
-<tr><td>Name</td><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
-<tr><td>Info</td><td class="fullrow">${exception.info}</td></tr>
-<tr><td>Address</td><td class="fullrow">${ hex_format(exception.address) }</td></tr>
-<tr><td>Flags</td><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
-<tr><td>Parameters</td><td class="fullrow">
+<tr><th>Name</th><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
+<tr><th>Info</th><td class="fullrow">${exception.info}</td></tr>
+<tr><th>Address</th><td class="fullrow">${ hex_format(exception.address) }</td></tr>
+<tr><th>Flags</th><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
+<tr><th>Parameters</th><td class="fullrow">
 <ol py:if="exception.params">
     <py:for each="m in exception.params"><li>${ hex_format(m, bits=bits) }</li></py:for>
 </ol>
 </td></tr>
 <py:if test="assertion">
-<tr><td>Expression</td><td class="fullrow">${assertion.expression}</td></tr>
-<tr><td>Function</td><td class="fullrow">${assertion.function}</td></tr>
-<tr><td>Source</td><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
+<tr><th>Expression</th><td class="fullrow">${assertion.expression}</td></tr>
+<tr><th>Function</th><td class="fullrow">${assertion.function}</td></tr>
+<tr><th>Source</th><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
 </py:if>
 <py:if test="simplified_info">
-<tr><td>Missing symbols</td><td class="fullrow">
+<tr><th>Missing symbols</th><td class="fullrow">
 <ol py:if="simplified_info.missing_debug_symbols">
     <py:for each="m in simplified_info.missing_debug_symbols"><li>${m}</li></py:for>
 </ol>
 <div py:if="not simplified_info.missing_debug_symbols">N/A</div>
 </td></tr>
-<tr><td>Involved functions</td><td class="fullrow">
+<tr><th>Involved functions</th><td class="fullrow">
 <ol py:if="simplified_info.first_useful_functions">
     <py:for each="m in simplified_info.first_useful_functions"><li>${m}</li></py:for>
 </ol>
 <div py:if="not simplified_info.first_useful_functions">N/A</div>
 </td></tr>
-<tr><td>Involved modules</td><td class="fullrow">
+<tr><th>Involved modules</th><td class="fullrow">
 <ol py:if="simplified_info.first_useful_modules">
     <py:for each="m in simplified_info.first_useful_modules"><li>${m}</li></py:for>
 </ol>

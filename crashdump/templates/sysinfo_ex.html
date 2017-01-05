@@ -4,52 +4,52 @@
     xmlns:i18n="http://genshi.edgewall.org/i18n"
     xmlns:py="http://genshi.edgewall.org/">
 <py:if test="fast_protect_system_info">
-    <tr><td>OpenGL vendor</td><td class="fullrow">${fast_protect_system_info.opengl_vendor}</td></tr>
-    <tr><td>OpenGL renderer</td><td class="fullrow">${fast_protect_system_info.opengl_renderer}</td></tr>
-    <tr><td>OpenGL version</td><td class="fullrow">${fast_protect_system_info.opengl_version}</td></tr>
-    <tr><td>OpenGL vendor id</td><td class="fullrow">${fast_protect_system_info.opengl_vendor_id}</td></tr>
-    <tr><td>OpenGL driver id</td><td class="fullrow">${fast_protect_system_info.opengl_driver_id}</td></tr>
-    <tr><td>OpenGL chip class</td><td class="fullrow">${fast_protect_system_info.opengl_chip_class}</td></tr>
-    <tr><td>OpenGL driver version</td><td class="fullrow">${fast_protect_system_info.opengl_driver_version}</td></tr>
-    <tr><td>OpenGL hardware ok</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_ok}</td></tr>
-    <tr><td>OpenGL use pbuffer</td><td class="fullrow">${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
-    <tr><td>OpenGL hardware error</td><td class="fullrow">${fast_protect_system_info.opengl_hardware_error}</td></tr>
-    <tr><td>OpenGL pbuffer error</td><td class="fullrow">${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
+    <tr><th>OpenGL vendor</th><td class="fullrow">${fast_protect_system_info.opengl_vendor}</td></tr>
+    <tr><th>OpenGL renderer</th><td class="fullrow">${fast_protect_system_info.opengl_renderer}</td></tr>
+    <tr><th>OpenGL version</th><td class="fullrow">${fast_protect_system_info.opengl_version}</td></tr>
+    <tr><th>OpenGL vendor id</th><td class="fullrow">${fast_protect_system_info.opengl_vendor_id}</td></tr>
+    <tr><th>OpenGL driver id</th><td class="fullrow">${fast_protect_system_info.opengl_driver_id}</td></tr>
+    <tr><th>OpenGL chip class</th><td class="fullrow">${fast_protect_system_info.opengl_chip_class}</td></tr>
+    <tr><th>OpenGL driver version</th><td class="fullrow">${fast_protect_system_info.opengl_driver_version}</td></tr>
+    <tr><th>OpenGL hardware ok</th><td class="fullrow">${fast_protect_system_info.opengl_hardware_ok}</td></tr>
+    <tr><th>OpenGL use pbuffer</th><td class="fullrow">${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
+    <tr><th>OpenGL hardware error</th><td class="fullrow">${fast_protect_system_info.opengl_hardware_error}</td></tr>
+    <tr><th>OpenGL pbuffer error</th><td class="fullrow">${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
 </py:if>
 <py:if test="processstatuswin32">
-    <tr><td>DLL path</td><td class="fullrow">
+    <tr><th>DLL path</th><td class="fullrow">
     <ol py:if="processstatuswin32.dll_path">
         <py:for each="m in processstatuswin32.dll_path"><li>${m}</li></py:for>
     </ol>
     </td></tr>
-    <tr py:if="processstatuswin32.image_path"><td>Image path</td><td class="fullrow">${processstatuswin32.image_path}</td></tr>
-    <tr py:if="processstatuswin32.window_title"><td>Window title</td><td class="fullrow">${processstatuswin32.window_title}</td></tr>
-    <tr py:if="processstatuswin32.desktop_name"><td>Desktop name</td><td class="fullrow">${processstatuswin32.desktop_name}</td></tr>
-    <tr py:if="processstatuswin32.session_id"><td>Session id</td><td class="fullrow">${processstatuswin32.session_id}</td></tr>
+    <tr py:if="processstatuswin32.image_path"><th>Image path</th><td class="fullrow">${processstatuswin32.image_path}</td></tr>
+    <tr py:if="processstatuswin32.window_title"><th>Window title</th><td class="fullrow">${processstatuswin32.window_title}</td></tr>
+    <tr py:if="processstatuswin32.desktop_name"><th>Desktop name</th><td class="fullrow">${processstatuswin32.desktop_name}</td></tr>
+    <tr py:if="processstatuswin32.session_id"><th>Session id</th><td class="fullrow">${processstatuswin32.session_id}</td></tr>
 </py:if>
 <py:if test="processstatuslinux">
-    <tr><td>Process name</td><td class="fullrow">${processstatuslinux.name} (state ${processstatuslinux.state})</td></tr>
-    <tr><td>Process id</td><td class="fullrow">${processstatuslinux.pid} (parent ${processstatuslinux.parent_pid})</td></tr>
-    <tr><td>User id</td><td class="fullrow">${processstatuslinux.real_uid}, ${processstatuslinux.real_gid}</td></tr>
-    <tr><td>User groups</td><td class="fullrow">
+    <tr><th>Process name</th><td class="fullrow">${processstatuslinux.name} (state ${processstatuslinux.state})</td></tr>
+    <tr><th>Process id</th><td class="fullrow">${processstatuslinux.pid} (parent ${processstatuslinux.parent_pid})</td></tr>
+    <tr><th>User id</th><td class="fullrow">${processstatuslinux.real_uid}, ${processstatuslinux.real_gid}</td></tr>
+    <tr><th>User groups</th><td class="fullrow">
     <ol py:if="processstatuslinux.supplement_groups">
         <py:for each="grp in processstatuslinux.supplement_groups"><li>${grp}</li></py:for>
     </ol>
     </td></tr>
 
-    <tr><td>VM peak</td><td class="fullrow">${format_size(processstatuslinux.vmpeak)}</td></tr>
-    <tr><td>VM size</td><td class="fullrow">${format_size(processstatuslinux.vmsize)}</td></tr>
-    <tr><td>VM locked</td><td class="fullrow">${format_size(processstatuslinux.vmlocked)}</td></tr>
-    <tr><td>VM pinned</td><td class="fullrow">${format_size(processstatuslinux.vmpinned)}</td></tr>
-    <tr><td>VM RSS</td><td class="fullrow">${format_size(processstatuslinux.vmresidentsetsize)}</td></tr>
-    <tr><td>VM data</td><td class="fullrow">${format_size(processstatuslinux.vmdata)}</td></tr>
-    <tr><td>VM stack</td><td class="fullrow">${format_size(processstatuslinux.vmstack)}</td></tr>
-    <tr><td>VM executable</td><td class="fullrow">${format_size(processstatuslinux.vmexe)}</td></tr>
-    <tr><td>VM library</td><td class="fullrow">${format_size(processstatuslinux.vmlib)}</td></tr>
-    <tr><td>VM PTE</td><td class="fullrow">${processstatuslinux.vmpte}</td></tr>
-    <tr><td>VM swap</td><td class="fullrow">${format_size(processstatuslinux.vmswap)}</td></tr>
-    <tr><td>Number of threads</td><td class="fullrow">${processstatuslinux.num_threads}</td></tr>
-    <tr><td>Context switches</td><td class="fullrow">${processstatuslinux.voluntary_context_switches} voluntary, ${processstatuslinux.nonvoluntary_context_switches} non-voluntary</td></tr>
+    <tr><th>VM peak</th><td class="fullrow">${format_size(processstatuslinux.vmpeak)}</td></tr>
+    <tr><th>VM size</th><td class="fullrow">${format_size(processstatuslinux.vmsize)}</td></tr>
+    <tr><th>VM locked</th><td class="fullrow">${format_size(processstatuslinux.vmlocked)}</td></tr>
+    <tr><th>VM pinned</th><td class="fullrow">${format_size(processstatuslinux.vmpinned)}</td></tr>
+    <tr><th>VM RSS</th><td class="fullrow">${format_size(processstatuslinux.vmresidentsetsize)}</td></tr>
+    <tr><th>VM data</th><td class="fullrow">${format_size(processstatuslinux.vmdata)}</td></tr>
+    <tr><th>VM stack</th><td class="fullrow">${format_size(processstatuslinux.vmstack)}</td></tr>
+    <tr><th>VM executable</th><td class="fullrow">${format_size(processstatuslinux.vmexe)}</td></tr>
+    <tr><th>VM library</th><td class="fullrow">${format_size(processstatuslinux.vmlib)}</td></tr>
+    <tr><th>VM PTE</th><td class="fullrow">${processstatuslinux.vmpte}</td></tr>
+    <tr><th>VM swap</th><td class="fullrow">${format_size(processstatuslinux.vmswap)}</td></tr>
+    <tr><th>Number of threads</th><td class="fullrow">${processstatuslinux.num_threads}</td></tr>
+    <tr><th>Context switches</th><td class="fullrow">${processstatuslinux.voluntary_context_switches} voluntary, ${processstatuslinux.nonvoluntary_context_switches} non-voluntary</td></tr>
 </py:if>
 <py:if test="not fast_protect_system_info and not processstatuswin32 and not processstatuslinux">
     <tr><td class="fullrow">No additional system information available in this crashdump.</td></tr>
