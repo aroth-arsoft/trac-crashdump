@@ -68,6 +68,9 @@ class CrashDumpSubmit(Component):
     ignored_modules = Option('crashdump', 'ignore_modules', 'libc, kernel32, ntdll, user32, gdi32',
         """List of modules to ignore for component matching.""")
 
+    replace_usernames = Option('crashdump', 'replace_usernames', '',
+        """List of username replacements applied when a new crash is uploaded (format username=myrealname; multiple values separated by comma).""")
+
     max_upload_size = IntOption('crashdump', 'max_upload_size', default=16 * 1024 * 1024,
                       doc="""Maximum allowed upload size. If set to zero the upload limit is disabled and all uploads will be accepted.""")
 
@@ -241,6 +244,22 @@ class CrashDumpSubmit(Component):
             possible_versions.append('v' + '.'.join(v_elems[0:i]))
             possible_versions.append('.'.join(v_elems[0:i]))
         return self._find_first_version_from_list(possible_versions)
+
+    def _apply_username_replacements(self, username):
+        self.log.debug('CrashDumpSubmit _apply_username_replacements in=\'%s\'' % username)
+        ret = username
+        for pattern in self.replace_usernames.split(','):
+            pattern = pattern.strip()
+            self.log.debug('CrashDumpSubmit _apply_username_replacements pattern=\'%s\'' % pattern)
+            if '=' in pattern:
+                (find, replace) = pattern.split('=', 1)
+                find = find.strip()
+                replace = replace.strip()
+                self.log.debug('CrashDumpSubmit _apply_username_replacements find=\'%s\' -> replace=\'%s\'' % (find, replace))
+                if ret == find:
+                    ret = replace
+        self.log.debug('CrashDumpSubmit _apply_username_replacements out=\'%s\'' % ret)
+        return ret
 
     def pre_process_request(self, req, handler):
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
@@ -510,6 +529,10 @@ class CrashDumpSubmit(Component):
                 else:
                     crashobj['reporter'] = self.default_reporter
 
+                # apply replacements on usernames in owner and reporter field
+                crashobj['owner'] = self._apply_username_replacements(crashobj['owner'])
+                crashobj['reporter'] = self._apply_username_replacements(crashobj['reporter'])
+
                 crashid = crashobj.insert()
                 result = True if crashid else False
                 if result:
@@ -564,9 +587,14 @@ from **%(uploadhostname)s** and this ticket has been automatically created to tr
 """ % values
                     new_ticket['description'] = comment
                     # copy over some fields from the crash itself
-                    for field in ['status', 'owner', 'reporter', 'priority', 'milestone', 'component',
+                    for field in ['status', 'priority', 'milestone', 'component',
                                 'severity', 'keywords']:
                         new_ticket[field] = crashobj[field]
+
+                    # apply replacements on usernames in owner and reporter field
+                    new_ticket['owner'] = self._apply_username_replacements(crashobj['owner'])
+                    new_ticket['reporter'] = self._apply_username_replacements(crashobj['reporter'])
+
                     new_ticket['linked_crash'] = str(crashid)
                     new_ticket.insert()
 
