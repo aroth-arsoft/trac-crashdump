@@ -1,3 +1,9 @@
+trac-crashdump (0.30) yakkety; urgency=medium
+
+  * fixed missing uuid in download urls
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Mon, 09 Jan 2017 18:44:38 +0100
+
 trac-crashdump (0.29) yakkety; urgency=medium
 
   * use proxy object to avoid loading entire XML data

@@ -110,29 +110,29 @@
 </td></tr>
 <py:if test="object['minidumpfile']">
     <tr><th>Minidump file</th><td class="fullrow">
-        <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
+        <a href="${href('crash', object['uuid'], 'minidump_raw')}" title="${object['uuid']} (${ format_size(dumpfile_size) })">Download</a>
         <py:if test="object['minidumpreporttextfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'minidump_text')}" title="${object['uuid']} (${ format_size(reporttextfile_size) })">Text report</a>
         </py:if>
         <py:if test="object['minidumpreportxmlfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'minidump_xml')}" title="${object.uuid} (${ format_size(xmlfile_size) })">XML report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'minidump_xml')}" title="${object['uuid']} (${ format_size(xmlfile_size) })">XML report</a>
         </py:if>
         <py:if test="object['minidumpreporthtmlfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'minidump_html')}" title="${object.uuid} (${ format_size(reporthtmlfile_size) })">HTML report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'minidump_html')}" title="${object['uuid']} (${ format_size(reporthtmlfile_size) })">HTML report</a>
         </py:if>
     </td></tr>
 </py:if>
 <py:if test="object['coredumpfile']">
     <tr><th>Coredump file</th><td class="fullrow">
-        <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
+        <a href="${href('crash', object['uuid'], 'coredump_raw')}" title="${object['uuid']} (${ format_size(dumpfile_size) })">Download</a>
         <py:if test="object['coredumpreporttextfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'coredump_text')}" title="${object['uuid']} (${ format_size(reporttextfile_size) })">Text report</a>
         </py:if>
         <py:if test="object['coredumpreportxmlfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'coredump_xml')}" title="${object.uuid} (${ format_size(xmlfile_size) })">XML report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'coredump_xml')}" title="${object['uuid']} (${ format_size(xmlfile_size) })">XML report</a>
         </py:if>
         <py:if test="object['coredumpreporthtmlfile']">
-            &nbsp;<a href="${href('crash', object.uuid, 'coredump_html')}" title="${object.uuid} (${ format_size(reporthtmlfile_size) })">HTML report</a>
+            &nbsp;<a href="${href('crash', object['uuid'], 'coredump_html')}" title="${object['uuid']} (${ format_size(reporthtmlfile_size) })">HTML report</a>
         </py:if>
     </td></tr>
 </py:if>
