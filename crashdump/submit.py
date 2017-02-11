@@ -79,23 +79,23 @@ class CrashDumpSubmit(Component):
 
     # IRequestHandler methods
     def match_request(self, req):
-        if req.method == 'POST' and (req.path_info == '/crashdump/submit' or req.path_info == '/submit'):
-            self.log.debug('match_request: %s %s', req.method, req.path_info)
-            return True
-        elif req.method == 'GET' and (req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist'):
-            self.log.debug('match_request: %s %s', req.method, req.path_info)
-            return True
-        elif req.method == 'GET' and (req.path_info == '/crashdump/submit/capabilities' or req.path_info == '/submit/capabilities'):
-            self.log.debug('match_request: %s %s', req.method, req.path_info)
-            return True
-        elif req.method == 'GET' and (req.path_info == '/crashdump/list' or req.path_info == '/crashlist'):
-            self.log.debug('match_request: %s %s', req.method, req.path_info)
-            return True
-        elif req.method == 'GET' and (req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities'):
-            self.log.debug('match_request: %s %s', req.method, req.path_info)
-            return True
-        else:
-            return False
+        if req.method == 'POST':
+            if req.path_info == '/crashdump/submit' or req.path_info == '/submit':
+                self.log.debug('match_request: %s %s', req.method, req.path_info)
+                return True
+        elif req.method == 'GET':
+            if req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist':
+                self.log.debug('match_request: %s %s', req.method, req.path_info)
+                return True
+            elif req.path_info == '/crashdump/submit/capabilities' or req.path_info == '/submit/capabilities':
+                self.log.debug('match_request: %s %s', req.method, req.path_info)
+                return True
+            elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist':
+                self.log.debug('match_request: %s %s', req.method, req.path_info)
+                return True
+            elif req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities':
+                self.log.debug('match_request: %s %s', req.method, req.path_info)
+                return True
 
     def _error_response(self, req, status, body=None, content_type='text/plain', headers=None):
 
