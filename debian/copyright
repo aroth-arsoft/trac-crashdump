@@ -1,18 +1,18 @@
 This package was debianized by:
 
-    W. Martin Borgert <debacle@debian.org> on Sat, 17 Oct 2009 15:53:40 +0000
+    Andreas Roth <aroth@arsoft-online.com> on Thu, 28 Aug 2014 16:30:47 +0200
 
 It was downloaded from:
 
-    http://trac-hacks.org/wiki/MasterTicketsPlugin
+    https://github.com/aroth-arsoft/trac-crashdump
 
 Upstream Author:
 
-    Noah Kantrowitz <noah@coderanger.net>
+    Andreas Roth <aroth@arsoft-online.com>
 
 Copyright:
 
-    © 2007-2011 Noah Kantrowitz
+    © 2014-2017 Andreas Roth
 
 License:
 

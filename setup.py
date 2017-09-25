@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 import os
 
 from setuptools import setup
@@ -22,11 +23,11 @@ setup(
         'Framework :: Trac',
         #'Development Status :: 1 - Planning',
         #'Development Status :: 2 - Pre-Alpha',
-        # 'Development Status :: 3 - Alpha',
-        'Development Status :: 4 - Beta',
-        #'Development Status :: 5 - Production/Stable',
-        # 'Development Status :: 6 - Mature',
-        # 'Development Status :: 7 - Inactive',
+        #'Development Status :: 3 - Alpha',
+        #'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
+        #'Development Status :: 6 - Mature',
+        #'Development Status :: 7 - Inactive',
         'Environment :: Web Environment',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
