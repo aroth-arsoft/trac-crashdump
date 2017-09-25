@@ -3,12 +3,12 @@
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 import os
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 setup(
     name = 'TracCrashDump',
     version = '0.31',
-    packages = ['crashdump'],
+    packages=find_packages(exclude=['*.tests*']),
     package_data = { 'crashdump': ['templates/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
 
     author = 'Andreas Roth',
@@ -36,7 +36,8 @@ setup(
     ],
     
     install_requires = ['Trac>=0.12'],
-
+    test_suite='crashdump.tests.test_suite',
+    tests_require=[],
     entry_points = {
         'trac.plugins': [
             'crashdump.web_ui = crashdump.web_ui',
