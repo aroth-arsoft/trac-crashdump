@@ -116,6 +116,20 @@ class CrashDump(object):
             self._init_defaults()
         self._old = {}
 
+    def _init_defaults(self):
+        for field in self.fields:
+            default = None
+            if field['name'] in self.protected_fields:
+                # Ignore for new - only change through workflow
+                pass
+            elif not field.get('custom'):
+                default = self.env.config.get('ticket',
+                                              'default_' + field['name'])
+            else:
+                default = self._custom_field_default(field)
+            if default:
+                self.values.setdefault(field['name'], default)
+
     exists = property(lambda self: self.id is not None)
 
     def __getitem__(self, name):
