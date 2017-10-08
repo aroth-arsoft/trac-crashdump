@@ -375,7 +375,7 @@ class XMLReport(object):
 
         @property
         def path(self):
-            ret = None
+            ret = []
             env = getattr(self, 'environment', None)
             if env:
                 for (k,v) in env.iteritems():
