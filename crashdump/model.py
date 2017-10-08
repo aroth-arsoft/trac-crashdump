@@ -89,6 +89,21 @@ class CrashDump(object):
             except:
                 return False
 
+    @staticmethod
+    def get_crash_id(s, default_id=None):
+        if isinstance(s, str):
+            s = s.strip()
+            if s[0] == '#':
+                s = s[1:]
+            try:
+                return int(s)
+            except ValueError:
+                return default_id
+        elif isinstance(s, int):
+            return s
+        else:
+            return default_id
+
     def __init__(self, id=None, uuid=None, env=None, version=None, must_exist=True, row=None):
         self.id = None
         self.status = None
@@ -109,7 +124,11 @@ class CrashDump(object):
         if uuid is not None:
             self._fetch_crash_by_uuid(uuid, must_exist=must_exist)
         elif id is not None:
-            self._fetch_crash_by_id(int(id), must_exist=must_exist)
+            crash_id = CrashDump.get_crash_id(id)
+            if crash_id is None:
+                raise ResourceNotFound(_("Crash %(id)s does not exist.",
+                                        id=id), _("Invalid crash identifier"))
+            self._fetch_crash_by_id(crash_id, must_exist=must_exist)
         elif row is not None:
             self._load_from_record(row)
         else:
@@ -191,6 +210,8 @@ class CrashDump(object):
         for i, field in enumerate(self.std_fields):
             if i == 0:
                 self.id = row[0]
+            elif field == 'uuid':
+                self.uuid = row[i + 1]
             else:
                 value = row[i + 1]
                 if value is None:

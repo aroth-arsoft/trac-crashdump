@@ -23,6 +23,21 @@ class CrashDumpTicketLinks(object):
         self.crashes = set([int(num) for num, in cursor])
         self._old_crashes = copy.copy(self.crashes)
 
+    @staticmethod
+    def get_crash_id(s, default_id=None):
+        if isinstance(s, str):
+            s = s.strip()
+            if s[0] == '#':
+                s = s[1:]
+            try:
+                return int(s)
+            except ValueError:
+                return default_id
+        elif isinstance(s, int):
+            return s
+        else:
+            return default_id
+
     def save(self, author, comment='', when=None, db=None):
         """Save new links."""
         if when is None:
@@ -65,7 +80,7 @@ class CrashDumpTicketLinks(object):
                     old_value_org = (cursor.fetchone() or ('',))[0]
                     if old_value_org is None:
                         old_value_org = ''
-                    old_value = set([int(x.strip()) for x in old_value_org.split(',') if x.strip()])
+                    old_value = set([CrashDumpTicketLinks.get_crash_id(x.strip()) for x in old_value_org.split(',') if x.strip()])
                     new_value = old_value
                     #print('old_value=%s' % old_value)
                     #print('new_value=%s' % new_value)
