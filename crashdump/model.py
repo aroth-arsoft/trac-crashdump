@@ -91,7 +91,7 @@ class CrashDump(object):
 
     @staticmethod
     def get_crash_id(s, default_id=None):
-        if isinstance(s, str):
+        if isinstance(s, str) or isinstance(s, unicode):
             s = s.strip()
             if s[0] == '#':
                 s = s[1:]
