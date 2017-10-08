@@ -4,13 +4,14 @@
 
 import unittest
 
-from crashdump.tests import api, web_ui
+from crashdump.tests import api, web_ui, model
 
 
 def test_suite():
     suite = unittest.TestSuite()
-    #suite.addTest(api.test_suite())
+    suite.addTest(api.test_suite())
     suite.addTest(web_ui.test_suite())
+    suite.addTest(model.test_suite())
 
     return suite
 

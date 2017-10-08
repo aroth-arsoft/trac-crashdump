@@ -99,6 +99,19 @@ class CrashDumpWebUiTestCase(unittest.TestCase):
 
             self.assertEqual(tmpl, param + '.html')
 
+    def test_action_view_ticket_linked_crash(self):
+        """Full name of reporter and owner are used in ticket properties."""
+        self.env.insert_users([('user1', 'User One', ''),
+                               ('user2', 'User Two', '')])
+        crash = self._insert_crashdump(reporter='user1', owner='user2')
+        tkt = self._insert_ticket(reporter='user1', owner='user2', linked_crash='#%i' % crash.id)
+
+        req = MockRequest(self.env, authname='user', method='GET',
+                          args={'crashid':crash.id, 'action': 'view'})
+        tmpl, data, extra = self.crashdump_module.process_request(req)
+
+        self.assertEqual(tmpl, 'report.html')
+
 
 def test_suite():
     suite = unittest.TestSuite()
