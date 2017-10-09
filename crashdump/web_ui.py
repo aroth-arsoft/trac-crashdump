@@ -540,8 +540,8 @@ class CrashDumpModule(Component):
                 tag.a(
                     'CrashId#%i' % crash.id,
                     class_=crash['status'],
-                    href=req.href('crash', crash['uuid']),
-                    title=crash['uuid']
+                    href=req.href('crash', crash.uuid),
+                    title=crash.uuid
                 )
         except ResourceNotFound:
             pass
@@ -563,8 +563,8 @@ class CrashDumpModule(Component):
                         tag.a(
                             'CrashId#%i' % crash.id,
                             class_=crash['status'],
-                            href=req.href('crash', crash['uuid']),
-                            title=crash['uuid']
+                            href=req.href('crash', crash.uuid),
+                            title=crash.uuid
                         )
                 except ResourceNotFound:
                     pass
@@ -582,10 +582,10 @@ class CrashDumpModule(Component):
             if show_uuid:
                 ret = \
                     tag.a(
-                        str(crash['uuid']),
+                        str(crash.uuid),
                         class_=crash['status'],
-                        href=req.href('crash', crash['uuid']),
-                        title='CrashId#%i (%s)' % (crash.id, crash['uuid']),
+                        href=req.href('crash', crash.uuid),
+                        title='CrashId#%i (%s)' % (crash.id, crash.uuid),
                         style="white-space: nowrap"
                     )
             else:
@@ -593,8 +593,8 @@ class CrashDumpModule(Component):
                     tag.a(
                         'CrashId#%i' % crash.id,
                         class_=crash['status'],
-                        href=req.href('crash', crash['uuid']),
-                        title=crash['uuid']
+                        href=req.href('crash', crash.uuid),
+                        title=crash.uuid
                     )
         except ResourceNotFound:
             pass
