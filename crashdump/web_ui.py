@@ -47,9 +47,12 @@ from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 from .utils import *
 
-def safe_list_get (l, idx, default=None):
+def safe_list_get_as_int (l, idx, default=None):
     try:
-        return l[idx]
+        try:
+            return int(l[idx])
+        except ValueError:
+            return default
     except IndexError:
         return default
 
@@ -371,10 +374,13 @@ class CrashDumpModule(Component):
                 if params[0] in ['sysinfo', 'sysinfo_ex', 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
                     return params[0] + '.html', data, None
                 elif params[0] == 'memory_block':
-                    data.update({'selected_memory_block_base': safe_list_get(params, 1, 0) })
+                    block_base = safe_list_get_as_int(params, 1, 0)
+                    data.update({'selected_memory_block_base': block_base })
                     return 'memory_block.html', data, None
                 elif params[0] == 'stackdump':
-                    data.update({'selected_stackdump_threadid': safe_list_get(params, 1, 0) })
+                    threadid = safe_list_get_as_int(params, 1, 0)
+                    self.log.debug('got stackdump %s' % threadid )
+                    data.update({'selected_stackdump_threadid': threadid })
                     return 'stackdump.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))

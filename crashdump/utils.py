@@ -6,6 +6,11 @@ from genshi.builder import tag
 from trac.util.translation import _
 
 def _hex_format(number, prefix='0x', width=None, bits=None):
+    if isinstance(number, str) or isinstance(number, unicode):
+        try:
+            number = int(number)
+        except ValueError:
+            number = None
     if number is None:
         return '(none)'
     if bits is not None:
