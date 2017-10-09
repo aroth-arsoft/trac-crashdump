@@ -274,7 +274,7 @@ class CrashDumpModule(Component):
         data['xmlfile_size'] = 0
         data['reporttextfile_size'] = 0
         data['reporthtmlfile_size'] = 0
-        data['show_debug_info'] = True
+        data['show_debug_info'] = False
         data['parsetime'] = 0
         data['is_64_bit'] = False
         if xmlfile:

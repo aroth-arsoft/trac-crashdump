@@ -84,11 +84,11 @@
 </ul>
 </td>
 </tr>
+<py:if test="show_debug_info">
 <tr>
 <th>Parse time:</th><td>${ format_seconds(parsetime) }</td>
 <th>Database time:</th><td>${ format_seconds(dbtime) }</td>
 </tr>
-<py:if test="show_debug_info">
 <tr>
 <th>Is 64-Bit:</th><td>${is_64_bit}</td>
 <th>Bits:</th><td>${bits}</td>
