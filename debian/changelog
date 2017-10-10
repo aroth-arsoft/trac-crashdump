@@ -1,3 +1,9 @@
+trac-crashdump (0.33) artful; urgency=medium
+
+  * disable tests for now
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Tue, 10 Oct 2017 06:48:57 +0200
+
 trac-crashdump (0.32) artful; urgency=medium
 
   * a bunch of bug fixes and minor improvements

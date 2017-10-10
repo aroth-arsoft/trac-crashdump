@@ -7,7 +7,7 @@ from setuptools import find_packages, setup
 
 setup(
     name = 'TracCrashDump',
-    version = '0.32',
+    version = '0.33',
     packages=find_packages(exclude=['*.tests*']),
     package_data = { 'crashdump': ['templates/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
 
