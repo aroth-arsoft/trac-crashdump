@@ -137,7 +137,8 @@
     </td></tr>
 </py:if>
 <py:if test="fast_protect_system_info">
-<tr><th>Crash&nbsp;FQDN</th><td class="fullrow">${fast_protect_system_info.fqdn}</td></tr>
+<tr><th>Crash&nbsp;FQDN</th><td class="fullrow">${fast_protect_system_info.fqdn}&nbsp;<a href="${href('crash', object.uuid, 'sysinfo_report')}" title="${object.uuid} system info">Show complete system info</a>
+</td></tr>
 <tr><th>Crash&nbsp;username</th><td class="fullrow">${fast_protect_system_info.username}</td></tr>
 </py:if>
 <py:if test="crash_info">

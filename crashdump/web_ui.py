@@ -371,7 +371,8 @@ class CrashDumpModule(Component):
 
                 return 'report.html', data, None
             else:
-                if params[0] in ['sysinfo', 'sysinfo_ex', 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
+                if params[0] in ['sysinfo', 'sysinfo_ex',
+                                 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
                     return params[0] + '.html', data, None
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
@@ -384,6 +385,21 @@ class CrashDumpModule(Component):
                     return 'stackdump.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
+        elif action == 'sysinfo_report':
+            data = self._prepare_data(req, crashobj)
+            if params is None:
+                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                add_stylesheet(req, 'crashdump/crashdump.css')
+                add_script(req, 'common/js/folding.js')
+                add_script(req, 'crashdump/crashdump.js')
+                return 'sysinfo_report.html', data, None
+            else:
+                if params[0] in ['sysinfo', 'sysinfo_ex',
+                                    'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
+                    return params[0] + '.html', data, None
+                else:
+                    raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
+
         elif action == 'systeminfo_raw':
             data = self._prepare_data(req, crashobj)
 
@@ -392,7 +408,10 @@ class CrashDumpModule(Component):
 
             fast_protect_system_info = data['fast_protect_system_info'] if 'fast_protect_system_info' in data else None
             if fast_protect_system_info:
-                filename = "%s_system_info.ini" % str(crashobj.uuid)
+                if crashobj['crashhostname']:
+                    filename = "%s_%s.terra4d-system-info" % (str(crashobj.uuid), str(crashobj['crashhostname']))
+                else:
+                    filename = "%s.terra4d-system-info" % str(crashobj.uuid)
                 if fast_protect_system_info.rawdata:
                     return self._send_data(req, fast_protect_system_info.rawdata.raw, filename=filename)
             raise ResourceNotFound(_("No system information available for crash %(uuid)s.", uuid=str(crashobj.uuid)))
