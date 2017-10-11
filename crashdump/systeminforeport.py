@@ -7,6 +7,7 @@ import base64
 from datetime import datetime
 
 from arsoft.inifile import IniFile
+from xmlreport import XMLReport
 
 class SystemInfoReport(object):
 
@@ -27,12 +28,15 @@ class SystemInfoReport(object):
         def __init__(self, report, message):
             super(SystemInfoReport.SystemInfoReportParserError, self).__init__(report, message)
 
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, xmlreport=None):
         self._filename = None
+        self._xmlreport = None
         self._ini = None
 
         if filename is not None:
-            self.open(filename)
+            self.open(filename=filename)
+        elif xmlreport is not None:
+            self.open(xmlreport=xmlreport)
 
     def clear(self):
         self._filename = None
@@ -65,14 +69,32 @@ class SystemInfoReport(object):
                 ret.append(elem)
         return ret
 
-    def open(self, filename):
-        try:
-            self._ini = IniFile(filename, commentPrefix=';', keyValueSeperator='=', qt=True)
-        except IOError as e:
-            raise SystemInfoReport.SystemInfoReportIOError(self, str(e))
+    def open(self, filename=None, xmlreport=None):
+        if filename:
+            try:
+                self._ini = IniFile(filename, commentPrefix=';', keyValueSeperator='=', qt=True)
+                self._filename = filename
+            except IOError as e:
+                raise SystemInfoReport.SystemInfoReportIOError(self, str(e))
+        elif xmlreport:
+            if isinstance(xmlreport, XMLReport):
+                self._xmlreport = xmlreport
+                if xmlreport.fast_protect_system_info is None:
+                    raise SystemInfoReport.SystemInfoReportIOError(self, 'No system info include in XMLReport %s' % (str(xmlreport)))
+                import StringIO
+                stream = StringIO.StringIO(xmlreport.fast_protect_system_info.rawdata.raw)
+                self._ini = IniFile(filename=None, commentPrefix=';', keyValueSeperator='=', qt=True)
+                self._ini.open(stream)
+            else:
+                raise SystemInfoReport.SystemInfoReportIOError(self, 'Only XMLReport objects are supported')
 
 if __name__ == '__main__':
-    sysinfo = SystemInfoReport(sys.argv[1])
+    if 0:
+        sysinfo = SystemInfoReport(sys.argv[1])
+    else:
+        xmlreport = XMLReport(sys.argv[1])
+        sysinfo = SystemInfoReport(xmlreport=xmlreport)
+
     print(sysinfo.get('System/fqdn'))
     print(sysinfo.get_tuples('System/Path', ['Ok', 'Dir']))
 
