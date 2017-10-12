@@ -16,7 +16,7 @@
 
 /* "Yellow Ticket Box" */
 #crashdump, #sysinfo, #sysinfo_ex, #fast_protect_version_info, #exception, #modules, #threads, #memory_regions, #memory_blocks,
- #sysinfo_report, #sysinfo_rawdata {
+ #sysinfo_report, #sysinfo_opengl, #sysinfo_env, #sysinfo_rawdata {
  background: #ffd;
  border: 1px solid #dd9;
  border-radius: .4em;
