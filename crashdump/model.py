@@ -208,6 +208,7 @@ class CrashDump(object):
 
     def _load_from_record(self, row):
         for i, field in enumerate(self.std_fields):
+            #print('_load_from_record %i, %s=%s' % (i, field, row[i+1]))
             if i == 0:
                 self.id = row[0]
             elif field == 'uuid':
@@ -499,7 +500,6 @@ class CrashDump(object):
             else:
                 std_fields.append(f['name'])
 
-        print("SELECT id,%s FROM crashdump %s" % (','.join(std_fields), where_clause))
         # Fetch the standard crashdump fields
         for row in env.db_query("SELECT id,%s FROM crashdump %s" % (','.join(std_fields), where_clause)):
             crash = CrashDump(env=env, must_exist=True, row=row)

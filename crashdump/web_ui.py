@@ -398,7 +398,7 @@ class CrashDumpModule(Component):
                 add_script(req, 'crashdump/crashdump.js')
                 return 'sysinfo_report.html', data, None
             else:
-                if params[0] in ['sysinfo', 'sysinfo_ex',
+                if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl',
                                  'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads', 'sysinfo_rawdata']:
                     return params[0] + '.html', data, None
                 else:

@@ -11,6 +11,11 @@ from xmlreport import XMLReport
 
 class SystemInfoReport(object):
 
+    _plain_arrays = ['OpenGLExtensions/Extension']
+    _tuples = {
+        'System/Path' : ['Dir', 'Ok']
+        }
+
     class SystemInfoReportException(Exception):
         def __init__(self, report, message):
             super(SystemInfoReport.SystemInfoReportException, self).__init__(message)
@@ -42,21 +47,23 @@ class SystemInfoReport(object):
         self._filename = None
         self._ini = None
 
-    def get(self, key, default_value=None):
-        if self._ini is None:
-            return default_value
-        section, key_path = key.split('/', 1)
-        key_path = key_path.replace('/', '\\')
-        if isinstance(default_value, list):
-            return self._ini.getAsArray(section, key_path, default_value)
+    def _get_as_plain_array(self, section, key, default_value):
+        ret = []
+        got_value = False
+        num = 0
+        while 1:
+            value = self._ini.get(section, key + '%i' % num, None)
+            if value is None:
+                break
+            got_value = True
+            ret.append(value)
+            num = num + 1
+        if got_value:
+            return ret
         else:
-            return self._ini.get(section, key_path, default_value)
-
-    def get_tuples(self, key, names, default_value=None):
-        if self._ini is None:
             return default_value
-        section, key_path = key.split('/', 1)
-        key_path = key_path.replace('/', '\\')
+
+    def _get_tuples(self, section, key_path, names, default_value=None):
         size = self._ini.get(section, key_path + '\\size', None)
         if size is None:
             return default_value
@@ -68,6 +75,20 @@ class SystemInfoReport(object):
                     elem[n] = self._ini.get(section, key_path + '\\%i\\%s' % (i, n), None)
                 ret.append(elem)
         return ret
+
+    def get(self, key, default_value=None):
+        if self._ini is None:
+            return default_value
+        section, key_path = key.split('/', 1)
+        key_path = key_path.replace('/', '\\')
+        if key in SystemInfoReport._plain_arrays:
+            return self._get_as_plain_array(section, key_path, default_value)
+        elif key in SystemInfoReport._tuples:
+            return self._get_tuples(section, key_path, SystemInfoReport._tuples[key], default_value)
+        elif isinstance(default_value, list):
+            return self._ini.getAsArray(section, key_path, default_value)
+        else:
+            return self._ini.get(section, key_path, default_value)
 
     def __getitem__(self, name):
         return self.get(name)
@@ -100,12 +121,14 @@ if __name__ == '__main__':
         xmlreport = XMLReport(sys.argv[1])
         sysinfo = SystemInfoReport(xmlreport=xmlreport)
 
-    print(sysinfo.get('System/fqdn'))
-    print(sysinfo.get_tuples('System/Path', ['Ok', 'Dir']))
+    #print(sysinfo.get('System/fqdn'))
+    #print(sysinfo.get_tuples('System/Path', ['Ok', 'Dir']))
 
-    print(sysinfo.get_tuples('Qt/fonts/families', ['name']))
-    print(sysinfo.get_tuples('Qt/fonts/standardsizes', ['size']))
+    #print(sysinfo.get_tuples('Qt/fonts/families', ['name']))
+    #print(sysinfo.get_tuples('Qt/fonts/standardsizes', ['size']))
 
-    print(sysinfo.get('Qt/sysinfo/libraryinfobuild'))
+    #print(sysinfo.get('Qt/sysinfo/libraryinfobuild'))
 
+    print(sysinfo.get('OpenGLExtensions/Extension'))
+    print(sysinfo.get('System/Path'))
 
