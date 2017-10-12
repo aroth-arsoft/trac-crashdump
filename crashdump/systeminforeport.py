@@ -69,7 +69,10 @@ class SystemInfoReport(object):
                 ret.append(elem)
         return ret
 
-    def open(self, filename=None, xmlreport=None):
+    def __getitem__(self, name):
+        return self.get(name)
+
+    def open(self, filename=None, xmlreport=None, minidump=None):
         if filename:
             try:
                 self._ini = IniFile(filename, commentPrefix=';', keyValueSeperator='=', qt=True)
@@ -86,7 +89,9 @@ class SystemInfoReport(object):
                 self._ini = IniFile(filename=None, commentPrefix=';', keyValueSeperator='=', qt=True)
                 self._ini.open(stream)
             else:
-                raise SystemInfoReport.SystemInfoReportIOError(self, 'Only XMLReport objects are supported')
+                raise SystemInfoReport.SystemInfoReportIOError(self, 'Only XMLReport objects are supported: %s' % type(xmlreport))
+        elif minidump:
+            raise SystemInfoReport.SystemInfoReportIOError(self, 'Not yet implemented')
 
 if __name__ == '__main__':
     if 0:

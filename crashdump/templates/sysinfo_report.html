@@ -94,6 +94,11 @@
 <th>Bits:</th><td>${bits}</td>
 </tr>
 </py:if>
+
+<tr>
+<th>fqdn:</th><td>${sysinfo_report['System/fqdn']}</td>
+<th>libraryinfobuild:</th><td>${sysinfo_report['Qt/sysinfo/libraryinfobuild']}</td>
+</tr>
 </table>
 
 <!-- close the crashdump yellow box -->
@@ -106,6 +111,10 @@
 </div>
 </py:if>
 
+<div id="sysinfo_rawdata" class="collapsed">
+<h2 class="foldable" id='sysinfo_rawdata'>Raw system information data</h2>
+<a name="sysinfo_rawdata"/>
+</div>
 
     <div class="trac-nav">
         <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;

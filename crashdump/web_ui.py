@@ -45,6 +45,7 @@ from .model import CrashDump
 from .links import CrashDumpTicketLinks
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
+from .systeminforeport import SystemInfoReport
 from .utils import *
 
 def safe_list_get_as_int (l, idx, default=None):
@@ -303,6 +304,7 @@ class CrashDumpModule(Component):
                     xmlreport = XMLReport(xmlfile)
                     for f in xmlreport.fields:
                         data[f] = XMLReport.ProxyObject(xmlreport, f)
+                    data['xmlreport'] = xmlreport
                     data['is_64_bit'] = xmlreport.is_64_bit
                 except XMLReport.XMLReportIOError as e:
                     data['xmlfile_error'] = str(e)
@@ -387,6 +389,8 @@ class CrashDumpModule(Component):
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'sysinfo_report':
             data = self._prepare_data(req, crashobj)
+            if 'xmlreport' in data:
+                data['sysinfo_report'] = SystemInfoReport(xmlreport=data['xmlreport'])
             if params is None:
                 add_script_data(req, {'comments_prefs': self._get_prefs(req)})
                 add_stylesheet(req, 'crashdump/crashdump.css')
@@ -395,7 +399,7 @@ class CrashDumpModule(Component):
                 return 'sysinfo_report.html', data, None
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex',
-                                    'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
+                                 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads', 'sysinfo_rawdata']:
                     return params[0] + '.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
