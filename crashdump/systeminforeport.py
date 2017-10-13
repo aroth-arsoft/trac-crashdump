@@ -9,11 +9,68 @@ from datetime import datetime
 from arsoft.inifile import IniFile
 from xmlreport import XMLReport
 
-class SystemInfoReport(object):
 
+class _Terra3DDirectories(object):
+    _dirlist = {
+        'ProgramFilesDirectory': None,
+        'ProgramDataDirectory': None,
+        'CacheDirectory': None,
+        'ProgramLibrariesDirectory': 'ProgramFilesDirectory',
+        'OSGLibraryPath': 'ProgramDataDirectory',
+        'CrashDumpDirectory': 'ProgramDataDirectory',
+        'DebugSymbolsDirectory': 'ProgramDataDirectory',
+        'BreakpadSymbolsDirectory': 'ProgramDataDirectory',
+        'VideoPluginDirectory': 'ProgramFilesDirectory',
+        'CameraControlPluginDirectory': 'ProgramFilesDirectory',
+        'CameraSensorPluginDirectory': 'ProgramFilesDirectory',
+        'StatusPluginDirectory': 'ProgramFilesDirectory',
+        'PythonModuleDirectory': 'ProgramFilesDirectory',
+        'PythonLibraryDirectory': 'ProgramFilesDirectory',
+        'ConfigDirectory': 'ProgramDataDirectory',
+        'DemoDirectory': 'ProgramDataDirectory',
+        'DocumentDirectory': 'ProgramDataDirectory',
+        'LayerDirectory': 'ProgramDataDirectory',
+        'TourDirectory': 'ProgramDataDirectory',
+        'LicenseDirectory': 'ProgramDataDirectory',
+        'SymbolDirectory': 'ProgramDataDirectory',
+        'Vicinity3DModelDirectory': 'ProgramDataDirectory',
+        'IconDirectory': 'ProgramDataDirectory',
+        'StylesDirectory': 'ProgramDataDirectory',
+        'CfgBinDirectory': 'ProgramDataDirectory',
+        'OemDirectory': 'ProgramDataDirectory',
+        'TextureDirectory': 'ProgramDataDirectory',
+        'DatabaseDirectory': 'ProgramDataDirectory',
+        'MissionsDirectory': 'ProgramDataDirectory',
+        'DatabaseScriptDirectory': 'ProgramDataDirectory',
+        'DataFileDirectory': 'ProgramDataDirectory',
+        'LocaleDirectory': 'ProgramDataDirectory',
+        'OSGDataFilePath': 'ProgramDataDirectory',
+        'ModelFilesDirectory': 'ProgramDataDirectory',
+        'WebIoDirectory': 'ProgramDataDirectory',
+        'WebRootDirectory': 'ProgramDataDirectory',
+        'AudioDirectory': 'ProgramDataDirectory',
+        'QmlDirectory': 'ProgramDataDirectory',
+        'ManualDirectory': 'ProgramDataDirectory',
+        'ShaderDirectory': 'ProgramDataDirectory',
+        'GeneratedResourceDirectory': 'ProgramDataDirectory',
+        }
+    def __init__(self, section, key_path, default_value):
+        self._values = {}
+        for name, depend in self._dirlist.items():
+            self._values[name] = section.get(name, default=default_value)
+
+    def __getitem__(self, name):
+        return self._values.get(name)
+
+class SystemInfoReport(object):
     _plain_arrays = ['OpenGLExtensions/Extension']
     _tuples = {
-        'System/Path' : ['Dir', 'Ok']
+        'System/Path' : ['Dir', 'Ok'],
+        'Process/Module': ['Path', 'BaseAddress', 'Size', 'EntryPoint', 'FileVersion', 'ProductVersion', 'Timestamp', 'TimestampUtc'],
+        'Windows/hotfix': ['id'],
+        'Network/Interface': ['index', 'name', 'description', 'hwaddr', 'loopback', 'up', 'running', 'wireless', 'pointtopoint', 'multicast', 'broadcast', 'addr'],
+
+        'terra3d-dirs': _Terra3DDirectories,
         }
     _dicts = ['Environment']
 
@@ -65,16 +122,23 @@ class SystemInfoReport(object):
             return default_value
 
     def _get_tuples(self, section, key_path, names, default_value=None):
-        size = self._ini.get(section, key_path + '\\size', None)
-        if size is None:
-            return default_value
+        if isinstance(names, type):
+            ini_section = self._ini.section(section)
+            if ini_section is not None:
+                ret = names(ini_section, key_path, default_value)
+            else:
+                ret = default_value
         else:
-            ret = []
-            for i in range(1, int(size)):
-                elem = {}
-                for n in names:
-                    elem[n] = self._ini.get(section, key_path + '\\%i\\%s' % (i, n), None)
-                ret.append(elem)
+            size = self._ini.getAsInteger(section, key_path + '\\size', None)
+            if size is None:
+                return default_value
+            else:
+                ret = []
+                for i in range(1, size):
+                    elem = {}
+                    for n in names:
+                        elem[n] = self._ini.get(section, key_path + '\\%i\\%s' % (i, n), None)
+                    ret.append(elem)
         return ret
 
     def _get_dicts(self, section, key_path, names, default_value=None):
@@ -129,6 +193,9 @@ class SystemInfoReport(object):
         elif minidump:
             raise SystemInfoReport.SystemInfoReportIOError(self, 'Not yet implemented')
 
+    def save(self, filename):
+        self._ini.save(filename)
+
 if __name__ == '__main__':
     if 0:
         sysinfo = SystemInfoReport(sys.argv[1])
@@ -144,7 +211,10 @@ if __name__ == '__main__':
 
     #print(sysinfo.get('Qt/sysinfo/libraryinfobuild'))
 
-    print(sysinfo['OpenGLExtensions/Extension'])
-    print(sysinfo['System/Path'])
-    print(sysinfo['Environment'])
+    #print(sysinfo['OpenGLExtensions/Extension'])
+    #print(sysinfo['System/Path'])
+    #print(sysinfo['Environment'])
+    sysinfo.save('/tmp/sysinfo.ini')
+    #print(sysinfo['Network/Interface'])
+    print(sysinfo['terra3d-dirs']['DataFileDirectory'])
 
