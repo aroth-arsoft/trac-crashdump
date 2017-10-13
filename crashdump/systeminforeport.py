@@ -4,6 +4,7 @@
 
 import sys
 import base64
+import os.path
 from datetime import datetime
 
 from arsoft.inifile import IniFile
@@ -11,56 +12,86 @@ from xmlreport import XMLReport
 
 
 class _Terra3DDirectories(object):
-    _dirlist = {
-        'ProgramFilesDirectory': None,
-        'ProgramDataDirectory': None,
-        'CacheDirectory': None,
-        'ProgramLibrariesDirectory': 'ProgramFilesDirectory',
-        'OSGLibraryPath': 'ProgramDataDirectory',
-        'CrashDumpDirectory': 'ProgramDataDirectory',
-        'DebugSymbolsDirectory': 'ProgramDataDirectory',
-        'BreakpadSymbolsDirectory': 'ProgramDataDirectory',
-        'VideoPluginDirectory': 'ProgramFilesDirectory',
-        'CameraControlPluginDirectory': 'ProgramFilesDirectory',
-        'CameraSensorPluginDirectory': 'ProgramFilesDirectory',
-        'StatusPluginDirectory': 'ProgramFilesDirectory',
-        'PythonModuleDirectory': 'ProgramFilesDirectory',
-        'PythonLibraryDirectory': 'ProgramFilesDirectory',
-        'ConfigDirectory': 'ProgramDataDirectory',
-        'DemoDirectory': 'ProgramDataDirectory',
-        'DocumentDirectory': 'ProgramDataDirectory',
-        'LayerDirectory': 'ProgramDataDirectory',
-        'TourDirectory': 'ProgramDataDirectory',
-        'LicenseDirectory': 'ProgramDataDirectory',
-        'SymbolDirectory': 'ProgramDataDirectory',
-        'Vicinity3DModelDirectory': 'ProgramDataDirectory',
-        'IconDirectory': 'ProgramDataDirectory',
-        'StylesDirectory': 'ProgramDataDirectory',
-        'CfgBinDirectory': 'ProgramDataDirectory',
-        'OemDirectory': 'ProgramDataDirectory',
-        'TextureDirectory': 'ProgramDataDirectory',
-        'DatabaseDirectory': 'ProgramDataDirectory',
-        'MissionsDirectory': 'ProgramDataDirectory',
-        'DatabaseScriptDirectory': 'ProgramDataDirectory',
-        'DataFileDirectory': 'ProgramDataDirectory',
-        'LocaleDirectory': 'ProgramDataDirectory',
-        'OSGDataFilePath': 'ProgramDataDirectory',
-        'ModelFilesDirectory': 'ProgramDataDirectory',
-        'WebIoDirectory': 'ProgramDataDirectory',
-        'WebRootDirectory': 'ProgramDataDirectory',
-        'AudioDirectory': 'ProgramDataDirectory',
-        'QmlDirectory': 'ProgramDataDirectory',
-        'ManualDirectory': 'ProgramDataDirectory',
-        'ShaderDirectory': 'ProgramDataDirectory',
-        'GeneratedResourceDirectory': 'ProgramDataDirectory',
-        }
+    _dirlist = [
+        ('ProgramFilesDirectory', 'Program files', None, None),
+        ('ProgramDataDirectory', 'Program data', None, None),
+        ('CacheDirectory', 'Cache', None, None),
+        ('SystemTempDirectory', 'System temp', None, None),
+        ('UserTempDirectory', 'User temp', None, None),
+        ('UserPersistentTempDirectory', 'User persistent temp', None, None),
+        ('ProgramLibrariesDirectory', 'Program libaries', 'ProgramFilesDirectory', '../lib'),
+        ('OSGLibraryPath', 'OSG Library', 'ProgramDataDirectory', ''),
+        ('CrashDumpDirectory', 'Crash dump', 'UserPersistentTempDirectory', 'dump'),
+        ('DebugSymbolsDirectory', 'Debug symbols', 'ProgramFilesDirectory', '../pdb'),
+        ('BreakpadSymbolsDirectory', 'Breakpad symbols', 'ProgramDataDirectory', 'breakpad_symbols'),
+        ('VideoPluginDirectory', 'Video plugin', 'ProgramFilesDirectory', ''),
+        ('CameraControlPluginDirectory', 'Camera control plugin', 'ProgramFilesDirectory', ''),
+        ('CameraSensorPluginDirectory', 'Camera sensor plugin', 'ProgramFilesDirectory', ''),
+        ('StatusPluginDirectory', 'Status plugin', 'ProgramFilesDirectory', ''),
+        ('PythonModuleDirectory', 'Python module', 'ProgramFilesDirectory', 'share/pyshared'),
+        ('PythonLibraryDirectory', 'Python library', 'ProgramFilesDirectory', ''),
+        ('ConfigDirectory', 'Config', 'ProgramDataDirectory', 'etc'),
+        ('DemoDirectory', 'Demo', 'ProgramDataDirectory', 'demo'),
+        ('DocumentDirectory', 'Document', 'ProgramDataDirectory', 'documents'),
+        ('LayerDirectory', 'Layer', 'ProgramDataDirectory', 'layers'),
+        ('TourDirectory', 'Tour', 'ProgramDataDirectory', 'tours'),
+        ('LicenseDirectory', 'License', 'ProgramDataDirectory', 'licenses'),
+        ('SymbolDirectory', 'Symbol', 'ProgramDataDirectory', 'share/symbols'),
+        ('Vicinity3DModelDirectory', 'Vicinity model', 'ProgramDataDirectory', 'vicinitymodels'),
+        ('IconDirectory', 'Icon', 'ProgramFilesDirectory', '../share/icons'),
+        ('StylesDirectory', 'Styles', 'ProgramFilesDirectory', '../share/styles'),
+        ('CfgBinDirectory', 'Binary config', 'ProgramDataDirectory', 'cfgbin'),
+        ('OemDirectory', 'OEM', 'ProgramDataDirectory', 'share/oem'),
+        ('TextureDirectory', 'Texture', 'ProgramDataDirectory', 'share/textures'),
+        ('DatabaseDirectory', 'Database', 'ProgramDataDirectory', 'db'),
+        ('MissionsDirectory', 'Missions', 'ProgramDataDirectory', 'missions'),
+        ('DatabaseScriptDirectory', 'Database script', 'ProgramDataDirectory', 'share/db'),
+        ('DataFileDirectory', 'Data file', 'ProgramDataDirectory', 'share'),
+        ('LocaleDirectory', 'Locale', 'ProgramDataDirectory', 'share/locale'),
+        ('OSGDataFilePath', 'OSG data file', 'ProgramDataDirectory', ''),
+        ('ModelFilesDirectory', 'Model files', 'ProgramDataDirectory', 'share/model'),
+        ('WebIoDirectory', 'Web IO', 'ProgramDataDirectory', 'share/webio'),
+        ('WebRootDirectory', 'Web root', 'ProgramDataDirectory', 'share/webroot'),
+        ('AudioDirectory', 'Audio', 'ProgramDataDirectory', 'share/audio'),
+        ('QmlDirectory', 'QML', 'ProgramDataDirectory', 'share/qml'),
+        ('ManualDirectory', 'Manual', 'ProgramDataDirectory', 'share/doc'),
+        ('ShaderDirectory', 'Shaders', 'ProgramDataDirectory', 'share/shaders'),
+        ('GeneratedResourceDirectory', 'Generated resource', 'ProgramDataDirectory', 'generatedresources'),
+        ]
+
+    class _item(object):
+        def __init__(self, name, description, value):
+            self.name = name
+            self.description = description
+            self.value = value
+        def __str__(self):
+            return '%s=%s' % (self.name, self.value)
+
     def __init__(self, section, key_path, default_value):
-        self._values = {}
-        for name, depend in self._dirlist.items():
-            self._values[name] = section.get(name, default=default_value)
+        values = {}
+        for name, description, depend, rel_path in self._dirlist:
+            values[name] = section.get(name, default=default_value)
+        self._values = []
+        for name, description, depend, rel_path in self._dirlist:
+            value = values[name]
+            if values[name] == '<<default>>':
+                value = rel_path
+            if depend is not None:
+                if values[depend] is not None:
+                    #print('%s=%s on %s' % (name, value, depend))
+                    value = os.path.join(values[depend], value)
+                    #print('%s=%s on %s' % (name, value, depend))
+                else:
+                    value = '<<%s>>/%s' % (depend, value)
+            if value is not None:
+                value = os.path.normpath(value)
+            self._values.append( _Terra3DDirectories._item(name, description, value) )
 
     def __getitem__(self, name):
         return self._values.get(name)
+
+    def __iter__(self):
+        return iter(self._values)
 
 class SystemInfoReport(object):
     _plain_arrays = ['OpenGLExtensions/Extension']
@@ -216,5 +247,7 @@ if __name__ == '__main__':
     #print(sysinfo['Environment'])
     sysinfo.save('/tmp/sysinfo.ini')
     #print(sysinfo['Network/Interface'])
-    print(sysinfo['terra3d-dirs']['DataFileDirectory'])
+    for dir in sysinfo['terra3d-dirs']:
+        print('%s=%s' % (dir.description, dir.value))
+    #print(sysinfo['terra3d-dirs']['DataFileDirectory'])
 
