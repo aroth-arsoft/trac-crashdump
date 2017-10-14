@@ -252,6 +252,7 @@ class CrashDumpModule(Component):
                 'format_size': format_size,
                 'format_trust_level': format_trust_level,
                 'format_memory_usagetype': format_memory_usagetype,
+                'format_gl_extension_name': format_gl_extension_name,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}
@@ -398,7 +399,7 @@ class CrashDumpModule(Component):
                 add_script(req, 'crashdump/crashdump.js')
                 return 'sysinfo_report.html', data, None
             else:
-                if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs',
+                if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu',
                                  'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads', 'sysinfo_rawdata']:
                     return params[0] + '.html', data, None
                 else:

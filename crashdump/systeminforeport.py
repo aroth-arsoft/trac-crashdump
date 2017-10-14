@@ -4,7 +4,8 @@
 
 import sys
 import base64
-import os.path
+import posixpath
+import ntpath
 from datetime import datetime
 
 from arsoft.inifile import IniFile
@@ -67,7 +68,7 @@ class _Terra3DDirectories(object):
         def __str__(self):
             return '%s=%s' % (self.name, self.value)
 
-    def __init__(self, section, key_path, default_value):
+    def __init__(self, owner, section, key_path, default_value):
         values = {}
         for name, description, depend, rel_path in self._dirlist:
             values[name] = section.get(name, default=default_value)
@@ -78,17 +79,79 @@ class _Terra3DDirectories(object):
                 value = rel_path
             if depend is not None:
                 if values[depend] is not None:
-                    #print('%s=%s on %s' % (name, value, depend))
-                    value = os.path.join(values[depend], value)
-                    #print('%s=%s on %s' % (name, value, depend))
+                    if owner.is_platform_windows:
+                        value = ntpath.join(values[depend].replace('/', '\\'), value.replace('/', '\\'))
+                    else:
+                        value = posixpath.join(values[depend], value)
                 else:
-                    value = '<<%s>>/%s' % (depend, value)
+                    if owner.is_platform_windows:
+                        value = '<<%s>>\\%s' % (depend, value.replace('/', '\\'))
+                    else:
+                        value = '<<%s>>/%s' % (depend, value)
             if value is not None:
-                value = os.path.normpath(value)
+                if owner.is_platform_windows:
+                    value = ntpath.normpath(value.replace('/', '\\'))
+                else:
+                    value = posixpath.normpath(value)
             self._values.append( _Terra3DDirectories._item(name, description, value) )
 
     def __getitem__(self, name):
         return self._values.get(name)
+
+    def __iter__(self):
+        return iter(self._values)
+
+class _SystemInfoCPU(object):
+    _itemlist = [
+        ('name', 'Vendor', str),
+        ('brand', 'Name', str),
+        ('num_cpu_cores', 'Number of CPU cores', int),
+        ('num_logical_cpus', 'Number of logical CPU cores', int),
+        ('HyperThread', 'Hyper-Threading', bool),
+        ('SSE2', 'SSE2', bool),
+        ('SSE3', 'SSE3', bool),
+        ('SSSE3', 'SSSE3', bool),
+        ('SSE4_1', 'SSE4_1', bool),
+        ('SSE4_2', 'SSE4_2', bool),
+        ('RTM', 'Restricted Transactional Memory (RTM)', bool),
+        ('HLE', 'Hardware Lock Elision (HLE)', bool),
+        ('AVX', 'AVX', bool),
+        ('AVX2', 'AVX2', bool),
+        ('AVX512', 'AVX512', bool),
+        ('ARM_NEON', 'ARM Neon', bool),
+        ('MIPS_DSP', 'MIPS DSP', bool),
+        ('MIPS_DSPR2', 'MIPS DSPR2', bool),
+        ('AES', 'AES', bool),
+        ('XGETBV', 'XGETBV', bool),
+        ('cpuid_max_standard_level', None, int),
+        ('cpuid_max_hypervisor_level', None, int),
+        ('cpuid_max_extended_level', None, int),
+        ]
+
+    class _item(object):
+        def __init__(self, name, description, value):
+            self.name = name
+            self.description = description
+            self.value = value
+        def __str__(self):
+            return '%s=%s' % (self.name, self.value)
+
+    def __init__(self, owner, section, key_path, default_value):
+        self._values = []
+        for name, description, itemtype in self._itemlist:
+            if itemtype == bool:
+                value = section.getAsBoolean(name, default=False)
+            elif itemtype == int:
+                value = section.getAsInteger(name, default=0)
+            else:
+                value = section.get(name, default=default_value)
+            self._values.append(_SystemInfoCPU._item(name, description, value))
+
+    def __getitem__(self, name):
+        for item in self._values:
+            if item.name == name:
+                return item
+        return None
 
     def __iter__(self):
         return iter(self._values)
@@ -102,6 +165,7 @@ class SystemInfoReport(object):
         'Network/Interface': ['index', 'name', 'description', 'hwaddr', 'loopback', 'up', 'running', 'wireless', 'pointtopoint', 'multicast', 'broadcast', 'addr'],
 
         'terra3d-dirs': _Terra3DDirectories,
+        'CPU': _SystemInfoCPU,
         }
     _dicts = ['Environment']
 
@@ -126,6 +190,8 @@ class SystemInfoReport(object):
         self._filename = None
         self._xmlreport = None
         self._ini = None
+        self.platform_type = None
+        self.is_64_bit = True
 
         if filename is not None:
             self.open(filename=filename)
@@ -156,7 +222,7 @@ class SystemInfoReport(object):
         if isinstance(names, type):
             ini_section = self._ini.section(section)
             if ini_section is not None:
-                ret = names(ini_section, key_path, default_value)
+                ret = names(self, ini_section, key_path, default_value)
             else:
                 ret = default_value
         else:
@@ -203,6 +269,14 @@ class SystemInfoReport(object):
     def __getitem__(self, name):
         return self.get(name)
 
+    def _post_open(self):
+        if self.platform_type is None:
+            pass
+
+    @property
+    def is_platform_windows(self):
+        return self.platform_type == 'Win32' or self.platform_type == 'Windows NT'
+
     def open(self, filename=None, xmlreport=None, minidump=None):
         if filename:
             try:
@@ -219,10 +293,14 @@ class SystemInfoReport(object):
                 stream = StringIO.StringIO(xmlreport.fast_protect_system_info.rawdata.raw)
                 self._ini = IniFile(filename=None, commentPrefix=';', keyValueSeperator='=', qt=True)
                 self._ini.open(stream)
+                self.platform_type = xmlreport.platform_type
+                self.is_64_bit = xmlreport.is_64_bit
+                #print('platform=%s' % (self.platform_type))
             else:
                 raise SystemInfoReport.SystemInfoReportIOError(self, 'Only XMLReport objects are supported: %s' % type(xmlreport))
         elif minidump:
             raise SystemInfoReport.SystemInfoReportIOError(self, 'Not yet implemented')
+        self._post_open()
 
     def save(self, filename):
         self._ini.save(filename)
@@ -247,7 +325,10 @@ if __name__ == '__main__':
     #print(sysinfo['Environment'])
     sysinfo.save('/tmp/sysinfo.ini')
     #print(sysinfo['Network/Interface'])
-    for dir in sysinfo['terra3d-dirs']:
-        print('%s=%s' % (dir.description, dir.value))
+    #print('Win32' if sysinfo.is_platform_windows else 'Posix')
+    #for dir in sysinfo['terra3d-dirs']:
+    #    print('%s=%s' % (dir.description, dir.value))
+    for item in sysinfo['CPU']:
+        print('%s=%s' % (item.description, item.value))
     #print(sysinfo['terra3d-dirs']['DataFileDirectory'])
 

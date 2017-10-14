@@ -19,7 +19,7 @@
         <td>
             <ul class="glextension">
             <py:for each="p in sysinfo_report['OpenGLExtensions/Extension']">
-                <li>${p}</li>
+                <li>${format_gl_extension_name(p)}</li>
             </py:for>
             </ul>
         </td>

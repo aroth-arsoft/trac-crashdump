@@ -322,3 +322,25 @@ def format_memory_usagetype(usage):
         return 'Thread info block'
     else:
         return 'unknown(%i)' % usage
+
+def format_gl_extension_name(ext):
+    khronos_extension_base_url = 'https://www.khronos.org/registry/OpenGL/extensions'
+    unknown_extension_url = 'https://www.khronos.org/opengl/wiki/OpenGL_Extension'
+    title = ext
+    name = ext
+    href = unknown_extension_url
+    vendor = None
+    ext_name = None
+    if ext.startswith('GL_'):
+        vendor_end = ext.index('_', 3)
+        if vendor_end > 0:
+            vendor = ext[3:vendor_end]
+            ext_name = ext[3:]
+    elif ext.startswith('GLX_') or ext.startswith('WGL_'):
+        vendor_end = ext.index('_', 4)
+        if vendor_end > 0:
+            vendor = ext[4:vendor_end]
+            ext_name = ext
+    if vendor and ext_name:
+        href = khronos_extension_base_url + '/%s/%s.txt' % (vendor, ext_name)
+    return tag.a(name, title=title, href=href)
