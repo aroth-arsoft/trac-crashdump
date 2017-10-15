@@ -200,11 +200,14 @@ class XMLReport(object):
         'product_code_name',
         'product_version',
         'product_target_version',
+        'product_build_type',
+        'product_build_postfix',
         'root_revision',
         'buildtools_revision',
         'external_revision',
         'third_party_revision',
         'terra3d_revision',
+        'manual_revision',
         'jenkins_job_name',
         'jenkins_build_number',
         'jenkins_build_id',
@@ -213,7 +216,8 @@ class XMLReport(object):
         'jenkins_git_revision',
         'jenkins_git_branch',
         'jenkins_master',
-        'jenkins_nodename'
+        'jenkins_nodename',
+        'thread_name_tls_slot',
         ]
 
     _fast_protect_system_info_fields = [
