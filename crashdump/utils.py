@@ -63,6 +63,11 @@ def exception_code(platform_type, code, name):
         return tag.a(str(name) + '(' + hex_format(code) + ')', href='https://en.wikipedia.org/wiki/Special:Search/' + str(platform_type))
 
 def format_bool_yesno(val):
+    if isinstance(val, str) or isinstance(val, unicode):
+        try:
+            val = bool(val)
+        except ValueError:
+            val = None
     if val is None:
         return '(none)'
     elif val == True:
@@ -288,6 +293,11 @@ def format_trust_level(tl):
 
 _suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 def format_size(nbytes):
+    if isinstance(nbytes, str) or isinstance(nbytes, unicode):
+        try:
+            nbytes = int(nbytes)
+        except ValueError:
+            nbytes = None
     if nbytes == 0: return '0 B'
     elif nbytes is None: return 'None'
     i = 0
