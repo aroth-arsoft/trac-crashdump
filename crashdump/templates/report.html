@@ -110,7 +110,7 @@
 </td></tr>
 <py:if test="object['minidumpfile']">
     <tr><th>Minidump file</th><td class="fullrow">
-        <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
+        <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(minidumpfile_size) })">Download</a>
         <py:if test="object['minidumpreporttextfile']">
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
         </py:if>
@@ -124,7 +124,7 @@
 </py:if>
 <py:if test="object['coredumpfile']">
     <tr><th>Coredump file</th><td class="fullrow">
-        <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(dumpfile_size) })">Download</a>
+        <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(coredumpfile_size) })">Download</a>
         <py:if test="object['coredumpreporttextfile']">
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
         </py:if>

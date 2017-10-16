@@ -178,7 +178,13 @@ def format_cpu_name(vendor, name):
     # http://en.wikipedia.org/wiki/CPUID
     # http://www.sandpile.org/x86/cpuid.htm
     if vendor == 'AuthenticAMD':
-        if name.startswith('AMD FX'):
+        if name is None:
+            title = 'Unknown AMD CPU'
+            href = 'http://en.wikipedia.org/wiki/Advanced_Micro_Devices'
+        elif name.startswith('AMD Ryzen'):
+            href = 'https://en.wikipedia.org/wiki/Ryzen'
+            title = 'AMD Ryzen'
+        elif name.startswith('AMD FX'):
             href = 'http://en.wikipedia.org/wiki/List_of_AMD_FX_microprocessors'
             title = 'AMD FX-series'
         elif name.startswith('AMD Phenom'):
@@ -201,7 +207,10 @@ def format_cpu_name(vendor, name):
             href = 'http://en.wikipedia.org/wiki/Advanced_Micro_Devices'
         title = title + ' (%s)' % name
     elif vendor == 'GenuineIntel':
-        if name.startswith('Intel(R) Core(TM) i3'):
+        if name is None:
+            title = 'Unknown Intel CPU'
+            href = 'https://en.wikipedia.org/wiki/List_of_Intel_microprocessors'
+        elif name.startswith('Intel(R) Core(TM) i3'):
             title = 'Intel Core i3 series'
             href = 'http://en.wikipedia.org/wiki/Intel_Core'
         elif name.startswith('Intel(R) Core(TM) i5'):
@@ -209,6 +218,9 @@ def format_cpu_name(vendor, name):
             href = 'http://en.wikipedia.org/wiki/Intel_Core'
         elif name.startswith('Intel(R) Core(TM) i7'):
             title = 'Intel Core i7 series'
+            href = 'http://en.wikipedia.org/wiki/Intel_Core'
+        elif name.startswith('Intel(R) Core(TM) i9'):
+            title = 'Intel Core i9 series'
             href = 'http://en.wikipedia.org/wiki/Intel_Core'
         elif name.startswith('Intel(R) Core(TM)'):
             title = 'Unknown Intel Core series'

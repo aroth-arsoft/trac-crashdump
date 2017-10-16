@@ -46,6 +46,7 @@ from .links import CrashDumpTicketLinks
 from .api import CrashDumpSystem
 from .xmlreport import XMLReport
 from .systeminforeport import SystemInfoReport
+from .minidump import MiniDump, MiniDumpWrapper
 from .utils import *
 
 def safe_list_get_as_int (l, idx, default=None):
@@ -258,24 +259,27 @@ class CrashDumpModule(Component):
                 'emtpy': empty}
         xmlfile = None
         xmlfile_from_db = None
+        minidumpfile = None
+        coredumpfile = None
         if crashobj['minidumpreportxmlfile']:
             xmlfile_from_db = crashobj['minidumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'minidumpreportxmlfile')
             reporttextfile = self._get_dump_filename(crashobj, 'minidumpreporttextfile')
             reporthtmlfile = self._get_dump_filename(crashobj, 'minidumpreporthtmlfile')
-            dumpfile = self._get_dump_filename(crashobj, 'minidumpfile')
         elif crashobj['coredumpreportxmlfile']:
             xmlfile_from_db = crashobj['coredumpreportxmlfile']
             xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
             reporttextfile = self._get_dump_filename(crashobj, 'coredumpreporttextfile')
             reporthtmlfile = self._get_dump_filename(crashobj, 'coredumpreporthtmlfile')
-            dumpfile = self._get_dump_filename(crashobj, 'coredumpfile')
+        coredumpfile = self._get_dump_filename(crashobj, 'coredumpfile')
+        minidumpfile = self._get_dump_filename(crashobj, 'minidumpfile')
         data['xmlfile_from_db'] = xmlfile_from_db
         data['xmlfile'] = xmlfile
         data['xmlfile_error'] = None
         data['minidump_xml_size'] = 0
         data['coredump_xml_size'] = 0
-        data['dumpfile_size'] = 0
+        data['minidumpfile_size'] = 0
+        data['coredumpfile_size'] = 0
         data['xmlfile_size'] = 0
         data['reporttextfile_size'] = 0
         data['reporthtmlfile_size'] = 0
@@ -284,23 +288,33 @@ class CrashDumpModule(Component):
         data['is_64_bit'] = False
         if xmlfile:
             start = time.time()
-            try:
-                data['dumpfile_size'] = os.path.getsize(dumpfile)
-            except OSError:
-                pass
-            try:
-                data['xmlfile_size'] = os.path.getsize(xmlfile)
-            except OSError:
-                pass
-            try:
-                data['reporttextfile_size'] = os.path.getsize(reporttextfile)
-            except OSError:
-                pass
-            try:
-                data['reporthtmlfile_size'] = os.path.getsize(reporthtmlfile)
-            except OSError:
-                pass
-            if os.path.isfile(xmlfile):
+            if minidumpfile:
+                try:
+                    data['minidumpfile_size'] = os.path.getsize(minidumpfile)
+                    data['minidumpfile'] = MiniDump(minidumpfile)
+                except OSError:
+                    pass
+            if coredumpfile:
+                try:
+                    data['coredumpfile_size'] = os.path.getsize(coredumpfile)
+                except OSError:
+                    pass
+            if reporttextfile:
+                try:
+                    data['reporttextfile_size'] = os.path.getsize(reporttextfile)
+                except OSError:
+                    pass
+            if reporthtmlfile:
+                try:
+                    data['reporthtmlfile_size'] = os.path.getsize(reporthtmlfile)
+                except OSError:
+                    pass
+            if xmlfile:
+                try:
+                    data['xmlfile_size'] = os.path.getsize(xmlfile)
+                except OSError:
+                    pass
+            if os.path.isfile(xmlfile) and 0:
                 try:
                     xmlreport = XMLReport(xmlfile)
                     for f in xmlreport.fields:
@@ -310,6 +324,10 @@ class CrashDumpModule(Component):
                 except XMLReport.XMLReportIOError as e:
                     data['xmlfile_error'] = str(e)
             else:
+                wrapper = MiniDumpWrapper(data['minidumpfile'])
+                for f in wrapper.fields:
+                    data[f] = MiniDumpWrapper.ProxyObject(wrapper, f)
+                data['xmlreport'] = None
                 data['xmlfile_error'] = 'XML file %s does not exist' % xmlfile
             end = time.time()
             data['parsetime'] = end - start
@@ -511,6 +529,8 @@ class CrashDumpModule(Component):
 
     def _get_dump_filename(self, crashobj, name):
         item_name = crashobj[name]
+        if not item_name:
+            return None
         crash_file = os.path.join(self.env.path, self.dumpdata_dir, item_name)
         return crash_file
 

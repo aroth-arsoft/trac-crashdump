@@ -5,6 +5,8 @@
 import struct
 from fastprotect_version_info import FastprotectVersionInfo
 
+from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
+
 class Structure(object):
     def __init__(self):
         if not hasattr(self, "_fields_"):
@@ -568,7 +570,8 @@ class MiniDump(object):
 
         self.system_info = msi
         self.processor = msi.VendorId
-        
+        self.system_info.CSDVersion = self._read_string(msi.CSDVersionRva)
+
         if msi.ProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64:
             self.architecture = "amd64"
         elif msi.ProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM:
@@ -634,6 +637,19 @@ class MiniDump(object):
     def __parse_fastprotect_system_info__(self, dirent):
         self.fd.seek(dirent.Location.Rva)
         self.fastprotect_system_info = self.fd.read(dirent.Location.DataSize)
+
+    def _read_string(self, rva):
+
+        pos = self.fd.tell()
+        self.fd.seek(rva)
+
+        ms = MINIDUMP_STRING()
+        ms.parse(self.fd)
+
+        ret = str(ms.Buffer)
+
+        self.fd.seek(pos)
+        return ret
 
     def parse(self):
         try:
@@ -750,6 +766,206 @@ class MiniDump(object):
             self.fd.close()
             self.fd = None
 
+class MiniDumpWrapper(object):
+
+    _main_fields = ['system_info', 'exception']
+
+    PlatformTypeId_to_string = {
+        -1: 'Unknown', # PlatformTypeUnknown
+        0: 'Win32s', # PlatformTypeWin32s = 0,
+        1: 'Windows 9x', # PlatformTypeWin32_Windows,
+        2: 'Windows NT', # PlatformTypeWin32_NT,
+        3: 'Windows CE', # PlatformTypeWin32_CE,
+        4: 'Unix', # PlatformTypeUnix,
+        5: 'Mac OS X', # PlatformTypeMacOSX,
+        6: 'iOS', # PlatformTypeIOS,
+        7: 'Linux', # PlatformTypeLinux,
+        8: 'Solaris', # PlatformTypeSolaris,
+        9: 'Android', # PlatformTypeAndroid,
+        10: 'PS3', # PlatformTypePS3,
+        11: 'NaCl', # PlatformTypeNACL
+    };
+
+    CPUTypeId_to_string = {
+        -1: 'Unkown', # CPUTypeUnknown
+        0: 'X86', # CPUTypeX86
+        1: 'MIPS', # CPUTypeMIPS,
+        2: 'Alpha', # CPUTypeAlpha,
+        3: 'PowerPC', # CPUTypePowerPC,
+        4: 'SHX', # CPUTypeSHX,
+        5: 'ARM', # CPUTypeARM,
+        6: 'IA64', # CPUTypeIA64,
+        7: 'Alpha64', # CPUTypeAlpha64,
+        8: 'MSIL', # CPUTypeMSIL,
+        9: 'AMD64', # CPUTypeAMD64,
+        10: 'x64 WOW', # CPUTypeX64_Win64,
+        11: 'Sparc', # CPUTypeSparc,
+        12: 'PowerPC64', # CPUTypePowerPC64,
+        13: 'ARM64', # CPUTypeARM64
+    };
+
+    def __init__(self, minidump):
+        self._md = minidump
+        self._system_info = None
+        self._exception = None
+
+    class MiniDumpEntity(object):
+        def __init__(self, owner):
+            self._owner = owner
+            self._md = self._owner._md
+
+        def __str__(self):
+            ret = ''
+            for (k,v) in self.__dict__.items():
+                if k[0] != '_':
+                    if ret:
+                        ret += ', '
+                    ret = ret + '%s=%s' % (k,v)
+            return ret
+
+    class SystemInfo(MiniDumpEntity):
+        def __init__(self, owner):
+            super(MiniDumpWrapper.SystemInfo, self).__init__(owner)
+            self.platform_type = MiniDumpWrapper.PlatformTypeId_to_string.get(self._md.system_info.PlatformId, None)
+            self.platform_type_id = self._md.system_info.PlatformId
+            self.cpu_type = MiniDumpWrapper.CPUTypeId_to_string.get(self._md.system_info.ProcessorArchitecture, None)
+            self.cpu_type_id = self._md.system_info.ProcessorArchitecture
+            self.cpu_name = None
+            self.cpu_level = self._md.system_info.ProcessorLevel
+            self.cpu_revision = self._md.system_info.ProcessorRevision
+            self.cpu_vendor = self._md.system_info.VendorId
+            self.number_of_cpus = self._md.system_info.NumberOfProcessors
+            self.os_version = '%i.%i.%i' % (self._md.system_info.MajorVersion, self._md.system_info.MinorVersion, self._md.system_info.BuildNumber)
+            self.os_version_number = (self._md.system_info.MajorVersion << 32) + self._md.system_info.MinorVersion
+            self.os_version_info = self._md.system_info.CSDVersion
+            self.distribution_id = None
+            self.distribution_release = None
+            self.distribution_codename = None
+            self.distribution_description = None
+
+
+    class Exception(MiniDumpEntity):
+        def __init__(self, owner):
+            super(MiniDumpWrapper.Exception, self).__init__(owner)
+            self.threadid = self._md.exception_info.ThreadId
+            self.code = self._md.exception_info.ExceptionRecord.ExceptionCode
+            self.address = self._md.exception_info.ExceptionRecord.ExceptionAddress
+            self.flags = self._md.exception_info.ExceptionRecord.ExceptionFlags
+            self.numparams = self._md.exception_info.ExceptionRecord.NumberOfParameters
+            self.param0 = self._md.exception_info.ExceptionRecord.ExceptionInfomration0
+            self.param1 = self._md.exception_info.ExceptionRecord.ExceptionInfomration1
+            self.param2 = self._md.exception_info.ExceptionRecord.ExceptionInfomration2
+            self.param3 = self._md.exception_info.ExceptionRecord.ExceptionInfomration3
+
+        @property
+        def thread(self):
+            ret = None
+            for thread in self._owner.threads:
+                if thread.id == self.threadid:
+                    ret = thread
+                    break
+            return ret
+
+        @property
+        def involved_modules(self):
+            t = self.thread
+            if t:
+                return t.stackdump.involved_modules
+            else:
+                return None
+
+        @property
+        def params(self):
+            ret = []
+            if self.numparams >= 1:
+                ret.append(self.param0)
+            if self.numparams >= 2:
+                ret.append(self.param1)
+            if self.numparams >= 3:
+                ret.append(self.param2)
+            if self.numparams >= 4:
+                ret.append(self.param3)
+            return ret
+
+        @property
+        def name(self):
+            if self._owner.platform_type in exception_code_names_per_platform_type:
+                code_to_name_map = exception_code_names_per_platform_type[self._owner.platform_type]
+                if self.code in code_to_name_map:
+                    return code_to_name_map[self.code]
+                else:
+                    return 'Unknown(%x)' % (self._owner.platform_type, self.code)
+            else:
+                return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
+        @property
+        def info(self):
+            if self._owner.platform_type in exception_info_per_platform_type:
+                ex_info_func = exception_info_per_platform_type[self._owner.platform_type]
+                return ex_info_func(self)
+            else:
+                return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
+
+    class ProxyObject(object):
+        def __init__(self, report, field_name):
+            object.__setattr__(self, '_report', report)
+            object.__setattr__(self, '_field_name', field_name)
+            object.__setattr__(self, '_real_object', None)
+
+        def __getattr__(self, key):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return getattr(self._real_object, key)
+
+        def __setattr__(self, key, value):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return setattr(self._real_object, key, value)
+
+        def __iter__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            return iter(self._real_object)
+
+        def __nonzero__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return False
+            return bool(self._real_object)
+
+        def __len__(self):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return None
+            if hasattr(self._real_object, '__len__'):
+                return len(self._real_object)
+            else:
+                return 0
+
+    @property
+    def system_info(self):
+        if self._system_info is None:
+            self._system_info = MiniDumpWrapper.SystemInfo(self)
+        return self._system_info
+
+    @property
+    def exception(self):
+        if self._exception is None:
+            self._exception = MiniDumpWrapper.Exception(self)
+        return self._exception
+
+
+    @property
+    def fields(self):
+        return self._main_fields
+
 
 if __name__ == '__main__':
     import sys
@@ -761,3 +977,7 @@ if __name__ == '__main__':
     print(dump.architecture)
     print(dump.fastprotect_system_info)
     print(dump.fastprotect_version_info)
+
+    w = MiniDumpWrapper(dump)
+    print(w.system_info)
+    print(w.exception)
