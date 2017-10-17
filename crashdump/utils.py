@@ -266,6 +266,7 @@ def format_seconds(s):
         return 'None'
     elif s >= 3600:
         hr = int(float(s) / 3600.0)
+        from math import fmod
         m = fmod(float(s), 3600.0) / 60.0
         return '%ihr %0.1fmin' % (hr, m)
     elif s >= 60:

@@ -3,6 +3,8 @@
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
 import struct
+from datetime import datetime,timedelta
+from arsoft.timestamp import FixedOffset
 from fastprotect_version_info import FastprotectVersionInfo
 
 from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
@@ -67,6 +69,19 @@ class Structure(object):
         
         return out[ : -1]
 
+def convert_filetime_to_datatime(ft, tzinfo=None):
+    if ft == 0:
+        return None
+    dt_base = '01cb17701e9c885a'
+    us = ft / 10.
+    return datetime(1601,1,1, tzinfo=tzinfo) + timedelta(microseconds=us)
+
+def convert_systemtime_to_datatime(st, tzinfo=None):
+    if st.year == 0 and st.month == 0 and st.day == 0:
+        return None
+    print(st.year, st.month, st.day)
+    return datetime(year=st.year, month=st.month, day=st.day, hour=st.hour, minute=st.minute, second=st.second, microsecond=st.milliseconds * 1000, tzinfo=tzinfo)
+
 class MINIDUMP_HEADER(Structure):
     _fields_ = [("Signature", "4s"), \
                 ("Version", "<I"), \
@@ -108,6 +123,52 @@ class MINIDUMP_EXCEPTION_STREAM(Structure):
                 ("__alignment", "<I"), \
                 ("ExceptionRecord", MINIDUMP_EXCEPTION), \
                 ("ThreadContext", MINIDUMP_LOCATION_DESCRIPTOR)]
+
+class MINIDUMP_ASSERTION_INFO(Structure):
+    _fields_ = [("expression", "<256s"), \
+                ("function", "<256s"), \
+                ("file", "<256s"), \
+                ("line", "<I"), \
+                ("type", "<I")]
+
+class MINIDUMP_SYSTEM_TIME(Structure):
+    _fields_ = [("year", "<H"), \
+                ("month", "<H"), \
+                ("day_of_week", "<H"), \
+                ("day", "<H"), \
+                ("hour", "<H"), \
+                ("minute", "<H"), \
+                ("second", "<H"), \
+                ("milliseconds", "<H")]
+
+class MINIDUMP_TIME_ZONE(Structure):
+    _fields_ = [("Bias", "<i"), \
+                ("StandardName", "<64s"), \
+                ("StandardDate", MINIDUMP_SYSTEM_TIME), \
+                ("StandardBias", "<i"), \
+                ("DaylightName", "<64s"), \
+                ("DaylightDate", MINIDUMP_SYSTEM_TIME), \
+                ("DaylightBias", "<i"), \
+                    ]
+
+class MINIDUMP_MISC_INFO_3(Structure):
+    _fields_ = [("SizeOfInfo", "<I"), \
+                ("Flags1", "<I"), \
+                ("ProcessId", "<I"), \
+                ("ProcessCreateTime", "<I"), \
+                ("ProcessUserTime", "<I"), \
+                ("ProcessKernelTime", "<I"), \
+                ("ProcessorMaxMhz", "<I"), \
+                ("ProcessorCurrentMhz", "<I"), \
+                ("ProcessorMhzLimit", "<I"), \
+                ("ProcessorMaxIdleState", "<I"), \
+                ("ProcessorCurrentIdleState", "<I"), \
+                ("ProcessIntegrityLevel", "<I"), \
+                ("ProcessExecuteFlags", "<I"), \
+                ("ProtectedProcess", "<I"), \
+                ("TimezoneId", "<I"), \
+                ("TimezoneInfo", MINIDUMP_TIME_ZONE)]
+
 
 class MINIDUMP_MEMORY_DESCRIPTOR64(Structure):
     _fields_ = [("StartOfMemory", "<Q"), \
@@ -538,11 +599,13 @@ class MiniDump(object):
         self.version = None
         
         self.exception_info = None
+        self.assertion_info = None
         self.system_info = None
+        self.misc_info = None
         self.module_map = {}
         self.threads = []
-        self.fastprotect_system_info = None
-        self.fastprotect_version_info = None
+        self.fast_protect_system_info = None
+        self.fast_protect_version_info = None
 
         if autoparse: self.parse()
 
@@ -670,7 +733,16 @@ class MiniDump(object):
     def __parse_breakpad_info__(self, dirent):
         pass
     def __parse_assertion_info__(self, dirent):
-        pass
+        mta = MINIDUMP_ASSERTION_INFO()
+        mta.parse(self.fd)
+
+        self.assertion_info = mta
+
+    def __parse_misc_info__(self, dirent):
+        mi = MINIDUMP_MISC_INFO_3()
+        mi.parse(self.fd)
+        self.misc_info = mi
+
     def __parse_linux_proc_cpuinfo__(self, dirent):
         pass
     def __parse_linux_proc_status__(self, dirent):
@@ -687,14 +759,14 @@ class MiniDump(object):
         pass
     def __parse_linux_dso_debug__(self, dirent):
         pass
-    def __parse_fastprotect_version_info__(self, dirent):
+    def __parse_fast_protect_version_info__(self, dirent):
         self.fd.seek(dirent.Location.Rva)
         rawdata = self.fd.read(dirent.Location.DataSize)
-        self.fastprotect_version_info = FastprotectVersionInfo(rawdata)
+        self.fast_protect_version_info = FastprotectVersionInfo(rawdata)
 
-    def __parse_fastprotect_system_info__(self, dirent):
+    def __parse_fast_protect_system_info__(self, dirent):
         self.fd.seek(dirent.Location.Rva)
-        self.fastprotect_system_info = self.fd.read(dirent.Location.DataSize)
+        self.fast_protect_system_info = self.fd.read(dirent.Location.DataSize)
 
     def _read_string(self, rva):
 
@@ -746,6 +818,7 @@ class MiniDump(object):
                 6: self.__parse_exception_stream__,
                 7: self.__parse_systeminfo__,
                 9: self.__parse_memory_list64__,
+                15: self.__parse_misc_info__,
                 16: self.__parse_memory_info__,
                 17: self.__parse_threadinfolist__,
                 0x47670001: self.__parse_breakpad_info__,
@@ -758,8 +831,8 @@ class MiniDump(object):
                 0x47670008: self.__parse_linux_auxv__,
                 0x47670009: self.__parse_linux_maps__,
                 0x4767000A: self.__parse_linux_dso_debug__,
-                0x61AE0000: self.__parse_fastprotect_version_info__,
-                0x61AE0001: self.__parse_fastprotect_system_info__,
+                0x61AE0000: self.__parse_fast_protect_version_info__,
+                0x61AE0001: self.__parse_fast_protect_system_info__,
                          }
             streams = {}
             for i in range(0, hdr.NumberOfStreams):
@@ -786,7 +859,10 @@ class MiniDump(object):
     
     def get_exception_info(self):
         return self.exception_info
-    
+
+    def get_assertion_info(self):
+        return self.assertion_info
+
     def get_thread_by_tid(self, tid):
         for thread in self.threads:
             if thread.ThreadId == tid: return thread
@@ -832,7 +908,9 @@ class MiniDump(object):
 
 class MiniDumpWrapper(object):
 
-    _main_fields = ['system_info', 'exception', 'assertion', 'modules', 'threads']
+    _main_fields = ['system_info', 'exception', 'assertion', 'modules', 'threads',
+                    'stackdumps', 'misc_info',
+                    'fast_protect_version_info', 'fast_protect_system_info']
 
     PlatformTypeId_to_string = {
         -1: 'Unknown', # PlatformTypeUnknown
@@ -876,6 +954,11 @@ class MiniDumpWrapper(object):
         self._modules = None
         self._threads = None
         self._stackdumps = None
+        self._tz = None
+        self._tzinfo = None
+        self._misc_info = None
+        self._fast_protect_version_info = None
+        self._fast_protect_system_info = None
 
     class MiniDumpEntity(object):
         def __init__(self, owner):
@@ -911,6 +994,16 @@ class MiniDumpWrapper(object):
             self.distribution_codename = None
             self.distribution_description = None
 
+    class TimezoneInfo(MiniDumpEntity):
+        def __init__(self, owner):
+            super(MiniDumpWrapper.TimezoneInfo, self).__init__(owner)
+            self.bias = self._md.misc_info.TimezoneInfo.Bias
+            self.standardBias = self._md.misc_info.TimezoneInfo.StandardBias
+            self.standardName = self._md.misc_info.TimezoneInfo.StandardName.decode('utf16')
+            self.standardDate = self._md.misc_info.TimezoneInfo.StandardDate
+            self.daylightBias = self._md.misc_info.TimezoneInfo.DaylightBias
+            self.daylightName = self._md.misc_info.TimezoneInfo.DaylightName.decode('utf16')
+            self.daylightDate = self._md.misc_info.TimezoneInfo.DaylightDate
 
     class Exception(MiniDumpEntity):
         def __init__(self, owner):
@@ -1009,12 +1102,40 @@ class MiniDumpWrapper(object):
     class Assertion(MiniDumpEntity):
         def __init__(self, owner):
             super(MiniDumpWrapper.Assertion, self).__init__(owner)
-            self.expression = self._md.exception_info.ThreadId
-            self.function = self._md.exception_info.ThreadId
-            self.source = self._md.exception_info.ThreadId
-            self.line = self._md.exception_info.ThreadId
-            self.typeid = self._md.exception_info.ThreadId
+            self.expression = self._md.assertion_info.expression.decode('utf16')
+            self.function = self._md.assertion_info.function.decode('utf16')
+            self.source = self._md.assertion_info.source.decode('utf16')
+            self.line = self._md.assertion_info.line
+            self.typeid = self._md.assertion_info.typeid
 
+    class MiscInfo(MiniDumpEntity):
+        def __init__(self, owner):
+            super(MiniDumpWrapper.MiscInfo, self).__init__(owner)
+            self.processid = self._md.misc_info.ProcessId
+            self.process_create_time = datetime.fromtimestamp(self._md.misc_info.ProcessCreateTime, tz=owner.tzinfo)
+            self.user_time = self._md.misc_info.ProcessUserTime
+            self.kernel_time = self._md.misc_info.ProcessKernelTime
+
+            self.processor_max_mhz = self._md.misc_info.ProcessorMaxMhz
+            self.processor_current_mhz = self._md.misc_info.ProcessorCurrentMhz
+            self.processor_mhz_limit = self._md.misc_info.ProcessorMhzLimit
+            self.processor_max_idle_state = self._md.misc_info.ProcessorMaxIdleState
+            self.processor_current_idle_state = self._md.misc_info.ProcessorCurrentIdleState
+
+            self.process_integrity_level = self._md.misc_info.ProcessIntegrityLevel
+            self.process_execute_flags = self._md.misc_info.ProcessExecuteFlags
+            self.protected_process = self._md.misc_info.ProtectedProcess
+            self.timezone_id = self._md.misc_info.TimezoneId
+
+            self.timezone_bias = self._md.misc_info.TimezoneInfo.Bias
+            self.timezone_standard_bias = self._md.misc_info.TimezoneInfo.StandardBias
+            self.timezone_standard_name = self._md.misc_info.TimezoneInfo.StandardName.decode('utf16')
+            self.timezone_standard_date = self._md.misc_info.TimezoneInfo.StandardDate
+            self.timezone_daylight_bias = self._md.misc_info.TimezoneInfo.DaylightBias
+            self.timezone_daylight_name = self._md.misc_info.TimezoneInfo.DaylightName.decode('utf16')
+            self.timezone_daylight_date = self._md.misc_info.TimezoneInfo.DaylightDate
+            self.build_info = None
+            self.debug_build_info = None
 
     class Module(MiniDumpEntity):
         def __init__(self, owner, name, modinfo):
@@ -1022,7 +1143,7 @@ class MiniDumpWrapper(object):
             self._basename = None
             self.base = modinfo.BaseOfImage
             self.size = modinfo.SizeOfImage
-            self.timestamp = modinfo.TimeDateStamp
+            self.timestamp = datetime.fromtimestamp(modinfo.TimeDateStamp)
             self.product_version = modinfo.VersionInfo.dwProductVersionMS << 32 | modinfo.VersionInfo.dwProductVersionLS
             self.file_version = modinfo.VersionInfo.dwFileVersionMS << 32 | modinfo.VersionInfo.dwFileVersionLS
             self.name = name
@@ -1056,8 +1177,8 @@ class MiniDumpWrapper(object):
             self.memory = None
             self.start_addr = threadinfo.StartAddress if threadinfo else None
             self.main_thread = None
-            self.create_time = threadinfo.CreateTime if threadinfo else None
-            self.exit_time = threadinfo.ExitTime if threadinfo else None
+            self.create_time = convert_filetime_to_datatime(threadinfo.CreateTime, tzinfo=owner.tzinfo) if threadinfo else None
+            self.exit_time = convert_filetime_to_datatime(threadinfo.ExitTime, tzinfo=owner.tzinfo) if threadinfo else None
             self.kernel_time = threadinfo.KernelTime if threadinfo else None
             self.user_time = threadinfo.UserTime if threadinfo else None
             self.exit_status = threadinfo.ExitStatus if threadinfo else None
@@ -1143,14 +1264,33 @@ class MiniDumpWrapper(object):
         return self._system_info
 
     @property
+    def tzinfo(self):
+        if self._tzinfo is None and self._md.misc_info:
+            offset = self._md.misc_info.TimezoneInfo.Bias
+            self._tzinfo = FixedOffset(offset_hours=int(offset / 60), offset_minutes=int(offset % 60), name='%i' % offset)
+        return self._tzinfo
+
+    @property
+    def timezone_info(self):
+        if self._tz is None and self._md.misc_info:
+            self._tz = MiniDumpWrapper.TimezoneInfo(self)
+        return self._tz
+
+    @property
+    def misc_info(self):
+        if self._misc_info is None and self._md.misc_info:
+            self._misc_info = MiniDumpWrapper.MiscInfo(self)
+        return self._misc_info
+
+    @property
     def exception(self):
-        if self._exception is None:
+        if self._exception is None and self._md.exception_info:
             self._exception = MiniDumpWrapper.Exception(self)
         return self._exception
 
     @property
     def assertion(self):
-        if self._assertion is None:
+        if self._assertion is None and self._md.assertion_info:
             self._assertion = MiniDumpWrapper.Assertion(self)
         return self._assertion
 
@@ -1158,7 +1298,6 @@ class MiniDumpWrapper(object):
     def modules(self):
         if self._modules is None:
             self._modules = []
-            print(self._md.module_map)
             for name, mod in self._md.module_map.items():
                 m = MiniDumpWrapper.Module(self, name, mod)
                 self._modules.append(m)
@@ -1182,6 +1321,20 @@ class MiniDumpWrapper(object):
         if self._stackdumps is None:
             self._stackdumps = []
         return self._stackdumps
+
+
+    @property
+    def fast_protect_version_info(self):
+        if self._fast_protect_version_info is None and self._md.fast_protect_version_info:
+            self._fast_protect_version_info = self._md.fast_protect_version_info
+        return self._fast_protect_version_info
+
+
+    @property
+    def fast_protect_system_info(self):
+        if self._fast_protect_system_info is None and self._md.fast_protect_system_info:
+            self._fast_protect_system_info = self._md.fast_protect_system_info
+        return self._fast_protect_system_info
 
     @property
     def platform_type(self):
@@ -1242,19 +1395,25 @@ if __name__ == '__main__':
     dump = MiniDump(sys.argv[1])
 
     f = open('/tmp/sysinfo.ini', 'w')
-    f.write(dump.fastprotect_system_info)
+    f.write(dump.fast_protect_system_info)
     f.close()
+
+    #print(dump.misc_info)
     #print(dump.architecture)
-    #print(dump.fastprotect_system_info)
-    #print(dump.fastprotect_version_info)
+    #print(dump.fast_protect_system_info)
+    #print(dump.fast_protect_version_info)
     #print(dump.thread_infos)
 
     w = MiniDumpWrapper(dump)
+    #print(w.tzinfo)
     #print(w.system_info)
     #print(w.exception)
     #print(w.exception.name)
     #print(w.exception.info)
+    #print(w.misc_info)
+    print(w.fast_protect_system_info)
+    print(w.fast_protect_version_info)
     #for m in w.modules:
         #print(m)
-    for t in w.threads:
-        print(t)
+    #for t in w.threads:
+        #print(t)
