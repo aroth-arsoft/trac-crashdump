@@ -345,6 +345,58 @@ class MINIDUMP_THREAD_LIST(Structure):
 
         return out[ : -1]
 
+class MINIDUMP_THREAD_INFO(Structure):
+    _fields_ = [("ThreadId", "<I"), \
+                ("DumpFlags", "<I"), \
+                ("DumpError", "<I"), \
+                ("ExitStatus", "<I"), \
+                ("CreateTime", "<Q"), \
+                ("ExitTime", "<Q"), \
+                ("KernelTime", "<Q"), \
+                ("UserTime", "<Q"), \
+                ("StartAddress", "<Q"), \
+                ("Affinity", "<Q")]
+
+    def parse(self, fd):
+        Structure.parse(self, fd)
+
+class MINIDUMP_THREAD_INFO_LIST(Structure):
+    def __init__(self):
+        self._fields_ = [("SizeOfHeader", "<I"), ("SizeOfEntry", "<I"), ("NumberOfThreads", "<I")]
+        Structure.__init__(self)
+
+    def __len__(self):
+        if self.__size__ == 0: raise Exception("Variadic Structure")
+        return self.__size__
+
+    def parse(self, fd):
+        header_size = struct.unpack("<I", fd.read(4))[0]
+        entry_size = struct.unpack("<I", fd.read(4))[0]
+        count = struct.unpack("<I", fd.read(4))[0]
+
+        self.__struct_fields__["NumberOfThreads"] = count
+        self.__struct_fields__["ThreadInfos"] = []
+
+        for i in range(0, count):
+            mt = MINIDUMP_THREAD_INFO()
+            mt.parse(fd)
+            self.__struct_fields__["ThreadInfos"].append(mt)
+
+    def tree(self, depth=0):
+        out  = "  " * depth
+        if depth != 0: out += "+"
+        out += "%s\n" % self.__class__.__name__
+
+        out += "  " * depth + "  .%-32s = 0x%08x\n" % ("NumberOfThreads", self.__struct_fields__["NumberOfThreads"])
+        out += "  " * depth + "  .%-32s = MINIDUMP_THREAD_INFO[]\n" % "ThreadInfos"
+
+        i = 0
+        for thread in self.__struct_fields__["ThreadInfos"]:
+            out += "  " * depth + "    [%02i] %s\n" % (i, thread.tree(depth + 2))
+            i += 1
+
+        return out[ : -1]
+
 class FLOATING_SAVE_AREA_x86(Structure):
     _fields_ = [("ControlWord", "<I"), \
                 ("StatusWord", "<I"), \
@@ -609,6 +661,12 @@ class MiniDump(object):
 
         self.threads = mtl.Threads
 
+    def __parse_threadinfolist__(self, dirent):
+        mtl = MINIDUMP_THREAD_INFO_LIST()
+        mtl.parse(self.fd)
+
+        self.thread_infos = mtl.ThreadInfos
+
     def __parse_breakpad_info__(self, dirent):
         pass
     def __parse_assertion_info__(self, dirent):
@@ -689,6 +747,7 @@ class MiniDump(object):
                 7: self.__parse_systeminfo__,
                 9: self.__parse_memory_list64__,
                 16: self.__parse_memory_info__,
+                17: self.__parse_threadinfolist__,
                 0x47670001: self.__parse_breakpad_info__,
                 0x47670002: self.__parse_assertion_info__,
                 0x47670003: self.__parse_linux_proc_cpuinfo__,
@@ -732,7 +791,12 @@ class MiniDump(object):
         for thread in self.threads:
             if thread.ThreadId == tid: return thread
         raise Exception("No thread of TID %d" % tid)
-    
+
+    def get_thread_info_by_tid(self, tid):
+        for thread in self.thread_infos:
+            if thread.ThreadId == tid: return thread
+        raise Exception("No thread info of TID %d" % tid)
+
     def get_register_context_by_tid(self, tid):
         thread = self.get_thread_by_tid(tid)
         return thread.getContext(self.architecture)
@@ -768,7 +832,7 @@ class MiniDump(object):
 
 class MiniDumpWrapper(object):
 
-    _main_fields = ['system_info', 'exception']
+    _main_fields = ['system_info', 'exception', 'assertion', 'modules', 'threads']
 
     PlatformTypeId_to_string = {
         -1: 'Unknown', # PlatformTypeUnknown
@@ -808,6 +872,10 @@ class MiniDumpWrapper(object):
         self._md = minidump
         self._system_info = None
         self._exception = None
+        self._assertion = None
+        self._modules = None
+        self._threads = None
+        self._stackdumps = None
 
     class MiniDumpEntity(object):
         def __init__(self, owner):
@@ -856,6 +924,17 @@ class MiniDumpWrapper(object):
             self.param1 = self._md.exception_info.ExceptionRecord.ExceptionInfomration1
             self.param2 = self._md.exception_info.ExceptionRecord.ExceptionInfomration2
             self.param3 = self._md.exception_info.ExceptionRecord.ExceptionInfomration3
+            self.param4 = self._md.exception_info.ExceptionRecord.ExceptionInfomration4
+            self.param5 = self._md.exception_info.ExceptionRecord.ExceptionInfomration5
+            self.param6 = self._md.exception_info.ExceptionRecord.ExceptionInfomration6
+            self.param7 = self._md.exception_info.ExceptionRecord.ExceptionInfomration7
+            self.param8 = self._md.exception_info.ExceptionRecord.ExceptionInfomration8
+            self.param9 = self._md.exception_info.ExceptionRecord.ExceptionInfomration9
+            self.param10 = self._md.exception_info.ExceptionRecord.ExceptionInfomration10
+            self.param11 = self._md.exception_info.ExceptionRecord.ExceptionInfomration11
+            self.param12 = self._md.exception_info.ExceptionRecord.ExceptionInfomration12
+            self.param13 = self._md.exception_info.ExceptionRecord.ExceptionInfomration13
+            self.param14 = self._md.exception_info.ExceptionRecord.ExceptionInfomration14
 
         @property
         def thread(self):
@@ -885,6 +964,28 @@ class MiniDumpWrapper(object):
                 ret.append(self.param2)
             if self.numparams >= 4:
                 ret.append(self.param3)
+            if self.numparams >= 5:
+                ret.append(self.param4)
+            if self.numparams >= 6:
+                ret.append(self.param5)
+            if self.numparams >= 7:
+                ret.append(self.param6)
+            if self.numparams >= 8:
+                ret.append(self.param7)
+            if self.numparams >= 9:
+                ret.append(self.param8)
+            if self.numparams >= 10:
+                ret.append(self.param9)
+            if self.numparams >= 11:
+                ret.append(self.param10)
+            if self.numparams >= 12:
+                ret.append(self.param11)
+            if self.numparams >= 13:
+                ret.append(self.param12)
+            if self.numparams >= 14:
+                ret.append(self.param13)
+            if self.numparams >= 15:
+                ret.append(self.param14)
             return ret
 
         @property
@@ -904,6 +1005,92 @@ class MiniDumpWrapper(object):
                 return ex_info_func(self)
             else:
                 return 'UnknownPlatform(%s, %x)' % (self.code, self.code)
+
+    class Assertion(MiniDumpEntity):
+        def __init__(self, owner):
+            super(MiniDumpWrapper.Assertion, self).__init__(owner)
+            self.expression = self._md.exception_info.ThreadId
+            self.function = self._md.exception_info.ThreadId
+            self.source = self._md.exception_info.ThreadId
+            self.line = self._md.exception_info.ThreadId
+            self.typeid = self._md.exception_info.ThreadId
+
+
+    class Module(MiniDumpEntity):
+        def __init__(self, owner, name, modinfo):
+            super(MiniDumpWrapper.Module, self).__init__(owner)
+            self._basename = None
+            self.base = modinfo.BaseOfImage
+            self.size = modinfo.SizeOfImage
+            self.timestamp = modinfo.TimeDateStamp
+            self.product_version = modinfo.VersionInfo.dwProductVersionMS << 32 | modinfo.VersionInfo.dwProductVersionLS
+            self.file_version = modinfo.VersionInfo.dwFileVersionMS << 32 | modinfo.VersionInfo.dwFileVersionLS
+            self.name = name
+            self.symbol_file = None
+            self.symbol_id = None
+            self.symbol_type = None
+            self.symbol_type_number = None
+            self.image_name = None
+            self.module_name = name
+            self.module_id = None
+            self.flags = None
+
+        @property
+        def basename(self):
+            if self._basename is None:
+                idx = self.name.rfind('/')
+                if idx < 0:
+                    idx = self.name.rfind('\\')
+                if idx >= 0:
+                    self._basename = self.name[idx+1:]
+                else:
+                    self._basename = self.name
+            return self._basename
+
+    class Thread(MiniDumpEntity):
+        def __init__(self, owner, thread, threadinfo):
+            super(MiniDumpWrapper.Thread, self).__init__(owner)
+            self.id = thread.ThreadId
+            self.exception = None
+            self.name = None
+            self.memory = None
+            self.start_addr = threadinfo.StartAddress if threadinfo else None
+            self.main_thread = None
+            self.create_time = threadinfo.CreateTime if threadinfo else None
+            self.exit_time = threadinfo.ExitTime if threadinfo else None
+            self.kernel_time = threadinfo.KernelTime if threadinfo else None
+            self.user_time = threadinfo.UserTime if threadinfo else None
+            self.exit_status = threadinfo.ExitStatus if threadinfo else None
+            self.cpu_affinity = threadinfo.Affinity if threadinfo else None
+            #self.stack_addr = thread.Stack
+            self.stack_addr = None
+            self.suspend_count = thread.SuspendCount
+            self.priority_class = thread.PriorityClass
+            self.priority = thread.Priority
+            self.teb = thread.Teb
+            self.tls = None
+            self.tib = None
+            self.dump_flags = threadinfo.DumpFlags if threadinfo else None
+            self.dump_error = threadinfo.DumpError if threadinfo else None
+            self.rpc_thread = None
+
+        @property
+        def stackdump(self):
+            ret = None
+            for st in self._owner.stackdumps:
+                if st.threadid == self.id and not st.simplified:
+                    ret = st
+                    break
+            return ret
+
+        @property
+        def simplified_stackdump(self):
+            ret = None
+            for st in self._owner.stackdumps:
+                if st.threadid == self.id and st.simplified:
+                    ret = st
+                    break
+            return ret
 
     class ProxyObject(object):
         def __init__(self, report, field_name):
@@ -961,6 +1148,89 @@ class MiniDumpWrapper(object):
             self._exception = MiniDumpWrapper.Exception(self)
         return self._exception
 
+    @property
+    def assertion(self):
+        if self._assertion is None:
+            self._assertion = MiniDumpWrapper.Assertion(self)
+        return self._assertion
+
+    @property
+    def modules(self):
+        if self._modules is None:
+            self._modules = []
+            print(self._md.module_map)
+            for name, mod in self._md.module_map.items():
+                m = MiniDumpWrapper.Module(self, name, mod)
+                self._modules.append(m)
+        return self._modules
+
+    @property
+    def threads(self):
+        if self._threads is None:
+            self._threads = []
+            for thread in self._md.threads:
+                try:
+                    threadinfo = self._md.get_thread_info_by_tid(thread.ThreadId)
+                except Exception:
+                    threadinfo = None
+                t = MiniDumpWrapper.Thread(self, thread, threadinfo)
+                self._threads.append(t)
+        return self._threads
+
+    @property
+    def stackdumps(self):
+        if self._stackdumps is None:
+            self._stackdumps = []
+        return self._stackdumps
+
+    @property
+    def platform_type(self):
+        s = self.system_info
+        if s is None:
+            return None
+        return s.platform_type
+
+    @property
+    def is_64_bit(self):
+        if self._is_64_bit is None:
+            s = self.system_info
+            if s is None:
+                return None
+            # CPUTypeUnknown=-1
+            # CPUTypeX86=0
+            # CPUTypeMIPS=1
+            # CPUTypeAlpha=2
+            # CPUTypePowerPC=3
+            # CPUTypeSHX=4
+            # CPUTypeARM=5
+            # CPUTypeIA64=6
+            # CPUTypeAlpha64=7
+            # CPUTypeMSIL=8
+            # CPUTypeAMD64=9
+            # CPUTypeX64_Win64=10
+            # CPUTypeSparc=11
+            # CPUTypePowerPC64=12
+            # CPUTypeARM64=13
+            if s.cpu_type_id == 0 or \
+                s.cpu_type_id == 1 or \
+                s.cpu_type_id == 2 or \
+                s.cpu_type_id == 3 or \
+                s.cpu_type_id == 4 or \
+                s.cpu_type_id == 5 or \
+                s.cpu_type_id == -1:
+                self._is_64_bit = False
+            elif s.cpu_type_id == 6 or \
+                s.cpu_type_id == 7 or \
+                s.cpu_type_id == 8 or \
+                s.cpu_type_id == 9 or \
+                s.cpu_type_id == 10 or \
+                s.cpu_type_id == 11 or \
+                s.cpu_type_id == 12 or \
+                s.cpu_type_id == 13:
+                self._is_64_bit = True
+            else:
+                self._is_64_bit = False
+        return self._is_64_bit
 
     @property
     def fields(self):
@@ -974,10 +1244,17 @@ if __name__ == '__main__':
     f = open('/tmp/sysinfo.ini', 'w')
     f.write(dump.fastprotect_system_info)
     f.close()
-    print(dump.architecture)
-    print(dump.fastprotect_system_info)
-    print(dump.fastprotect_version_info)
+    #print(dump.architecture)
+    #print(dump.fastprotect_system_info)
+    #print(dump.fastprotect_version_info)
+    #print(dump.thread_infos)
 
     w = MiniDumpWrapper(dump)
-    print(w.system_info)
-    print(w.exception)
+    #print(w.system_info)
+    #print(w.exception)
+    #print(w.exception.name)
+    #print(w.exception.info)
+    #for m in w.modules:
+        #print(m)
+    for t in w.threads:
+        print(t)
