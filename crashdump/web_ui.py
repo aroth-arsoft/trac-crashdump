@@ -254,6 +254,7 @@ class CrashDumpModule(Component):
                 'format_trust_level': format_trust_level,
                 'format_memory_usagetype': format_memory_usagetype,
                 'format_gl_extension_name': format_gl_extension_name,
+                'format_version_number': format_version_number,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}

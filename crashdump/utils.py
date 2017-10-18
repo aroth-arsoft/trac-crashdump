@@ -367,3 +367,13 @@ def format_gl_extension_name(ext):
     if vendor and ext_name:
         href = khronos_extension_base_url + '/%s/%s.txt' % (vendor, ext_name)
     return tag.a(name, title=title, href=href)
+
+def format_version_number(num):
+    if isinstance(num, str) or isinstance(num, unicode):
+        try:
+            num = int(num)
+        except ValueError:
+            num = None
+    if num is None: return 'None'
+    m, n, o, p = (num >> 48) & 0xffff, (num >> 32) & 0xffff, (num >> 16) & 0xffff, (num >> 0) & 0xffff
+    return '%i.%i.%i.%i' % (m, n, o, p)

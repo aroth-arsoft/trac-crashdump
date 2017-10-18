@@ -8,6 +8,7 @@ from arsoft.timestamp import FixedOffset
 from fastprotect_version_info import FastprotectVersionInfo
 
 from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
+from utils import format_version_number
 
 class Structure(object):
     def __init__(self):
@@ -1144,8 +1145,10 @@ class MiniDumpWrapper(object):
             self.base = modinfo.BaseOfImage
             self.size = modinfo.SizeOfImage
             self.timestamp = datetime.fromtimestamp(modinfo.TimeDateStamp)
-            self.product_version = modinfo.VersionInfo.dwProductVersionMS << 32 | modinfo.VersionInfo.dwProductVersionLS
-            self.file_version = modinfo.VersionInfo.dwFileVersionMS << 32 | modinfo.VersionInfo.dwFileVersionLS
+            self.product_version_number = modinfo.VersionInfo.dwProductVersionMS << 32 | modinfo.VersionInfo.dwProductVersionLS
+            self.product_version = format_version_number(self.product_version_number)
+            self.file_version_number = modinfo.VersionInfo.dwFileVersionMS << 32 | modinfo.VersionInfo.dwFileVersionLS
+            self.file_version = format_version_number(self.file_version_number)
             self.name = name
             self.symbol_file = None
             self.symbol_id = None
@@ -1411,9 +1414,9 @@ if __name__ == '__main__':
     #print(w.exception.name)
     #print(w.exception.info)
     #print(w.misc_info)
-    print(w.fast_protect_system_info)
-    print(w.fast_protect_version_info)
-    #for m in w.modules:
-        #print(m)
+    #print(w.fast_protect_system_info)
+    #print(w.fast_protect_version_info)
+    for m in w.modules:
+        print(m)
     #for t in w.threads:
         #print(t)

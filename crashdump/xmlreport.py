@@ -9,6 +9,7 @@ from uuid import UUID
 from lxml import etree
 
 from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
+from utils import format_version_number
 
 class MemoryBlock(object):
     def __init__(self, memory):
@@ -139,8 +140,8 @@ class XMLReport(object):
     _exception_fields = ['threadid', 'code', 'address', 'flags', 'numparams', 'param0', 'param1', 'param2', 'param3']
     _assertion_fields = ['expression', 'function', 'source', 'line', 'typeid']
 
-    _module_fields = ['base', 'size', 'timestamp', 'product_version',
-                      'file_version', 'name', 'symbol_file', 'symbol_id', 'symbol_type', 'symbol_type_number',
+    _module_fields = ['base', 'size', 'timestamp', 'product_version', 'product_version_number',
+                      'file_version', 'file_version_number', 'name', 'symbol_file', 'symbol_id', 'symbol_type', 'symbol_type_number',
                       'image_name', 'module_name', 'module_id',
                       'flags' ]
 
@@ -850,6 +851,10 @@ class XMLReport(object):
                     m = XMLReport.Module(self)
                     for f in XMLReport._module_fields:
                         setattr(m, f, XMLReport._get_node_value(item, f))
+                        if m.file_version is None:
+                            m.file_version = format_version_number(m.file_version_number)
+                        if m.product_version is None:
+                            m.product_version = format_version_number(m.product_version_number)
                     self._modules.append(m)
         return self._modules
 
