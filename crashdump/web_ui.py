@@ -315,7 +315,7 @@ class CrashDumpModule(Component):
                     data['xmlfile_size'] = os.path.getsize(xmlfile)
                 except OSError:
                     pass
-            if os.path.isfile(xmlfile) and 0:
+            if os.path.isfile(xmlfile):
                 try:
                     xmlreport = XMLReport(xmlfile)
                     for f in xmlreport.fields:

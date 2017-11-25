@@ -99,6 +99,7 @@ class CrashDumpSubmit(Component):
 
     def _error_response(self, req, status, body=None, content_type='text/plain', headers=None):
 
+        self.log.debug('_error_response: %s %s -> %i: %s', req.method, req.path_info, status, body)
         if isinstance(body, unicode):
             body = body.encode('utf-8')
 
@@ -500,7 +501,7 @@ class CrashDumpSubmit(Component):
                 else:
                     crashobj['version'] = self.default_version
                 if self.default_component == '< default >':
-                    if xmlreport is not None and xmlreport.exception is not None:
+                    if xmlreport is not None and xmlreport.exception is not None and xmlreport.exception.involved_modules:
                         crashobj['component'] = self._find_component_from_involved_modules(xmlreport.exception.involved_modules, crashobj['buildpostfix'])
                     if not crashobj['component']:
                         crashobj['component'] = self._find_component_for_application(crashobj['applicationname'])
@@ -754,7 +755,7 @@ application was running as part of %(productname)s (%(productcodename)s) version
         file = req.args.get(name) if name in req.args else None
         errmsg = None
         if file is None:
-            errmsg = 'Field %s not available'
+            errmsg = 'Field %s not available' % name
         else:
             filename = file.filename
             fileobj = file.file

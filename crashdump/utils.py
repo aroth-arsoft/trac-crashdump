@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
-from genshi.builder import tag
-from trac.util.translation import _
-
 def _hex_format(number, prefix='0x', width=None, bits=None):
     if isinstance(number, str) or isinstance(number, unicode):
         try:
@@ -51,6 +48,7 @@ def hex_format(number, prefix='0x', width=None, bits=None):
         return _hex_format(number, prefix, width, bits)
 
 def exception_code(platform_type, code, name):
+    from genshi.builder import tag
     if platform_type is None:
         return 'Platform unknown'
     elif platform_type == 'Linux':
@@ -63,6 +61,7 @@ def exception_code(platform_type, code, name):
         return tag.a(str(name) + '(' + hex_format(code) + ')', href='https://en.wikipedia.org/wiki/Special:Search/' + str(platform_type))
 
 def format_bool_yesno(val):
+    from trac.util.translation import _
     if isinstance(val, str) or isinstance(val, unicode):
         try:
             val = bool(val)
@@ -78,9 +77,11 @@ def format_bool_yesno(val):
         return _('neither')
 
 def format_source_line(source, line, line_offset=None, source_url=None):
+    from trac.util.translation import _
     if source is None:
         return _('unknown')
     else:
+        from genshi.builder import tag
         title = str(source) + ':' + str(line)
         if line_offset is not None:
             title += '+' + hex_format(line_offset)
@@ -91,6 +92,7 @@ def format_source_line(source, line, line_offset=None, source_url=None):
         return tag.a(title, href=href)
 
 def format_function_plus_offset(function, funcoff=None):
+    from trac.util.translation import _
     if function is None:
         return _('unknown')
     else:
@@ -100,6 +102,7 @@ def format_function_plus_offset(function, funcoff=None):
             return str(function)
 
 def str_or_unknown(str):
+    from trac.util.translation import _
     if str is None:
         return _('unknown')
     else:
@@ -148,6 +151,7 @@ def format_cpu_type(cputype):
     else:
         href = 'http://en.wikipedia.org/wiki/Central_processing_unit'
         title = cputype
+    from genshi.builder import tag
     return tag.a(title, title=cputype, href=href)
 
 def format_cpu_vendor(vendor):
@@ -172,6 +176,7 @@ def format_cpu_vendor(vendor):
     else:
         title = vendor
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'
+    from genshi.builder import tag
     return tag.a(title, title=vendor, href=href)
 
 def format_cpu_name(vendor, name):
@@ -235,6 +240,7 @@ def format_cpu_name(vendor, name):
     else:
         title = name
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'
+    from genshi.builder import tag
     return tag.a(name, title=title, href=href)
 
 def format_distribution_id(distro_id):
@@ -247,6 +253,7 @@ def format_distribution_id(distro_id):
     else:
         name = distro_id
         href = 'http://distrowatch.com/' + distro_id
+    from genshi.builder import tag
     return tag.a(name, title=distro_id, href=href)
 
 def format_distribution_codename(distro_id, distro_codename):
@@ -259,6 +266,7 @@ def format_distribution_codename(distro_id, distro_codename):
     else:
         name = distro_id
         href = 'http://distrowatch.com/' + distro_id
+    from genshi.builder import tag
     return tag.a(name, title=distro_id, href=href)
 
 def format_seconds(s):
@@ -287,7 +295,7 @@ def format_milliseconds(ms):
         return  '%ims' % ms
 
 def format_trust_level(tl):
-    if tl == 0:
+    if tl == 0 or tl is None:
         return 'Unknown'
     elif tl == 1:
         return 'Stack scan'
@@ -321,7 +329,7 @@ def format_size(nbytes):
     return '%s %s' % (f, _suffixes[i])
 
 def format_memory_usagetype(usage):
-    if usage == 0:
+    if usage == 0 or usage is None:
         return 'Unknown'
     elif usage == 1:
         return 'Stack'
@@ -366,6 +374,7 @@ def format_gl_extension_name(ext):
             ext_name = ext
     if vendor and ext_name:
         href = khronos_extension_base_url + '/%s/%s.txt' % (vendor, ext_name)
+    from genshi.builder import tag
     return tag.a(name, title=title, href=href)
 
 def format_version_number(num):

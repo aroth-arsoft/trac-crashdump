@@ -168,7 +168,10 @@ class CrashDump(object):
             del self._old[name]
         if value:
             if isinstance(value, list):
-                raise TracError(_("Multi-values fields not supported yet"))
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    raise ValueError(_("Multi-values field %s not supported yet: %s") % (name, value))
             field = [field for field in self.fields if field['name'] == name]
             if field:
                 field_type = field[0].get('type')

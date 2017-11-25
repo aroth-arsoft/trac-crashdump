@@ -8,8 +8,8 @@ from datetime import datetime
 from uuid import UUID
 from lxml import etree
 
-from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
-from utils import format_version_number
+from crashdump.exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
+from crashdump.utils import format_version_number
 
 class MemoryBlock(object):
     def __init__(self, memory):
@@ -851,10 +851,10 @@ class XMLReport(object):
                     m = XMLReport.Module(self)
                     for f in XMLReport._module_fields:
                         setattr(m, f, XMLReport._get_node_value(item, f))
-                        if m.file_version is None:
-                            m.file_version = format_version_number(m.file_version_number)
-                        if m.product_version is None:
-                            m.product_version = format_version_number(m.product_version_number)
+                    if m.file_version is None:
+                        m.file_version = format_version_number(m.file_version_number)
+                    if m.product_version is None:
+                        m.product_version = format_version_number(m.product_version_number)
                     self._modules.append(m)
         return self._modules
 
