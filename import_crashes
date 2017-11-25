@@ -1,0 +1,227 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
+
+import sys
+import argparse
+import json
+import uuid
+import urllib.request
+import urllib.error
+import http.client
+import io
+import codecs
+import os.path
+
+from crashdump.xmlreport import XMLReport
+
+class MultipartFormdataEncoder(object):
+    def __init__(self):
+        self.boundary = uuid.uuid4().hex
+        self.content_type = 'multipart/form-data; boundary={}'.format(self.boundary)
+
+    @classmethod
+    def u(cls, s):
+        if sys.hexversion < 0x03000000 and isinstance(s, str):
+            s = s.decode('utf-8')
+        if sys.hexversion >= 0x03000000 and isinstance(s, bytes):
+            s = s.decode('utf-8')
+        return s
+
+    def iter(self, fields, files):
+        """
+        fields is a sequence of (name, value) elements for regular form fields.
+        files is a sequence of (name, filename, file-type) elements for data to be uploaded as files
+        Yield body's chunk as bytes
+        """
+        encoder = codecs.getencoder('utf-8')
+        for (key, value) in fields:
+            key = self.u(key)
+            yield encoder('--{}\r\n'.format(self.boundary))
+            yield encoder(self.u('Content-Disposition: form-data; name="{}"\r\n').format(key))
+            yield encoder('\r\n')
+            if isinstance(value, int) or isinstance(value, float):
+                value = str(value)
+            yield encoder(self.u(value))
+            yield encoder('\r\n')
+        for (key, filename, fpath) in files:
+            key = self.u(key)
+            filename = self.u(filename)
+            yield encoder('--{}\r\n'.format(self.boundary))
+            yield encoder(self.u('Content-Disposition: form-data; name="{}"; filename="{}"\r\n').format(key, filename))
+            yield encoder('Content-Type: {}\r\n'.format('application/octet-stream'))
+            yield encoder('\r\n')
+            with open(fpath,'rb') as fd:
+                buff = fd.read()
+                yield (buff, len(buff))
+            yield encoder('\r\n')
+        yield encoder('--{}--\r\n'.format(self.boundary))
+
+    def encode(self, fields, files):
+        body = io.BytesIO()
+        for chunk, chunk_len in self.iter(fields, files):
+            body.write(chunk)
+        return self.content_type, body.getvalue()
+
+class import_crashes_app(object):
+    def __init__(self):
+        self._verbose = False
+        self._files = []
+        self._crashdump_exts = ['.dmp']
+        self._upload_url = 'http://127.0.0.1:8000/trac-test/submit'
+        self._user_agent = 'terra3d-crashuploader/1.0'
+
+    def _add_file(self, f):
+        fabs = os.path.abspath(f)
+
+        if os.path.isdir(fabs):
+            for e in os.listdir(path=fabs):
+                full = os.path.join(fabs, e)
+                self._add_file(full)
+        else:
+            path, name = os.path.split(fabs)
+            (basename, ext) = os.path.splitext(name)
+            print('got %s' % fabs)
+            try:
+                crash_id = uuid.UUID(basename)
+            except ValueError:
+                crash_id = None
+            if crash_id is not None and crash_id.int != 0 and ext in self._crashdump_exts:
+                self._files.append(fabs)
+
+    def _process_file(self, f, force=False):
+
+        f_xml = f + '.xml'
+
+        crash_id = None
+        crashtimestamp = 0
+        reporttimestamp = 0
+        productname = ''
+        productcodename = ''
+        productversion = ''
+        producttargetversion = ''
+        uploadhostname = ''
+        uploadusername = ''
+        crashhostname = ''
+        crashusername = ''
+        buildtype = ''
+        buildpostfix = ''
+        machinetype = ''
+        systemname = ''
+        osversion = ''
+        osrelease = ''
+        osmachine = ''
+        applicationfile = ''
+        applicationname = ''
+
+        files = [ ('minidump', os.path.basename(f), f) ]
+        if os.path.isfile(f_xml):
+            files += [ ('minidumpreportxml', os.path.basename(f_xml), f_xml) ]
+
+            xmlreport = XMLReport(f_xml)
+            if xmlreport.crash_info is not None:
+                crash_id = xmlreport.crash_info.uuid
+                applicationfile = xmlreport.crash_info.application
+                applicationname = os.path.basename(applicationfile)
+                crashtimestamp = xmlreport.crash_info.crash_timestamp
+                reporttimestamp = xmlreport.crash_info.report_time
+                uploadhostname = xmlreport.crash_info.report_fqdn
+                uploadusername = xmlreport.crash_info.report_username
+            if xmlreport.fast_protect_version_info is not None:
+                productname = xmlreport.fast_protect_version_info.product_name
+                productcodename = xmlreport.fast_protect_version_info.product_codename
+                productversion = xmlreport.fast_protect_version_info.product_version
+                producttargetversion = xmlreport.fast_protect_version_info.product_target_version
+                buildtype = xmlreport.fast_protect_version_info.product_build_type
+                buildpostfix = xmlreport.fast_protect_version_info.product_build_postfix
+            if xmlreport.fast_protect_system_info is not None:
+                machinetype = xmlreport.fast_protect_system_info.machine_type
+                crashhostname = xmlreport.fast_protect_system_info.fqdn
+                if not crashhostname:
+                    crashhostname = xmlreport.fast_protect_system_info.hostname
+                crashusername = xmlreport.fast_protect_system_info.username
+            if xmlreport.system_info is not None:
+                systemname = xmlreport.system_info.platform_type
+                osversion = xmlreport.system_info.os_version
+                osrelease = xmlreport.system_info.os_version
+        else:
+            xmlreport = None
+
+        if crash_id is None:
+            path, name = os.path.split(f)
+            (basename, ext) = os.path.splitext(name)
+            try:
+                crash_id = uuid.UUID(basename)
+            except ValueError:
+                crash_id = None
+
+        fields = []
+        fields += [ ('id', str(crash_id)) ]
+        fields += [ ('crashtimestamp', crashtimestamp.isoformat()) ]
+        fields += [ ('reporttimestamp', reporttimestamp.isoformat()) ]
+        fields += [ ('productname', productname) ]
+        fields += [ ('productcodename', productcodename) ]
+        fields += [ ('productversion', productversion) ]
+        fields += [ ('producttargetversion', producttargetversion) ]
+        fields += [ ('uploadhostname', uploadhostname) ]
+        fields += [ ('uploadusername', uploadusername) ]
+        fields += [ ('crashhostname', crashhostname) ]
+        fields += [ ('crashusername', crashusername) ]
+        fields += [ ('buildtype', buildtype) ]
+        fields += [ ('buildpostfix', buildpostfix) ]
+        fields += [ ('machinetype', machinetype) ]
+        fields += [ ('systemname', systemname) ]
+        fields += [ ('osversion', osversion) ]
+        fields += [ ('osrelease', osrelease) ]
+        fields += [ ('osmachine', osmachine) ]
+        fields += [ ('applicationfile', applicationfile) ]
+        fields += [ ('applicationname', applicationname) ]
+        fields += [ ('force',  'true' if self._force else 'false') ]
+
+
+        content_type, body = MultipartFormdataEncoder().encode(fields, files)
+        headers = {
+            'User-Agent': self._user_agent,
+        'Content-Type': content_type
+        }
+        print('url %s' % self._upload_url)
+        req = urllib.request.Request (self._upload_url, data=body, headers=headers, method='POST')
+        try:
+            with urllib.request.urlopen(req) as f:
+                print(f.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            print('HTTP error %i: %s' % (e.code, e.reason))
+        except urllib.error.URLError as e:
+            print('Invalid URL: %s' % e.reason)
+
+    def main(self):
+        #=============================================================================================
+        # process command line
+        #=============================================================================================
+        parser = argparse.ArgumentParser(description='import all given crashes')
+        parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='enable verbose output of this script.')
+        parser.add_argument('-f', '--force', dest='force', action='store_true', help='force processing of given files.')
+        parser.add_argument('files', metavar='FILE', type=str, nargs='+', help='crash dump files or directories')
+
+        args = parser.parse_args()
+        self._verbose = args.verbose
+        self._force = args.force
+
+        for f in args.files:
+            if os.path.isdir(f):
+                for e in os.listdir(path=f):
+                    full = os.path.join(f, e)
+                    self._add_file(full)
+            elif os.path.isfile(f):
+                self._add_file(f)
+
+        for f in self._files:
+            #print('%s' % f)
+            self._process_file(f, force=args.force)
+
+        ret = 0
+        return ret
+
+if __name__ == "__main__":
+    app =  import_crashes_app()
+    sys.exit(app.main())
