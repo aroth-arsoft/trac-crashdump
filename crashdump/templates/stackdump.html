@@ -2,10 +2,8 @@
     xmlns="http://www.w3.org/1999/xhtml"
     xmlns:i18n="http://genshi.edgewall.org/i18n"
     xmlns:py="http://genshi.edgewall.org/">
-<?python found_stackdump = False ?>
-<py:for each="stackdump in stackdumps">
-    <py:if test="not stackdump.simplified and stackdump.threadid == selected_stackdump_threadid">
-    <?python found_stackdump = True ?>
+<py:if test="selected_stackdump_threadid in stackdumps">
+    <?python stackdump = stackdumps[selected_stackdump_threadid] ?>
     <div class="crashdump-nav">
         <a href="#threads" title="Go to thread list">Thread list</a> &uarr;&nbsp;<a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
     </div>
@@ -40,9 +38,8 @@
     <div class="crashdump-nav">
         <a href="#threads" title="Go to thread list">Thread list</a> &uarr;&nbsp;<a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
     </div>
-    </py:if>
-</py:for>
-<py:if test="not found_stackdump">
+</py:if>
+<py:if test="not selected_stackdump_threadid in stackdumps">
 Unable to find stack dump for thread ${ hex_format(selected_stackdump_threadid) }
 </py:if>
 </div>

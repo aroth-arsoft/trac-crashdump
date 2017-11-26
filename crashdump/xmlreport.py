@@ -314,6 +314,18 @@ class XMLReport(object):
             else:
                 return 0
 
+        def __contains__(self, key):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            if self._real_object is None:
+                return False
+            return key in self._real_object
+
+        def __getitem__(self, key):
+            if self._real_object is None:
+                object.__setattr__(self, '_real_object', getattr(self._report, self._field_name))
+            return self._real_object[key]
+
     @staticmethod
     def unique(items):
         found = set()
@@ -539,6 +551,51 @@ class XMLReport(object):
     class Handle(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.Handle, self).__init__(owner)
+
+    class StackDumpList(XMLReportEntity):
+        def __init__(self, owner):
+            super(XMLReport.StackDumpList, self).__init__(owner)
+            self._list = []
+
+        def append(self, dump):
+            self._list.append(dump)
+
+        def __iter__(self):
+            return iter(self._list)
+
+        def __contains__(self, key):
+            print('StackDumpList. __contains__ %s, %s' % (key, type(key)))
+            if isinstance(key, int):
+                for d in self._list:
+                    if d.threadid == key and d.simplified == False:
+                        return True
+            elif isinstance(key, str) or isinstance(key, unicode):
+                if key == 'simplified':
+                    for d in self._list:
+                        if d.simplified:
+                            return True
+                elif key == 'exception':
+                    for d in self._list:
+                        if d.exception:
+                            return True
+            return False
+
+        def __getitem__(self, key):
+            print('StackDumpList. get %s, %s' % (key, type(key)))
+            if isinstance(key, int):
+                for d in self._list:
+                    if d.threadid == key and d.simplified == False:
+                        return d
+            elif isinstance(key, str) or isinstance(key, unicode):
+                if key == 'simplified':
+                    for d in self._list:
+                        if d.simplified:
+                            return d
+                elif key == 'exception':
+                    for d in self._list:
+                        if d.exception:
+                            return d
+            raise KeyError(key)
 
     class StackDump(XMLReportEntity):
         def __init__(self, owner):
@@ -930,9 +987,9 @@ class XMLReport(object):
     def stackdumps(self):
         if self._stackdumps is None:
             i = XMLReport._get_first_node(self._xml, 'crash_dump/stackdumps')
-            self._stackdumps = []
             all_subitems = i.xpath('stackdump') if i is not None else None
             if all_subitems is not None:
+                self._stackdumps = XMLReport.StackDumpList(self)
                 for item in all_subitems:
                     dump = XMLReport.StackDump(self)
                     for f in XMLReport._stackdump_fields:
@@ -1039,10 +1096,18 @@ if __name__ == '__main__':
         #print(m)
     #for m in xmlreport.memory_regions:
         #print(m)
-    #for m in xmlreport.stackdumps:
-        #print('thread %u %s exception' % (m.threadid, 'with' if m.exception else 'without'))
-        #for f in m.callstack:
-            #print(f)
+    for m in xmlreport.stackdumps:
+        print('thread %u %s exception (simple %s)' % (m.threadid, 'with' if m.exception else 'without', 'yes' if m.simplified else 'no'))
+        for f in m.callstack:
+            print(f)
+
+    #dump = xmlreport.stackdumps['exception']
+    #for f in dump.callstack:
+        #print(f)
+        #dump = xmlreport.stackdumps['simplified']
+    #for f in dump.callstack:
+        #print(f)
+
     #for m in xmlreport.memory_blocks:
         #fmt = '0x%%0%ix: %%s - %%s' % m.hexdump.offset_width
         #for l in m.hexdump:
@@ -1095,11 +1160,11 @@ if __name__ == '__main__':
 
     #dump_report(xmlreport, 'processmemoryinfowin32')
 
-    pp = XMLReport.ProxyObject(xmlreport, 'memory_regions')
-    print(len(pp))
+    #pp = XMLReport.ProxyObject(xmlreport, 'memory_regions')
+    #print(len(pp))
 
-    pp = XMLReport.ProxyObject(xmlreport, 'memory_blocks')
-    print(len(pp))
+    #pp = XMLReport.ProxyObject(xmlreport, 'memory_blocks')
+    #print(len(pp))
 #for m in pp:
         #print(m)
     #dump_report(xmlreport, 'memory_regions')

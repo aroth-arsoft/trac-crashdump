@@ -402,7 +402,6 @@ class CrashDumpModule(Component):
                     return 'memory_block.html', data, None
                 elif params[0] == 'stackdump':
                     threadid = safe_list_get_as_int(params, 1, 0)
-                    self.log.debug('got stackdump %s' % threadid )
                     data.update({'selected_stackdump_threadid': threadid })
                     return 'stackdump.html', data, None
                 else:
