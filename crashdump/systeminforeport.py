@@ -9,7 +9,7 @@ import ntpath
 from datetime import datetime
 
 from arsoft.inifile import IniFile
-from xmlreport import XMLReport
+from crashdump.xmlreport import XMLReport
 
 
 class _Terra3DDirectories(object):
@@ -172,10 +172,11 @@ class SystemInfoReport(object):
     class SystemInfoReportException(Exception):
         def __init__(self, report, message):
             super(SystemInfoReport.SystemInfoReportException, self).__init__(message)
+            self._message = message
             self.report = report
 
         def __str__(self):
-            return '%s(%s): %s' % (type(self).__name__, self.report._filename, self.message)
+            return '%s(%s): %s' % (type(self).__name__, self.report._filename, self._message)
 
 
     class SystemInfoReportIOError(SystemInfoReportException):
@@ -284,20 +285,21 @@ class SystemInfoReport(object):
                 self._filename = filename
             except IOError as e:
                 raise SystemInfoReport.SystemInfoReportIOError(self, str(e))
-        elif xmlreport:
-            if isinstance(xmlreport, XMLReport):
-                self._xmlreport = xmlreport
-                if xmlreport.fast_protect_system_info is None:
-                    raise SystemInfoReport.SystemInfoReportIOError(self, 'No system info include in XMLReport %s' % (str(xmlreport)))
-                import StringIO
-                stream = StringIO.StringIO(xmlreport.fast_protect_system_info.rawdata.raw)
-                self._ini = IniFile(filename=None, commentPrefix=';', keyValueSeperator='=', qt=True)
-                self._ini.open(stream)
-                self.platform_type = xmlreport.platform_type
-                self.is_64_bit = xmlreport.is_64_bit
-                #print('platform=%s' % (self.platform_type))
+        elif xmlreport is not None:
+            self._xmlreport = xmlreport
+            if xmlreport.fast_protect_system_info is None:
+                raise SystemInfoReport.SystemInfoReportIOError(self, 'No system info include in XMLReport %s' % (str(xmlreport)))
+            if sys.version_info[0] > 2:
+                from io import StringIO
+                stream = StringIO(xmlreport.fast_protect_system_info.rawdata.raw.decode('utf8'))
             else:
-                raise SystemInfoReport.SystemInfoReportIOError(self, 'Only XMLReport objects are supported: %s' % type(xmlreport))
+                from StringIO import StringIO
+                stream = StringIO(xmlreport.fast_protect_system_info.rawdata.raw)
+            self._ini = IniFile(filename=None, commentPrefix=';', keyValueSeperator='=', qt=True)
+            self._ini.open(stream)
+            self.platform_type = xmlreport.platform_type
+            self.is_64_bit = xmlreport.is_64_bit
+            #print('platform=%s' % (self.platform_type))
         elif minidump:
             raise SystemInfoReport.SystemInfoReportIOError(self, 'Not yet implemented')
         self._post_open()

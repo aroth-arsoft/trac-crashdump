@@ -42,7 +42,10 @@ class MultipartFormdataEncoder(object):
             yield encoder('\r\n')
             if isinstance(value, int) or isinstance(value, float):
                 value = str(value)
-            yield encoder(self.u(value))
+            if value is not None:
+                yield encoder(self.u(value))
+            else:
+                yield encoder('')
             yield encoder('\r\n')
         for (key, filename, fpath) in files:
             key = self.u(key)
@@ -68,7 +71,7 @@ class import_crashes_app(object):
         self._verbose = False
         self._files = []
         self._crashdump_exts = ['.dmp']
-        self._upload_url = 'http://127.0.0.1:8000/trac-test/submit'
+        self._upload_url = None
         self._user_agent = 'terra3d-crashuploader/1.0'
 
     def _add_file(self, f):
@@ -81,7 +84,7 @@ class import_crashes_app(object):
         else:
             path, name = os.path.split(fabs)
             (basename, ext) = os.path.splitext(name)
-            print('got %s' % fabs)
+            #print('got %s' % fabs)
             try:
                 crash_id = uuid.UUID(basename)
             except ValueError:
@@ -129,16 +132,16 @@ class import_crashes_app(object):
                 uploadusername = xmlreport.crash_info.report_username
             if xmlreport.fast_protect_version_info is not None:
                 productname = xmlreport.fast_protect_version_info.product_name
-                productcodename = xmlreport.fast_protect_version_info.product_codename
+                productcodename = xmlreport.fast_protect_version_info.product_code_name
                 productversion = xmlreport.fast_protect_version_info.product_version
                 producttargetversion = xmlreport.fast_protect_version_info.product_target_version
                 buildtype = xmlreport.fast_protect_version_info.product_build_type
                 buildpostfix = xmlreport.fast_protect_version_info.product_build_postfix
             if xmlreport.fast_protect_system_info is not None:
                 machinetype = xmlreport.fast_protect_system_info.machine_type
-                crashhostname = xmlreport.fast_protect_system_info.fqdn
-                if not crashhostname:
-                    crashhostname = xmlreport.fast_protect_system_info.hostname
+                crashfqdn = xmlreport.fast_protect_system_info.fqdn
+                if not crashfqdn:
+                    crashfqdn = xmlreport.fast_protect_system_info.hostname
                 crashusername = xmlreport.fast_protect_system_info.username
             if xmlreport.system_info is not None:
                 systemname = xmlreport.system_info.platform_type
@@ -165,7 +168,7 @@ class import_crashes_app(object):
         fields += [ ('producttargetversion', producttargetversion) ]
         fields += [ ('uploadhostname', uploadhostname) ]
         fields += [ ('uploadusername', uploadusername) ]
-        fields += [ ('crashhostname', crashhostname) ]
+        fields += [ ('crashfqdn', crashfqdn) ]
         fields += [ ('crashusername', crashusername) ]
         fields += [ ('buildtype', buildtype) ]
         fields += [ ('buildpostfix', buildpostfix) ]
@@ -182,17 +185,18 @@ class import_crashes_app(object):
         content_type, body = MultipartFormdataEncoder().encode(fields, files)
         headers = {
             'User-Agent': self._user_agent,
-        'Content-Type': content_type
+            'Content-Type': content_type
         }
-        print('url %s' % self._upload_url)
+        if self._verbose:
+            print('url %s' % self._upload_url)
         req = urllib.request.Request (self._upload_url, data=body, headers=headers, method='POST')
         try:
             with urllib.request.urlopen(req) as f:
                 print(f.read().decode('utf-8'))
         except urllib.error.HTTPError as e:
-            print('HTTP error %i: %s' % (e.code, e.reason))
+            print('HTTP error %i: %s' % (e.code, e.reason), file=sys.stderr)
         except urllib.error.URLError as e:
-            print('Invalid URL: %s' % e.reason)
+            print('Invalid URL: %s' % e.reason, file=sys.stderr)
 
     def main(self):
         #=============================================================================================
@@ -201,25 +205,37 @@ class import_crashes_app(object):
         parser = argparse.ArgumentParser(description='import all given crashes')
         parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='enable verbose output of this script.')
         parser.add_argument('-f', '--force', dest='force', action='store_true', help='force processing of given files.')
+        parser.add_argument('-u', '--url', dest='upload_url', help='Specify upload url')
+        parser.add_argument('-s', '--server', dest='server', default='localhost', help='Specify upload server hostname')
+        parser.add_argument('-p', '--port', dest='port', default=8000, help='Specify upload server port')
         parser.add_argument('files', metavar='FILE', type=str, nargs='+', help='crash dump files or directories')
 
         args = parser.parse_args()
         self._verbose = args.verbose
         self._force = args.force
 
-        for f in args.files:
-            if os.path.isdir(f):
-                for e in os.listdir(path=f):
-                    full = os.path.join(f, e)
-                    self._add_file(full)
-            elif os.path.isfile(f):
-                self._add_file(f)
+        if args.upload_url:
+            self._upload_url = args.upload_url
+        else:
+            self._upload_url = 'http://%s:%i/trac-test/submit' % (args.server, args.port)
 
-        for f in self._files:
-            #print('%s' % f)
-            self._process_file(f, force=args.force)
+        if self._upload_url is None:
+            print('No upload URL specified.', file=sys.stderr)
+            ret = 2
+        else:
+            for f in args.files:
+                if os.path.isdir(f):
+                    for e in os.listdir(path=f):
+                        full = os.path.join(f, e)
+                        self._add_file(full)
+                elif os.path.isfile(f):
+                    self._add_file(f)
 
-        ret = 0
+            for f in self._files:
+                #print('%s' % f)
+                self._process_file(f, force=args.force)
+
+            ret = 0
         return ret
 
 if __name__ == "__main__":

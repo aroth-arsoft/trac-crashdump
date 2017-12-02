@@ -233,7 +233,6 @@ class XMLReport(object):
         'terminal_session_id',
         'virtual_machine',
         'remote_session',
-        'machine_type',
         'opengl_vendor',
         'opengl_renderer',
         'opengl_version',
@@ -652,6 +651,19 @@ class XMLReport(object):
     class FastProtectSystemInfo(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.FastProtectSystemInfo, self).__init__(owner)
+            self._sytem_info_report = None
+            self._sytem_info_report_loaded = False
+        @property
+        def sytem_info_report(self):
+            if not self._sytem_info_report_loaded:
+                from crashdump.systeminforeport import SystemInfoReport
+                self._sytem_info_report = SystemInfoReport(xmlreport=self._owner)
+                self._sytem_info_report_loaded = True
+            return self._sytem_info_report
+        @property
+        def machine_type(self):
+            rep = self.sytem_info_report
+            return rep['System/MachineType']
 
     class ProcessStatusLinux(XMLReportEntity):
         def __init__(self, owner):
@@ -1096,10 +1108,10 @@ if __name__ == '__main__':
         #print(m)
     #for m in xmlreport.memory_regions:
         #print(m)
-    for m in xmlreport.stackdumps:
-        print('thread %u %s exception (simple %s)' % (m.threadid, 'with' if m.exception else 'without', 'yes' if m.simplified else 'no'))
-        for f in m.callstack:
-            print(f)
+    #for m in xmlreport.stackdumps:
+        #print('thread %u %s exception (simple %s)' % (m.threadid, 'with' if m.exception else 'without', 'yes' if m.simplified else 'no'))
+        #for f in m.callstack:
+            #print(f)
 
     #dump = xmlreport.stackdumps['exception']
     #for f in dump.callstack:
@@ -1145,7 +1157,8 @@ if __name__ == '__main__':
     #dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
-    #dump_report(xmlreport, 'fast_protect_system_info')
+    dump_report(xmlreport, 'fast_protect_system_info')
+    print('machine_type=%s' % xmlreport.fast_protect_system_info.machine_type)
     #dump_report(xmlreport, 'simplified_info')
     #dump_report(xmlreport, 'modules')
     
