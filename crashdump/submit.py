@@ -249,16 +249,18 @@ class CrashDumpSubmit(Component):
     def _apply_username_replacements(self, username):
         self.log.debug('CrashDumpSubmit _apply_username_replacements in=\'%s\'' % username)
         ret = username
+        ret_lower = username.lower()
         for pattern in self.replace_usernames.split(','):
             pattern = pattern.strip()
             self.log.debug('CrashDumpSubmit _apply_username_replacements pattern=\'%s\'' % pattern)
             if '=' in pattern:
                 (find, replace) = pattern.split('=', 1)
-                find = find.strip()
+                find = find.strip().lower()
                 replace = replace.strip()
                 self.log.debug('CrashDumpSubmit _apply_username_replacements find=\'%s\' -> replace=\'%s\'' % (find, replace))
-                if ret == find:
+                if ret_lower == find:
                     ret = replace
+                    ret_lower = replace.lower()
         self.log.debug('CrashDumpSubmit _apply_username_replacements out=\'%s\'' % ret)
         return ret
 
@@ -565,6 +567,7 @@ class CrashDumpSubmit(Component):
                 values['crashtimestamp'] = crashtimestamp
                 values['reporttimestamp'] = reporttimestamp
                 values['crashid'] = crashid
+                values['uuid'] = crashobj.uuid
                 values['app'] = crashobj['applicationname'] if crashobj['applicationname'] else crashobj['applicationfile']
                 # Update all already linked tickets
                 for tkt_id in crashobj.linked_tickets:
