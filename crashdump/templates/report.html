@@ -220,6 +220,7 @@
 <py:if test="stackdump.thread.main_thread">Main thread</py:if>
 <py:if test="not stackdump.thread.main_thread and stackdump.thread.rpc_thread">RPC Thread</py:if>
 <py:if test="not stackdump.thread.main_thread and not stackdump.thread.rpc_thread">Thread</py:if>
+<py:if test="stackdump.thread.name">({stackdump.thread.name})</py:if>
 &nbsp;${ hex_format(stackdump.threadid) }<py:if test="stackdump.exception"> with exception</py:if>
 </h3>
 </div>

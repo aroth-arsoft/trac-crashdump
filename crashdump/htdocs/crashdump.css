@@ -24,6 +24,11 @@
  padding: .5em 1em;
  position: relative;
 }
+#crashdump, #sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #memory_regions h2, #memory_blocks h2,
+ #sysinfo_report h2, #sysinfo_opengl h2, #sysinfo_env h2, #sysinfo_terra4d_dirs h2, #sysinfo_cpu h2, #sysinfo_rawdata h2 {
+ padding: 0px;
+ border: 0px;
+}
 
 #placeholder {
  border: 0px;
@@ -125,7 +130,7 @@ table.properties td.fullrow {
 table.properties th {
  color: #663;
  font-weight: normal;
- text-align: left;
+ white-space: nowrap;
 }
 table.properties th.missing { color: #d3d398; }
 table.properties td p:first-child { margin-top: 0 }
@@ -202,13 +207,14 @@ td.memory_block, tr.memory_block, table.memory_block {
     padding-bottom: 1pt;
     margin: 0px;
 }
-#crashdump table.properties ol {
+#crashdump table.properties ol, #crashdump table.properties ul, #exception table.properties td ol {
     padding-top: 0pt;
     padding-bottom: 0pt;
+    padding-left: 2em;
     margin: 0px;
     white-space: nowrap;
 }
-#crashdump table.properties ol li {
+#crashdump table.properties ol li, #crashdump table.properties ul li {
     padding-top: 1pt;
     padding-bottom: 1pt;
 }
@@ -216,6 +222,7 @@ ul.environment,ul.dirlist {
     list-style-type: square;
     padding-top: 0px;
     padding-bottom: 0px;
+    padding-left: 2em;
     margin: 0px;
     white-space: nowrap;
 }
