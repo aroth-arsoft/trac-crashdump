@@ -563,7 +563,6 @@ class XMLReport(object):
             return iter(self._list)
 
         def __contains__(self, key):
-            print('StackDumpList. __contains__ %s, %s' % (key, type(key)))
             if isinstance(key, int):
                 for d in self._list:
                     if d.threadid == key and d.simplified == False:
@@ -580,7 +579,6 @@ class XMLReport(object):
             return False
 
         def __getitem__(self, key):
-            print('StackDumpList. get %s, %s' % (key, type(key)))
             if isinstance(key, int):
                 for d in self._list:
                     if d.threadid == key and d.simplified == False:
