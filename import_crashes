@@ -160,14 +160,15 @@ class import_crashes_app(object):
 
         fields = []
         fields += [ ('id', str(crash_id)) ]
+        fields += [ ('ticket', self._create_ticket) ]
         fields += [ ('crashtimestamp', crashtimestamp.isoformat()) ]
         fields += [ ('reporttimestamp', reporttimestamp.isoformat()) ]
         fields += [ ('productname', productname) ]
         fields += [ ('productcodename', productcodename) ]
         fields += [ ('productversion', productversion) ]
         fields += [ ('producttargetversion', producttargetversion) ]
-        fields += [ ('uploadhostname', uploadhostname) ]
-        fields += [ ('uploadusername', uploadusername) ]
+        fields += [ ('fqdn', uploadhostname) ]
+        fields += [ ('username', uploadusername) ]
         fields += [ ('crashfqdn', crashfqdn) ]
         fields += [ ('crashusername', crashusername) ]
         fields += [ ('buildtype', buildtype) ]
@@ -192,9 +193,29 @@ class import_crashes_app(object):
         req = urllib.request.Request (self._upload_url, data=body, headers=headers, method='POST')
         try:
             with urllib.request.urlopen(req) as f:
-                print(f.read().decode('utf-8'))
+                response_headers = f.info()
+                if self._verbose:
+                    for k in response_headers:
+                        print('%s: %s' % (k,response_headers[k]))
+                    print(f.read().decode('utf-8'))
+                crash_url = response_headers.get('Crash-URL')
+                crash_id = response_headers.get('CrashId')
+                linked_tickets = response_headers.get('Linked-Tickets')
+                tickets = {}
+                if linked_tickets:
+                    for elem in linked_tickets.split(';'):
+                        (tkt_id, tkt_url) = elem.split(':', 1)
+                        tickets[int(tkt_id[1:])] = tkt_url
+                print('Crash URL: %s' % (crash_url if crash_url else 'N/A'))
+                print('Crash Id: %s' % (crash_id if crash_id else 'N/A'))
+                if tickets:
+                    print('Linked tickets:')
+                    for (k,v) in tickets.items():
+                        print('  #%i: %s' % (k,v))
+
         except urllib.error.HTTPError as e:
-            print('HTTP error %i: %s' % (e.code, e.reason), file=sys.stderr)
+            ResponseData = e.read().decode("utf8", 'ignore')
+            print('HTTP error %i: %s: %s' % (e.code, e.reason, ResponseData), file=sys.stderr)
         except urllib.error.URLError as e:
             print('Invalid URL: %s' % e.reason, file=sys.stderr)
 
@@ -209,10 +230,27 @@ class import_crashes_app(object):
         parser.add_argument('-s', '--server', dest='server', default='localhost', help='Specify upload server hostname')
         parser.add_argument('-p', '--port', dest='port', default=8000, help='Specify upload server port')
         parser.add_argument('files', metavar='FILE', type=str, nargs='+', help='crash dump files or directories')
+        parser.add_argument('--ticket', dest='create_ticket', default='auto', help='Specify if to create a new ticket for each crash')
 
         args = parser.parse_args()
         self._verbose = args.verbose
         self._force = args.force
+        self._create_ticket = args.create_ticket
+        if self._create_ticket == 'auto' or self._create_ticket == 'no' or self._create_ticket == 'new':
+            pass
+        elif '#' in self._create_ticket:
+            ticket_ids = []
+            for t in self._create_ticket.split(','):
+                if t[0] == '#':
+                    ticket_ids.append(int(t[1:]))
+            self._create_ticket = ''
+            for tkt_id in ticket_ids:
+                if self._create_ticket:
+                    self._create_ticket += ','
+                self._create_ticket += '#%i' % tkt_id
+        else:
+            print('Invalid ticket option %s.' % self._create_ticket, file=sys.stderr)
+            return 1
 
         if args.upload_url:
             self._upload_url = args.upload_url
