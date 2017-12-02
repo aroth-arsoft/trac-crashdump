@@ -246,6 +246,8 @@ class CrashDumpModule(Component):
                 'format_cpu_type': format_cpu_type,
                 'format_cpu_vendor': format_cpu_vendor,
                 'format_cpu_name': format_cpu_name,
+                'format_platform_type': format_platform_type,
+                'format_os_version': format_os_version,
                 'format_distribution_id': format_distribution_id,
                 'format_distribution_codename': format_distribution_codename,
                 'format_milliseconds': format_milliseconds,

@@ -386,3 +386,106 @@ def format_version_number(num):
     if num is None: return 'None'
     m, n, o, p = (num >> 48) & 0xffff, (num >> 32) & 0xffff, (num >> 16) & 0xffff, (num >> 0) & 0xffff
     return '%i.%i.%i.%i' % (m, n, o, p)
+
+def format_platform_type(platform_type):
+    from genshi.builder import tag
+    from trac.util.translation import _
+    if platform_type is None:
+        return _('Platform unknown')
+    elif platform_type == 'Linux':
+        return tag.a('Linux', href='https://en.wikipedia.org/wiki/Linux')
+    elif platform_type == 'Windows NT':
+        return tag.a('Windows NT',href='https://en.wikipedia.org/wiki/Windows_NT')
+    elif platform_type == 'Windows':
+        return tag.a('Windows', href='https://en.wikipedia.org/wiki/Microsoft_Windows')
+    else:
+        return tag.a(platform_type, href='https://en.wikipedia.org/wiki/Special:Search/' + str(platform_type))
+
+def _get_version_from_string(number_str):
+    elems = number_str.split('.')
+    major = 0
+    minor = 0
+    patch = 0
+    build = 0
+    if len(elems) >= 1:
+        major = int(elems[0])
+    if len(elems) >= 2:
+        minor = int(elems[1])
+    if len(elems) >= 3:
+        patch = int(elems[2])
+    if len(elems) >= 4:
+        build = int(elems[3])
+    return major, minor, patch, build
+
+def _get_version_from_numbers(os_version_number, os_build_number):
+    #print('_get_version_from_numbers %s, %s' % (os_version_number, os_build_number))
+    major = os_version_number >> 48 & 0xffff
+    minor = os_version_number >> 32 & 0xffff
+    patch = os_version_number >> 16 & 0xffff
+    build = os_version_number & 0xffff
+    if build == 0 and os_build_number:
+        build = int(os_build_number) if os_build_number is not None else 0
+    #print('%x, %s -> %i.%i.%i.%i' % (os_version_number, os_build_number, major, minor, patch, build))
+    return major, minor, patch, build
+
+
+def format_os_version(platform_type, os_version_number, os_build_number):
+    from genshi.builder import tag
+    from trac.util.translation import _
+    major, minor, patch, build = _get_version_from_numbers(os_version_number, os_build_number)
+    if platform_type is None:
+        return _('unknown')
+    elif platform_type == 'Linux':
+        return tag.a('Linux %i.%i.%i.%i' % (major, minor, patch, build), href='https://en.wikipedia.org/wiki/Linux')
+    elif platform_type == 'Windows NT':
+        #major, minor, patch, build = _get_version_from_string(os_version_number)
+        productName = 'Windows %i.%i' % (major, minor)
+        href='https://en.wikipedia.org/wiki/Microsoft_Windows'
+        marketingName = None
+        if (major < 6):
+            productName = "Windows XP"
+            href='https://en.wikipedia.org/wiki/Windows_XP'
+        elif (major == 6 and minor == 0):
+            productName = "Windows Vista"
+            href='https://en.wikipedia.org/wiki/Windows_Vista'
+        elif (major == 6 and minor == 1):
+            productName = "Windows 7"
+            href='https://en.wikipedia.org/wiki/Windows_7'
+        elif (major == 6 and minor == 2):
+            productName = "Windows 8"
+            href='https://en.wikipedia.org/wiki/Windows_8'
+        elif (major == 6 and minor == 3):
+            productName = "Windows 8.1"
+            href='https://en.wikipedia.org/wiki/Windows_8'
+        elif (major == 10):
+            href='https://en.wikipedia.org/wiki/Windows_10'
+            # See https://en.wikipedia.org/wiki/Windows_10_version_history
+            if build <= 10240:
+                productName = "Windows 10";
+                marketingName = ''
+            elif(build <= 10586):
+                productName = "Windows 10 Version 1511";
+                marketingName = "November Update";
+            elif (build <= 14393):
+                productName = "Windows 10 Version 1607";
+                marketingName = "Anniversary Update";
+            elif (build <= 15063):
+                productName = "Windows 10 Version 1703";
+                marketingName = "Creators Update";
+            elif (build <= 16299):
+                productName = "Windows 10 Version 1709";
+                marketingName = "Fall Creators Update";
+            elif (build <= 17004):
+                productName = "Windows 10 Version 1803";
+                marketingName = ''
+            else:
+                productName = 'Windows 10 Build %i' % build
+        if marketingName:
+            text = '%s (%s)' % (productName, marketingName)
+        else:
+            text = productName
+        return tag.a(text, title=text, href=href) + ' %i.%i.%i.%i' % (major, minor, patch, build)
+    elif platform_type == 'Windows':
+        return tag.a('Windows %s' % os_version_number, href='https://en.wikipedia.org/wiki/Microsoft_Windows')
+    else:
+        return _('unknown')

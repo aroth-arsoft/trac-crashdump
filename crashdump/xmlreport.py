@@ -133,7 +133,7 @@ class XMLReport(object):
                           'symbol_directories', 'image_directories', 'usefulness_id', 'environment']
 
     _system_info_fields = ['platform_type', 'platform_type_id', 'cpu_type', 'cpu_type_id', 'cpu_name', 'cpu_level', 'cpu_revision', 'cpu_vendor',
-                            'number_of_cpus', 'os_version', 'os_version_number', 'os_version_info',
+                            'number_of_cpus', 'os_version', 'os_version_number', 'os_build_number', 'os_version_info',
                             'distribution_id', 'distribution_release', 'distribution_codename', 'distribution_description' ]
     _file_info_fields = ['log']
     _file_info_log_message_fields = ['time', 'text']
