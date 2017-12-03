@@ -865,6 +865,14 @@ class XMLReport(object):
             if i is not None:
                 for f in XMLReport._system_info_fields:
                     setattr(self._system_info, f, XMLReport._get_node_value(i, f))
+                if ((self._system_info.os_version_number >> 48) & 0xffff) == 0:
+                    # convert old OS version number with two 32-bit integers
+                    # to the new format using four 16-bit integers
+                    major = (self._system_info.os_version_number >> 32) & 0xffffffff
+                    minor = self._system_info.os_version_number & 0xffffffff
+                    patch = 0
+                    build = (self._system_info.os_build_number & 0xffff)
+                    self._system_info.os_version_number = major << 48 | minor << 32 | patch << 16 | build
         return self._system_info
 
     @property
@@ -1152,7 +1160,7 @@ if __name__ == '__main__':
             dump_report_entity(data, indent + 2)
 
     #dump_report(xmlreport, 'crash_info')
-    #dump_report(xmlreport, 'system_info')
+    dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     dump_report(xmlreport, 'fast_protect_system_info')
