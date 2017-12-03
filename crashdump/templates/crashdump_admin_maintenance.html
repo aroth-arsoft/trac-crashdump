@@ -1,0 +1,79 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:i18n="http://genshi.edgewall.org/i18n"
+      xmlns:py="http://genshi.edgewall.org/">
+  <xi:include href="admin.html" />
+  <head>
+    <title>Crashdump admin</title>
+    <script>
+     //<![CDATA[
+      jQuery(document).ready(function($) {
+        $("#purge_threshold").datetimepicker();
+      });
+        function submit_purge_form(yesno)
+        {
+            document.getElementById('confirm').value=yesno;
+            document.form_purge_old_data.submit();
+        }
+    /*]]>*/
+    </script>
+  </head>
+  <body>
+    <div id="content">
+    <h2>Crash dump admin</h2>
+
+
+    <div class="purge_old_data">
+        <h2 class="foldable" id='purge_old_data'>Purge old data</h2>
+        <a name="purge_old_data"/>
+
+      <form name="form_purge_old_data" method="post">
+        <fieldset class="col0">
+
+        <py:if test="not purge_crashes">
+            <div class="help" xml:space="preserve">
+                Purge all crashes older than the given timestamp:
+            </div>
+            <input type="hidden" id="action" value="purge_old_data" />
+            <label>
+                <input type="text" id="purge_threshold" name="purge_threshold" size="${len(datetime_hint)}"
+                        value="${format_datetime(purge_threshold)}"
+                        title="${_('Format: %(datehint)s', datehint=datetime_hint)}" />
+                <em i18n:msg="datehint">Format: ${datetime_hint}</em>
+            </label>
+            <div>
+                <input type="submit" value="Purge" />
+            </div>
+        </py:if>
+        <py:if test="purge_crashes">
+            <div class="help" xml:space="preserve">
+                Are you sure to purge the following crashes?
+            </div>
+            <py:for each="crash in purge_crashes">
+
+                <li>
+                    <a href="${href('crash', crash.uuid)}" title="${crash.uuid}" class="trac-id">CrashId#${crash.id} - {${crash.uuid}}</a> crashed on ${pretty_dateinfo(crash['crashtime'])}
+                </li>
+            </py:for>
+            <div>
+                <input type="hidden" name="confirm" value="" id="confirm" />
+                <button type="button" onclick="javascript:submit_purge_form('yes');">Yes</button>
+                <button type="button" onclick="javascript:submit_purge_form('no');">No</button>
+            </div>
+        </py:if>
+
+        </fieldset>
+      </form>
+    </div>
+
+    <div class="trac-nav">
+        <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
+    </div>
+
+<!-- close the content -->
+</div>
+  </body>
+</html>

@@ -6,7 +6,6 @@ import subprocess
 import re
 
 from pkg_resources import resource_filename
-from genshi.core import Markup, START, END, TEXT
 from genshi.builder import tag
 
 from trac.core import *
@@ -19,28 +18,27 @@ from trac.web.chrome import (
 from trac.web import (
     arg_list_to_args, parse_arg_list
 )
+from trac.admin.api import IAdminPanelProvider
+
 from trac.ticket.model import Milestone, Ticket, group_milestones
 from trac.ticket.query import Query
 from trac.config import Option, PathOption
-from trac.attachment import AttachmentModule
 from trac.mimeview.api import Mimeview, IContentConverter
-from trac.resource import (
-    Resource, ResourceNotFound, get_resource_url, render_resource_link,
-    get_resource_shortname
-)
+from trac.resource import Resource, ResourceNotFound
 from trac.util import to_unicode, as_bool, as_int, get_reporter_id
-from trac.util.translation import _ 
-from trac.util.html import html, Markup
+from trac.util.translation import _
 from trac.util.text import (
-    exception_to_unicode, empty, obfuscate_email_address, shorten_line,
+    exception_to_unicode, empty, shorten_line,
     to_unicode
 )
 
-from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_utimestamp
+from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_utimestamp, \
+                              get_datetime_format_hint, user_time, parse_date
 from trac.util.compat import set, sorted, partial
 import os.path
 import math
 import time
+from datetime import datetime, timedelta
 from .model import CrashDump
 from .links import CrashDumpTicketLinks
 from .api import CrashDumpSystem
@@ -62,7 +60,7 @@ class CrashDumpModule(Component):
     """UI for crash dumps."""
     
     implements(IRequestHandler, IRequestFilter, ITemplateStreamFilter,
-               ITemplateProvider)
+               ITemplateProvider, IAdminPanelProvider)
 
     dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='../dumpdata',
                       doc='Path to the crash dump data directory relative to the environment conf directory.')
@@ -666,3 +664,47 @@ class CrashDumpModule(Component):
             pass
         return ret
 
+    # IAdminPanelProvider methods
+    def get_admin_panels(self, req):
+        if req.perm.has_permission('TRAC_ADMIN'):
+            yield ('crashdump', 'Crash dump', 'maintenance', 'Maintenance')
+
+    def render_admin_panel(self, req, cat, page, path_info):
+        assert req.perm.has_permission('TRAC_ADMIN')
+
+        action = req.args.get('action', 'view')
+        if req.method == 'POST':
+            confirm = req.args.get('confirm', 0)
+            if 'purge_threshold' in req.args:
+                purge_threshold_str = req.args.get('purge_threshold', '')
+                purge_threshold = user_time(req, parse_date, purge_threshold_str, hint='datetime') \
+                                if purge_threshold_str else None
+            else:
+                purge_threshold = None
+
+            if not confirm:
+                self.log.debug('render_admin_panel purge not yet confirmed')
+                if purge_threshold is not None:
+                    crashes = CrashDump.query_old_data(self.env, purge_threshold)
+                data = {
+                    'datetime_hint': get_datetime_format_hint(req.lc_time),
+                    'purge_threshold': purge_threshold_str,
+                    'purge_crashes': crashes
+                }
+                return 'crashdump_admin_%s.html' % page, data
+            elif confirm == 'no':
+                self.log.debug('render_admin_panel purge canceled')
+                req.redirect(req.href.admin(cat, page))
+            elif confirm == 'yes':
+                self.log.debug('render_admin_panel purge confirmed')
+                req.redirect(req.href.admin(cat, page))
+        else:
+            now = datetime.now(req.tz)
+
+            purge_threshold = datetime(now.year, now.month, now.day, 0)
+            purge_threshold -= timedelta(days=365)
+            data = {
+                'datetime_hint': get_datetime_format_hint(req.lc_time),
+                'purge_threshold': purge_threshold,
+            }
+            return 'crashdump_admin_%s.html' % page, data

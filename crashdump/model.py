@@ -482,7 +482,7 @@ class CrashDump(object):
                 self.env.db_query(sql, args)]
 
     @staticmethod
-    def query(env, status=None):
+    def query(env, status=None, threshold=None):
         ret = []
         where_clause = ''
         if status is not None:
@@ -494,7 +494,14 @@ class CrashDump(object):
                 where_clause = ' WHERE status=\'new\''
             else:
                 where_clause = ' WHERE status=\'%s\'' % status
-                
+
+        if threshold is not None:
+            (threshold_column, threshold_time) = threshold
+            if where_clause:
+                where_clause += ' AND %s < %i' % (threshold_column, to_utimestamp(threshold_time))
+            else:
+                where_clause = ' WHERE %s < %i' % (threshold_column, to_utimestamp(threshold_time))
+
         fields = CrashDumpSystem(env).get_crash_fields()
         std_fields = []
         for f in fields:
@@ -545,6 +552,37 @@ class CrashDump(object):
             for ticketid, in cursor:
                 ret.append(int(ticketid))
         return ret
+
+    @staticmethod
+    def query_old_data(env, threshold, column='crashtime'):
+        return CrashDump.query(env=env, threshold=(column, threshold))
+
+    @staticmethod
+    def purge_old_data(env, threshold, column='crashtime'):
+        _crash_file_fields = [
+                'minidumpfile',
+                'minidumpreporttextfile',
+                'minidumpreportxmlfile',
+                'minidumpreporthtmlfile',
+                'coredumpfile',
+                'coredumpreporttextfile',
+                'coredumpreportxmlfile',
+                'coredumpreporthtmlfile',
+            ]
+        dumpdata_dir = os.path.join(env.path, self.dumpdata_dir)
+        crashes = CrashDump.query(env=env, threshold=(column, threshold))
+        for crash in crashes:
+            crash_dir = os.path.join(dumpdata_dir, crash.uuid)
+            for field in _crash_file_fields:
+                if crash[field]:
+                    crash_file = os.path.join(crash_dir, crash[field])
+                    if os.path.exists(crash_file):
+                        os.remove(crash_file)
+            if os.path.isdir(crash_dir):
+                import shutil
+                shutil.rmtree(crash_dir)
+
+
 
 class CrashDumpStackFrame(object):
 
