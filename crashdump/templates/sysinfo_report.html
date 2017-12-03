@@ -97,8 +97,8 @@
 </py:if>
 
 <tr>
-<th>FQDN:</th><td>${sysinfo_report['System/fqdn']}</td>
-<th>Qt Library info:</th><td>${sysinfo_report['Qt/sysinfo/libraryinfobuild']}</td>
+<th>FQDN:</th><td>${sysinfo_report['System/fqdn'] if sysinfo_report['System/fqdn'] else 'N/A'}</td>
+<th>Qt Library info:</th><td>${sysinfo_report['Qt/sysinfo/libraryinfobuild'] if sysinfo_report['Qt/sysinfo/libraryinfobuild'] else 'N/A'}</td>
 </tr>
 </table>
 

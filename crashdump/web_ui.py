@@ -413,6 +413,20 @@ class CrashDumpModule(Component):
             if 'xmlreport' in data:
                 data['sysinfo_report'] = SystemInfoReport(xmlreport=data['xmlreport'])
             if params is None:
+                linked_tickets = []
+                for tkt_id in crashobj.linked_tickets:
+                    a = self._link_ticket_by_id(req, tkt_id)
+                    if a:
+                        linked_tickets.append(a)
+
+                field_changes = {}
+                data.update({'action': action,
+                            'params': params,
+                            # Store a timestamp for detecting "mid air collisions"
+                            'start_time': crashobj['changetime'],
+                            'linked_tickets':linked_tickets
+                            })
+
                 add_script_data(req, {'comments_prefs': self._get_prefs(req)})
                 add_stylesheet(req, 'crashdump/crashdump.css')
                 add_script(req, 'common/js/folding.js')
