@@ -207,23 +207,19 @@ td.memory_block, tr.memory_block, table.memory_block {
     padding-bottom: 1pt;
     margin: 0px;
 }
-#crashdump table.properties ol, #crashdump table.properties ul, #exception table.properties td ol {
+ol, ul {
     padding-top: 0pt;
     padding-bottom: 0pt;
     padding-left: 2em;
     margin: 0px;
     white-space: nowrap;
 }
-#crashdump table.properties ol li, #crashdump table.properties ul li {
+ol li, ul li {
     padding-top: 1pt;
     padding-bottom: 1pt;
 }
 ul.environment,ul.dirlist {
     list-style-type: square;
-    padding-top: 0px;
-    padding-bottom: 0px;
-    padding-left: 2em;
-    margin: 0px;
     white-space: nowrap;
 }
 .crashdump-nav {
