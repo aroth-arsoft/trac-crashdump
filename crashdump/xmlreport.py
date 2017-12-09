@@ -971,6 +971,7 @@ class XMLReport(object):
                             m.usage.append(usage)
 
                     self._memory_regions.append(m)
+                self._memory_regions = sorted(self._memory_regions, key=lambda region: region.base_addr)
         return self._memory_regions
 
     @property
@@ -985,6 +986,7 @@ class XMLReport(object):
                     for f in XMLReport._memory_block_fields:
                         setattr(m, f, XMLReport._get_node_value(item, f))
                     self._memory_blocks.append(m)
+                self._memory_blocks = sorted(self._memory_blocks, key=lambda block: block.base)
         return self._memory_blocks
 
     @property
@@ -1160,11 +1162,11 @@ if __name__ == '__main__':
             dump_report_entity(data, indent + 2)
 
     #dump_report(xmlreport, 'crash_info')
-    dump_report(xmlreport, 'system_info')
+    #dump_report(xmlreport, 'system_info')
     #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
-    dump_report(xmlreport, 'fast_protect_system_info')
-    print('machine_type=%s' % xmlreport.fast_protect_system_info.machine_type)
+    #dump_report(xmlreport, 'fast_protect_system_info')
+    #print('machine_type=%s' % xmlreport.fast_protect_system_info.machine_type)
     #dump_report(xmlreport, 'simplified_info')
     #dump_report(xmlreport, 'modules')
     
@@ -1173,7 +1175,7 @@ if __name__ == '__main__':
         #print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
-    #dump_report(xmlreport, 'memory_regions')
+    dump_report(xmlreport, 'memory_regions')
     
     #dump_report(xmlreport, 'exception')
 

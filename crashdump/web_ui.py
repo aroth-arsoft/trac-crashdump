@@ -236,6 +236,7 @@ class CrashDumpModule(Component):
         data = {'object': crashobj,
                 'to_utimestamp': to_utimestamp,
                 'hex_format':hex_format,
+                'addr_format':None,
                 'exception_code': exception_code,
                 'format_bool_yesno': format_bool_yesno,
                 'format_source_line': format_source_line,
@@ -333,6 +334,7 @@ class CrashDumpModule(Component):
             end = time.time()
             data['parsetime'] = end - start
         data['bits'] = 64 if data['is_64_bit'] else 32
+        data['addr_format'] = addr_format_64 if data['is_64_bit'] else addr_format_32
         return data
 
     def _get_prefs(self, req):

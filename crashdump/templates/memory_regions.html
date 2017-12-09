@@ -15,7 +15,7 @@
 </tr>
 <py:for each="memory_region in memory_regions">
 <tr>
-<td>${ hex_format(memory_region.base_addr) }</td>
+<td><div class="address">${ addr_format(memory_region.base_addr) }</div></td>
 <td>${ format_size(memory_region.size) } </td>
 <td>
 <ol py:if="memory_region.usage">
@@ -26,7 +26,7 @@
 </ol>
 <div py:if="not memory_region.usage">N/A</div>
 </td>
-<td>${ hex_format(memory_region.alloc_base) }</td>
+<td><div class="address">${ addr_format(memory_region.alloc_base) }</div></td>
 <td>${ hex_format(memory_region.alloc_prot) }</td>
 <td>${ hex_format(memory_region.type) }</td>
 <td>${ hex_format(memory_region.protect) }</td>

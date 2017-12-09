@@ -11,7 +11,7 @@
 </tr>
 <tr><th>Name</th><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
 <tr><th>Info</th><td class="fullrow">${exception.info}</td></tr>
-<tr><th>Address</th><td class="fullrow">${ hex_format(exception.address) }</td></tr>
+<tr><th>Address</th><td class="fullrow"><div class="address">${ addr_format(exception.address) }</div></td></tr>
 <tr><th>Flags</th><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
 <tr><th>Parameters</th><td class="fullrow">
 <ol py:if="exception.params">

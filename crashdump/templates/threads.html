@@ -19,10 +19,10 @@
 <td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.mainthread">@</py:if><py:if test="thread.exception">*</py:if></a></td>
 <td>${ thread.name if thread.name else 'N/A' }</td>
 <td>
-    <py:if test="thread.memory"><a href="#memory_block_${thread.memory}">${ hex_format(thread.memory) }</a></py:if>
+    <py:if test="thread.memory"><a href="#memory_block_${thread.memory}"><div class="address">${ addr_format(thread.memory) }</div></a></py:if>
     <py:if test="not thread.mainthread">N/A</py:if>
 </td>
-<td>${ hex_format(thread.start_addr) }</td>
+<td><div class="address">${ addr_format(thread.start_addr) }</div></td>
 <td>${pretty_dateinfo(thread.create_time) if thread.create_time else 'N/A'}</td>
 <td>${pretty_dateinfo(thread.exit_time) if thread.exit_time else 'N/A'}</td>
 <td>${ format_milliseconds(thread.kernel_time) }</td>

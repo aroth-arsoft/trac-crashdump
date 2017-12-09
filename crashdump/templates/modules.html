@@ -16,7 +16,8 @@
 <py:for each="module in modules">
 <tr>
 <td><a name="module_${module.basename}"/>
-${ hex_format(module.base)}</td>
+<div class="address">${ addr_format(module.base)}</div>
+</td>
 <td>${ format_size(module.size) }</td>
 <td>${ format_datetime(module.timestamp) }</td>
 <td>${module.product_version}</td>

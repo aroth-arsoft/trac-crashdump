@@ -242,7 +242,7 @@
 <a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
     <div id="memory_block___${memory_block.base}" class="collapsed">
     <h3 class="foldable" id="memory_block_${memory_block.base}_title">
-        Memory block #${memory_block.num} at ${ hex_format(memory_block.base) } size ${ format_size(memory_block.size) }
+        Memory block #${memory_block.num} at ${ addr_format(memory_block.base) } size ${ format_size(memory_block.size) }
         <py:if test="memory_block.threadid is not None">
             (memory of thread ${ hex_format(memory_block.threadid) })
         </py:if>

@@ -37,7 +37,7 @@ def _hex_format(number, prefix='0x', width=None, bits=None):
             width = 2
     fmt = '%%0%ix' % width
     return prefix + fmt % number
-    
+
 def hex_format(number, prefix='0x', width=None, bits=None):
     if isinstance(number, list):
         nums = []
@@ -46,6 +46,12 @@ def hex_format(number, prefix='0x', width=None, bits=None):
         return ','.join(nums)
     else:
         return _hex_format(number, prefix, width, bits)
+
+def addr_format_64(number, prefix='0x'):
+    return hex_format(number, prefix, bits=64)
+
+def addr_format_32(number, prefix='0x'):
+    return hex_format(number, prefix, bits=32)
 
 def exception_code(platform_type, code, name):
     from genshi.builder import tag

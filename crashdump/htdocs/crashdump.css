@@ -225,3 +225,7 @@ ul.environment,ul.dirlist {
 .crashdump-nav {
  font-size: 80%;
 }
+.address {
+    font-family: mono;
+    white-space: nowrap;
+}

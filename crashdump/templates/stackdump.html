@@ -22,8 +22,8 @@
         <tr>
         <td>${frame.num}</td>
         <td>${ format_trust_level(frame.trust_level) }</td>
-        <td>${ hex_format(frame.addr, bits=bits) }</td>
-        <td>${ hex_format(frame.retaddr, bits=bits) }</td>
+        <td><div class="address">${ addr_format(frame.addr) }</div></td>
+        <td><div class="address">${ addr_format(frame.retaddr) }</div></td>
         <td>${ hex_format(frame.params, bits=bits) }</td>
         <td><a py:if="frame.module" href="#module_${frame.module}">${frame.module}</a>
             <div py:if="not frame.module">N/A</div>
