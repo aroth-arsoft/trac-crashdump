@@ -72,6 +72,7 @@ class import_crashes_app(object):
         self._files = []
         self._crashdump_exts = ['.dmp']
         self._upload_url = None
+        self._crashlist_url = None
         self._user_agent = 'terra3d-crashuploader/1.0'
 
     def _add_file(self, f):
@@ -219,6 +220,29 @@ class import_crashes_app(object):
         except urllib.error.URLError as e:
             print('Invalid URL: %s' % e.reason, file=sys.stderr)
 
+    def _get_crash_list(self, status):
+        headers = {
+            'User-Agent': self._user_agent,
+        }
+        body = None
+        url = self._crashlist_url + '?status=%s' % status
+        if self._verbose:
+            print('url %s' % url)
+        req = urllib.request.Request (url, data=body, headers=headers, method='GET')
+        try:
+            with urllib.request.urlopen(req) as f:
+                response_headers = f.info()
+                if self._verbose:
+                    for k in response_headers:
+                        print('%s: %s' % (k,response_headers[k]))
+                    print(f.read().decode('utf-8'))
+
+        except urllib.error.HTTPError as e:
+            ResponseData = e.read().decode("utf8", 'ignore')
+            print('HTTP error %i: %s: %s' % (e.code, e.reason, ResponseData), file=sys.stderr)
+        except urllib.error.URLError as e:
+            print('Invalid URL: %s' % e.reason, file=sys.stderr)
+
     def main(self):
         #=============================================================================================
         # process command line
@@ -229,8 +253,9 @@ class import_crashes_app(object):
         parser.add_argument('-u', '--url', dest='upload_url', help='Specify upload url')
         parser.add_argument('-s', '--server', dest='server', default='localhost', help='Specify upload server hostname')
         parser.add_argument('-p', '--port', dest='port', default=8000, help='Specify upload server port')
-        parser.add_argument('files', metavar='FILE', type=str, nargs='+', help='crash dump files or directories')
-        parser.add_argument('--ticket', dest='create_ticket', default='auto', help='Specify if to create a new ticket for each crash')
+        parser.add_argument('files', metavar='FILE', type=str, nargs='*', help='crash dump files or directories')
+        parser.add_argument('--ticket', dest='create_ticket', nargs='?', default='auto', help='Specify if to create a new ticket for each crash')
+        parser.add_argument('--list', dest='list_tickets', nargs='?', default='active', help='list all crashes on the server')
 
         args = parser.parse_args()
         self._verbose = args.verbose
@@ -254,13 +279,15 @@ class import_crashes_app(object):
 
         if args.upload_url:
             self._upload_url = args.upload_url
+            self._crashlist_url = args.upload_url + '/crashlist'
         else:
             self._upload_url = 'http://%s:%i/trac-test/submit' % (args.server, args.port)
+            self._crashlist_url = 'http://%s:%i/trac-test/submit/crashlist' % (args.server, args.port)
 
         if self._upload_url is None:
             print('No upload URL specified.', file=sys.stderr)
             ret = 2
-        else:
+        elif args.files:
             for f in args.files:
                 if os.path.isdir(f):
                     for e in os.listdir(path=f):
@@ -274,6 +301,12 @@ class import_crashes_app(object):
                 self._process_file(f, force=args.force)
 
             ret = 0
+        elif args.list_tickets is not None:
+            self._get_crash_list(status=args.list_tickets)
+            ret = 0
+        else:
+            print('No operation specified.')
+            ret = 1
         return ret
 
 if __name__ == "__main__":
