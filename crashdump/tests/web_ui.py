@@ -17,7 +17,7 @@ from trac.web.api import HTTPBadRequest, RequestDone
 
 from crashdump.web_ui import CrashDumpModule
 from crashdump.model import CrashDump
-
+from crashdump.links import CrashDumpTicketLinks
 
 class CrashDumpWebUiTestCase(unittest.TestCase):
     def setUp(self):
@@ -52,7 +52,13 @@ class CrashDumpWebUiTestCase(unittest.TestCase):
         for k, v in kw.items():
             ticket[k] = v
         ticket.insert()
-        return ticket
+        with self.env.db_transaction as db:
+            links = CrashDumpTicketLinks(self.env, ticket, db=db)
+            if 'linked_crashes' in kw:
+                links.crashes = kw['linked_crashes']
+                links.save(author='anonymous', db=db)
+            db.commit()
+        return ticket, links
 
     def _insert_crashdump(self, **kw):
         """Helper for inserting a ticket into the database"""
@@ -104,13 +110,28 @@ class CrashDumpWebUiTestCase(unittest.TestCase):
         self.env.insert_users([('user1', 'User One', ''),
                                ('user2', 'User Two', '')])
         crash = self._insert_crashdump(reporter='user1', owner='user2')
-        tkt = self._insert_ticket(reporter='user1', owner='user2', linked_crash='#%i' % crash.id)
+        tkt, tkt_links = self._insert_ticket(reporter='user1', owner='user2', linked_crashes='%i' % crash.id)
 
         req = MockRequest(self.env, authname='user', method='GET',
                           args={'crashid':crash.id, 'action': 'view'})
         tmpl, data, extra = self.crashdump_module.process_request(req)
 
         self.assertEqual(tmpl, 'report.html')
+        self.assertEqual(crash.linked_tickets, [tkt.id])
+
+    def test_action_view_ticket_linked_crash_bad_crashid(self):
+        """Full name of reporter and owner are used in ticket properties."""
+        self.env.insert_users([('user1', 'User One', ''),
+                               ('user2', 'User Two', '')])
+        tkt, tkt_links = self._insert_ticket(reporter='user1', owner='user2')
+        crash = self._insert_crashdump(reporter='user1', owner='user2', linked_crashes='Bad#%i' % tkt.id)
+
+        req = MockRequest(self.env, authname='user', method='GET',
+                          args={'crashid':crash.id, 'action': 'view'})
+        tmpl, data, extra = self.crashdump_module.process_request(req)
+
+        self.assertEqual(tmpl, 'report.html')
+        self.assertEqual(crash.linked_tickets, [])
 
 
 def test_suite():
