@@ -75,6 +75,7 @@ class CrashDumpModule(Component):
 
     crashdump_fields = set(['_crash'])
     crashdump_uuid_fields = set(['_crash_uuid'])
+    crashdump_sysinfo_fields = set(['_crash_sysinfo'])
     datetime_fields = set(['crashtime', 'uploadtime', 'reporttime'])
     crashdump_link_fields = set(['linked_crash'])
     crashdump_ticket_fields = set(['linked_tickets'])
@@ -99,6 +100,9 @@ class CrashDumpModule(Component):
                     for f in self.crashdump_uuid_fields:
                         if field['name'] == f and data['ticket'][f]:
                             field['rendered'] = self._link_crash(req, data['ticket'][f], show_uuid=True)
+                    for f in self.crashdump_sysinfo_fields:
+                        if field['name'] == f and data['ticket'][f]:
+                            field['rendered'] = self._link_crash(req, data['ticket'][f], show_uuid=True, sysinfo=True)
                     for f in self.crashdump_link_fields:
                         if field['name'] == f and data['ticket'][f]:
                             field['rendered'] = self._link_crashes_by_id(req, data['ticket'][f])
@@ -112,6 +116,9 @@ class CrashDumpModule(Component):
                         for f in self.crashdump_uuid_fields:
                             if f in ticket:
                                 ticket[f] = self._link_crash(req, ticket[f], show_uuid=True)
+                        for f in self.crashdump_sysinfo_fields:
+                            if f in ticket:
+                                ticket[f] = self._link_crash(req, ticket[f], show_uuid=True, sysinfo=True)
                         for f in self.crashdump_ticket_fields:
                             if f in ticket:
                                 ticket[f] = self._link_tickets(req, ticket[f])
@@ -125,21 +132,23 @@ class CrashDumpModule(Component):
                             for cells in row['cell_groups']:
                                 for cell in cells:
                                     # If the user names column in the report differently (blockedby AS "blocked by") then this will not find it
-                                    self.log.debug('got cell header %s' % str(cell.get('header', {}).get('col')))
+                                    #self.log.debug('got cell header %s' % str(cell.get('header', {}).get('col')))
                                     if cell.get('header', {}).get('col') in self.crashdump_fields:
                                         cell['value'] = self._link_crash(req, cell['value'])
                                         cell['header']['hidden'] = False
-                                        cell['header']['title'] = 'Crashdump'
-                                        self.log.debug('got crash cell %s' % str(cell))
+                                        cell['header']['title'] = _('Crashdump')
                                     elif cell.get('header', {}).get('col') in self.crashdump_uuid_fields:
                                         cell['value'] = self._link_crash(req, cell['value'], show_uuid=True)
                                         cell['header']['hidden'] = False
-                                        cell['header']['title'] = 'Crashdump'
-                                        self.log.debug('got crash cell %s' % str(cell))
+                                        cell['header']['title'] = _('Crashdump')
+                                    elif cell.get('header', {}).get('col') in self.crashdump_sysinfo_fields:
+                                        cell['value'] = self._link_crash(req, cell['value'], show_uuid=True, sysinfo=True)
+                                        cell['header']['hidden'] = False
+                                        cell['header']['title'] = _('System info')
                                     elif cell.get('header', {}).get('col') in self.crashdump_ticket_fields:
                                         cell['value'] = self._link_tickets(req, cell['value'])
                                         cell['header']['hidden'] = False
-                                        cell['header']['title'] = 'Linked tickets'
+                                        cell['header']['title'] = _('Linked tickets')
                                     elif cell.get('header', {}).get('col') in self.datetime_fields:
                                         cell['value'] = self._format_datetime(req, cell['value'])
         return stream
@@ -641,17 +650,26 @@ class CrashDumpModule(Component):
         else:
             return None
 
-    def _link_crash(self, req, uuid, show_uuid=False):
+    def _link_crash(self, req, uuid, show_uuid=False, sysinfo=False):
         ret = None
         try:
             crash = CrashDump(env=self.env, uuid=uuid)
+            if sysinfo:
+                href = req.href('crash', crash.uuid, 'sysinfo_report')
+                title = 'CrashId#%i (%s)' % (crash.id, crash.uuid)
+            else:
+                if show_uuid:
+                    title = str(crash.uuid)
+                else:
+                    title = 'CrashId#%i (%s)' % (crash.id, crash.uuid)
+                href = req.href('crash', crash.uuid)
             if show_uuid:
                 ret = \
                     tag.a(
                         str(crash.uuid),
                         class_=crash['status'],
-                        href=req.href('crash', crash.uuid),
-                        title='CrashId#%i (%s)' % (crash.id, crash.uuid),
+                        href=href,
+                        title=title,
                         style="white-space: nowrap"
                     )
             else:
@@ -659,7 +677,7 @@ class CrashDumpModule(Component):
                     tag.a(
                         'CrashId#%i' % crash.id,
                         class_=crash['status'],
-                        href=req.href('crash', crash.uuid),
+                        href=href,
                         title=crash.uuid
                     )
         except ResourceNotFound:

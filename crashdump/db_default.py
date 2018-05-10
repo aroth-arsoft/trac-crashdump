@@ -203,6 +203,21 @@ LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
 ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
                         """, """ * List all active crashes by priority.
  * Color each row based on priority."""),
+
+
+('List system information', """
+
+SELECT p.value AS __color__,
+c.crashhostname || " (" || c.machinetype || "/" || c.systemname || ")" AS  __group__,
+   c.uuid AS _crash_sysinfo,
+   c.crashtime AS crashtime
+FROM crashdump c
+LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
+ORDER BY c.crashhostname || " (" || c.machinetype || "/" || c.systemname || ")", c.crashtime DESC
+                            """, """Lists all system reports grouped by the machine name.
+
+It uses the crash reports in the database to extract this information."""),
+
             ),
         )
     )
