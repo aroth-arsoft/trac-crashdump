@@ -438,6 +438,8 @@ def _get_version_from_numbers(os_version_number, os_build_number):
 def format_os_version(platform_type, os_version_number, os_build_number):
     from genshi.builder import tag
     from trac.util.translation import _
+    if os_version_number is None:
+        return _('unknown')
     major, minor, patch, build = _get_version_from_numbers(os_version_number, os_build_number)
     if platform_type is None:
         return _('unknown')

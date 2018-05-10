@@ -865,7 +865,7 @@ class XMLReport(object):
             if i is not None:
                 for f in XMLReport._system_info_fields:
                     setattr(self._system_info, f, XMLReport._get_node_value(i, f))
-                if ((self._system_info.os_version_number >> 48) & 0xffff) == 0:
+                if self._system_info.os_version_number is not None and ((self._system_info.os_version_number >> 48) & 0xffff) == 0:
                     # convert old OS version number with two 32-bit integers
                     # to the new format using four 16-bit integers
                     major = (self._system_info.os_version_number >> 32) & 0xffffffff
