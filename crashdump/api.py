@@ -362,6 +362,8 @@ class CrashDumpSystem(Component):
             #self.log.debug('validate_ticket for %s: %s=%s' % (tid, field, linked_crash))
             ids = set()
             for n in linked_crash:
+                if not n:
+                    continue
                 cid = CrashDumpSystem.get_crash_id(n)
                 if cid is None:
                     yield field, '%s is not valid crash ID' % n

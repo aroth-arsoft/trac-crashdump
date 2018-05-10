@@ -1,3 +1,9 @@
+trac-crashdump (0.40) bionic; urgency=medium
+
+  * fixed linked_crashes field with empty entries
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 10 May 2018 13:44:43 +0200
+
 trac-crashdump (0.39) bionic; urgency=medium
 
   * fixed issue with invalid references in linked_crashes
