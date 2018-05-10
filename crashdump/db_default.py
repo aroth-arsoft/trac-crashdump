@@ -115,7 +115,7 @@ def get_data(db):
                     (
                         ('Active crashes', """
 SELECT p.value AS __color__,
-c.productname || " " || c.productversion || " (" || c.producttargetversion || ")" AS __group__,
+""" + db.concat('c.productname'," ",'c.productversion'," (",'c.producttargetversion',")") + """ AS __group__,
    c.uuid AS _crash,
    c.crashtime AS crashtime,
    c.crashusername AS 'Crash user',
@@ -126,7 +126,7 @@ c.productname || " " || c.productversion || " (" || c.producttargetversion || ")
    c.version,
    c.milestone,
    c.applicationname AS Application,
-   c.machinetype || "/" || c.systemname AS 'System name',
+   """ + db.concat('c.machinetype',"/",'c.systemname') + """ AS 'System name',
    c.osversion AS 'OS Version',
    c.buildtype AS 'Build Type',
    (SELECT GROUP_CONCAT(ticket) from crashdump_ticket where crash=c.id) AS linked_tickets
@@ -138,7 +138,7 @@ ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
  * Color each row based on priority."""),
                         ('All crashes', """
 SELECT p.value AS __color__,
-c.productname || " " || c.productversion || " (" || c.producttargetversion || ")" AS __group__,
+""" + db.concat('c.productname'," ",'c.productversion'," (",'c.producttargetversion',")") + """ AS __group__,
    c.uuid AS _crash,
    c.crashtime AS crashtime,
    c.crashusername AS 'Crash user',
@@ -149,7 +149,7 @@ c.productname || " " || c.productversion || " (" || c.producttargetversion || ")
    c.version,
    c.milestone,
    c.applicationname AS Application,
-   c.machinetype || "/" || c.systemname AS 'System name',
+   """ + db.concat('c.machinetype',"/",'c.systemname') + """ AS 'System name',
    c.osversion AS 'OS Version',
    c.buildtype AS 'Build Type',
    (SELECT GROUP_CONCAT(ticket) from crashdump_ticket where crash=c.id) AS linked_tickets
@@ -160,7 +160,7 @@ ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
  * Color each row based on priority."""),
                         ('Active crashes with UUID', """
 SELECT p.value AS __color__,
-c.productname || " " || c.productversion || " (" || c.producttargetversion || ")" AS __group__,
+""" + db.concat('c.productname'," ",'c.productversion'," (",'c.producttargetversion',")") + """ AS __group__,
    c.uuid AS _crash_uuid,
    c.crashtime AS crashtime,
    c.crashusername AS 'Crash user',
@@ -171,7 +171,7 @@ c.productname || " " || c.productversion || " (" || c.producttargetversion || ")
    c.version,
    c.milestone,
    c.applicationname AS Application,
-   c.machinetype || "/" || c.systemname AS 'System name',
+   """ + db.concat('c.machinetype',"/",'c.systemname') + """ AS 'System name',
    c.osversion AS 'OS Version',
    c.buildtype AS 'Build Type',
    (SELECT GROUP_CONCAT(ticket) from crashdump_ticket where crash=c.id) AS linked_tickets
@@ -183,7 +183,7 @@ ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
  * Color each row based on priority."""),
                         ('All crashes with UUID', """
 SELECT p.value AS __color__,
-c.productname || " " || c.productversion || " (" || c.producttargetversion || ")" AS __group__,
+""" + db.concat('c.productname'," ",'c.productversion'," (",'c.producttargetversion',")") + """ AS __group__,
    c.uuid AS _crash_uuid,
    c.crashtime AS crashtime,
    c.crashusername AS 'Crash user',
@@ -194,7 +194,7 @@ c.productname || " " || c.productversion || " (" || c.producttargetversion || ")
    c.version,
    c.milestone,
    c.applicationname AS Application,
-   c.machinetype || "/" || c.systemname AS 'System name',
+   """ + db.concat('c.machinetype',"/",'c.systemname') + """ AS 'System name',
    c.osversion AS 'OS Version',
    c.buildtype AS 'Build Type',
    (SELECT GROUP_CONCAT(ticket) from crashdump_ticket where crash=c.id) AS linked_tickets
@@ -208,12 +208,12 @@ ORDER BY """ + db.cast('p.value', 'int') + """, c.crashtime
 ('List system information', """
 
 SELECT p.value AS __color__,
-c.crashhostname || " (" || c.machinetype || "/" || c.systemname || ")" AS  __group__,
+""" + db.concat('c.crashhostname'," (",'c.machinetype',"/",'c.systemname',")") + """ AS  __group__,
    c.uuid AS _crash_sysinfo,
    c.crashtime AS crashtime
 FROM crashdump c
 LEFT JOIN enum p ON p.name = c.priority AND p.type = 'priority'
-ORDER BY c.crashhostname || " (" || c.machinetype || "/" || c.systemname || ")", c.crashtime DESC
+ORDER BY """ + db.concat('c.crashhostname'," (",'c.machinetype',"/",'c.systemname',")") + """, c.crashtime DESC
                             """, """Lists all system reports grouped by the machine name.
 
 It uses the crash reports in the database to extract this information."""),
