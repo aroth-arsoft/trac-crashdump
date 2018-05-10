@@ -9,7 +9,7 @@ from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.perm import IPermissionRequestor, PermissionSystem
-from trac.ticket.api import ITicketChangeListener
+from trac.ticket.api import ITicketChangeListener, ITicketManipulator
 from trac.resource import Resource, ResourceNotFound
 from trac.util.compat import set, sorted
 from trac.util.translation import _, N_, gettext
@@ -22,10 +22,30 @@ from .links import CrashDumpTicketLinks
 class CrashDumpSystem(Component):
     """Central functionality for the CrashDump plugin."""
 
-    implements(IEnvironmentSetupParticipant, ITicketChangeListener)
-    
+    implements(IEnvironmentSetupParticipant, ITicketChangeListener, ITicketManipulator)
+
     NUMBERS_RE = re.compile(r'\d+', re.U)
-    
+
+
+    @staticmethod
+    def get_crash_id(s, default_id=None):
+        if isinstance(s, str) or isinstance(s, unicode):
+            s = s.strip()
+            if not s:
+                return default_id
+            if s[0] == '#':
+                s = s[1:]
+            if s.lower().startswith('crashid#'):
+                s = s[8:]
+            try:
+                return int(s)
+            except ValueError:
+                return default_id
+        elif isinstance(s, int):
+            return s
+        else:
+            return default_id
+
     # IEnvironmentSetupParticipant methods
 
     restrict_owner = True
@@ -326,9 +346,37 @@ class CrashDumpSystem(Component):
 
             db.commit()
 
+    # ITicketManipulator methods
+    def prepare_ticket(self, req, ticket, fields, actions):
+        tid = ticket.id
+        self.log.debug('prepare_ticket for %s' % tid)
+        pass
+
+    def validate_ticket(self, req, ticket):
+        tid = ticket.id
+        self.log.debug('validate_ticket for %s' % tid)
+        for field in ('linked_crash', ):
+            linked_crash = (ticket[field] or '').split(',')
+            #self.log.debug('validate_ticket for %s: %s=%s' % (tid, field, linked_crash))
+            ids = set()
+            for n in linked_crash:
+                cid = CrashDumpSystem.get_crash_id(n)
+                if cid is None:
+                    yield field, '%s is not valid crash ID' % n
+                else:
+                    row = self.env.db_query('SELECT id FROM crashdump WHERE id=%s', (cid,))
+                    if row:
+                        ids.add(cid)
+                    else:
+                        yield field, 'Crash %s does not exist' % cid
+            #self.log.debug('validate_ticket for %s: %s=%s' % (tid, field, ids))
+            ticket[field] = ', '.join(str(n) for n in ids)
+            #self.log.debug('validate_ticket for %s: %s=%s' % (tid, field, ticket[field]))
+
+
     # Internal methods
     def _prepare_links(self, tkt, db):
         links = CrashDumpTicketLinks(self.env, tkt, db)
-        links.crashes = set(int(n) for n in self.NUMBERS_RE.findall(tkt['linked_crash'] or ''))
+        links.crashes = set(CrashDumpSystem.get_crash_id(n) for n in self.NUMBERS_RE.findall(tkt['linked_crash'] or ''))
         #print('links for %i: %s' % (tkt.id, str(links.crashes)))
         return links

@@ -205,11 +205,11 @@ class CrashDumpModule(Component):
                     for field, field_data in change['fields'].iteritems():
                         if field in self.crashdump_link_fields:
                             if field_data['new'].strip():
-                                new = set([int(n) for n in field_data['new'].split(',')])
+                                new = set([CrashDumpSystem.get_crash_id(n) for n in field_data['new'].split(',')])
                             else:
                                 new = set()
                             if field_data['old'].strip():
-                                old = set([int(n) for n in field_data['old'].split(',')])
+                                old = set([CrashDumpSystem.get_crash_id(n) for n in field_data['old'].split(',')])
                             else:
                                 old = set()
                             add = new - old
