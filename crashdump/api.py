@@ -10,10 +10,12 @@ from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.perm import IPermissionRequestor, PermissionSystem
 from trac.ticket.api import ITicketChangeListener, ITicketManipulator
+from trac.search.api import ISearchSource, search_to_sql, shorten_result
 from trac.resource import Resource, ResourceNotFound
 from trac.util.compat import set, sorted
-from trac.util.translation import _, N_, gettext
+from trac.util.translation import _, N_, tag_, gettext
 from trac.cache import cached
+from trac.util.datefmt import from_utimestamp
 
 import db_default
 from trac.ticket.model import Ticket
@@ -22,7 +24,7 @@ from .links import CrashDumpTicketLinks
 class CrashDumpSystem(Component):
     """Central functionality for the CrashDump plugin."""
 
-    implements(IEnvironmentSetupParticipant, ITicketChangeListener, ITicketManipulator)
+    implements(IEnvironmentSetupParticipant, ITicketChangeListener, ITicketManipulator, ISearchSource)
 
     NUMBERS_RE = re.compile(r'\d+', re.U)
 
@@ -373,6 +375,62 @@ class CrashDumpSystem(Component):
             ticket[field] = ', '.join(str(n) for n in ids)
             #self.log.debug('validate_ticket for %s: %s=%s' % (tid, field, ticket[field]))
 
+
+    # ISearchProvider methods
+
+    def get_search_filters(self, req):
+        if 'TICKET_VIEW' not in req.perm:
+            return
+        yield 'crashdump', 'Crashdump'
+
+    def get_search_results(self, req, terms, filters):
+        """Return the entry  whose 'keyword' or 'text' tag contains
+        one or more word among the terms.
+        """
+
+        if 'crashdump' not in filters:
+            return
+
+        self.log.debug('search for %s and %s', terms, filters)
+
+        #ticket_realm = Resource(self.realm)
+        with self.env.db_query as db:
+            sql, args = search_to_sql(db, ['summary', 'keywords',
+                                           'description', 'reporter', 'cc',
+                                           'applicationname', 'applicationfile',
+                                           'uploadhostname', 'uploadusername',
+                                           'crashhostname', 'crashusername',
+                                           'systemname',
+                                           'uuid',
+                                           db.cast('id', 'text')], terms)
+            for id, uuid, summary, description, reporter, type, \
+                crashhostname, crashusername, applicationname, systemname, \
+                crashtime, reporttime, status, resolution in \
+                    db("""SELECT id, uuid, summary, description, reporter, type,
+                                 crashhostname, crashusername, applicationname, systemname,
+                                 crashtime, reporttime, status, resolution
+                          FROM crashdump
+                          WHERE id IN (
+                              SELECT id FROM crashdump WHERE %s
+                          )
+                          """ % (sql), args):
+                if 'TICKET_VIEW' in req.perm:
+
+                    # The events returned by this function must be tuples of the form (href, title, date, author, excerpt).
+                    full_desc = '%s on %s (%s)' % (
+                            applicationname if applicationname else applicationfile,
+                            '%s@%s' % (crashusername, crashhostname),
+                            systemname
+                        )
+                    #excerpt = shorten_result(full_desc, terms)
+                    excerpt = full_desc
+                    yield (req.href('crash', uuid),
+                           tag_("%(title)s: %(uuid)s",
+                                uuid=uuid,
+                                title='CrashId#%i' % id,
+                                ),
+                           from_utimestamp(crashtime), reporter,
+                           excerpt)
 
     # Internal methods
     def _prepare_links(self, tkt, db):
