@@ -12,6 +12,7 @@ import http.client
 import io
 import codecs
 import os.path
+from datetime import datetime
 
 from crashdump.xmlreport import XMLReport
 
@@ -98,15 +99,15 @@ class import_crashes_app(object):
         f_xml = f + '.xml'
 
         crash_id = None
-        crashtimestamp = 0
-        reporttimestamp = 0
+        crashtimestamp = datetime.fromtimestamp(0)
+        reporttimestamp = datetime.fromtimestamp(0)
         productname = ''
         productcodename = ''
         productversion = ''
         producttargetversion = ''
         uploadhostname = ''
         uploadusername = ''
-        crashhostname = ''
+        crashfqdn = ''
         crashusername = ''
         buildtype = ''
         buildpostfix = ''
