@@ -1,3 +1,10 @@
+trac-crashdump (0.39) bionic; urgency=medium
+
+  * fixed issue with invalid references in linked_crashes
+  * add support for list of system info reports
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 10 May 2018 12:35:07 +0200
+
 trac-crashdump (0.38) artful; urgency=medium
 
   * sort memory blocks and regions by base address
