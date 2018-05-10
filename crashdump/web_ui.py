@@ -420,7 +420,16 @@ class CrashDumpModule(Component):
         elif action == 'sysinfo_report':
             data = self._prepare_data(req, crashobj)
             if 'xmlreport' in data:
-                data['sysinfo_report'] = SystemInfoReport(xmlreport=data['xmlreport'])
+                xmlfile = data['xmlreport']
+                data['sysinfo_report'] = None
+                if isinstance(xmlfile, XMLReport) or (isinstance(xmlfile, string) and os.path.isfile(xmlfile)):
+                    try:
+                        data['sysinfo_report'] = SystemInfoReport(xmlreport=xmlfile)
+                    except SystemInfoReport.SystemInfoReportException as e:
+                        data['xmlfile_error'] = str(e)
+                else:
+                    data['xmlfile_error'] = _("XML file %(file)s is unavailable", file=xmlfile)
+
             if params is None:
                 linked_tickets = []
                 for tkt_id in crashobj.linked_tickets:

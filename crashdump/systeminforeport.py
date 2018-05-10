@@ -288,7 +288,7 @@ class SystemInfoReport(object):
         elif xmlreport is not None:
             self._xmlreport = xmlreport
             if xmlreport.fast_protect_system_info is None:
-                raise SystemInfoReport.SystemInfoReportIOError(self, 'No system info include in XMLReport %s' % (str(xmlreport)))
+                raise SystemInfoReport.SystemInfoReportIOError(self, 'No system info include in XMLReport %s' % (xmlreport.filename))
             if sys.version_info[0] > 2:
                 from io import StringIO
                 stream = StringIO(xmlreport.fast_protect_system_info.rawdata.raw.decode('utf8'))

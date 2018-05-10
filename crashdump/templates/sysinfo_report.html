@@ -97,8 +97,10 @@
 </py:if>
 
 <tr>
+<py:if test="system_info">
 <th>FQDN:</th><td>${sysinfo_report['System/fqdn'] if sysinfo_report['System/fqdn'] else 'N/A'}</td>
 <th>Qt Library info:</th><td>${sysinfo_report['Qt/sysinfo/libraryinfobuild'] if sysinfo_report['Qt/sysinfo/libraryinfobuild'] else 'N/A'}</td>
+</py:if>
 </tr>
 </table>
 
@@ -134,10 +136,12 @@
 </div>
 </py:if>
 
+<py:if test="system_info">
 <div id="sysinfo_rawdata" class="collapsed">
 <h2 class="foldable" id='sysinfo_rawdata'>Raw system information data</h2>
 <a name="sysinfo_rawdata"/>
 </div>
+</py:if>
 
     <div class="trac-nav">
         <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;

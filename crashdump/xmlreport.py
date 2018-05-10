@@ -799,6 +799,10 @@ class XMLReport(object):
         return r[0] if r else None
 
     @property
+    def filename(self):
+        return self._filename
+
+    @property
     def crash_info(self):
         if self._crash_info is None:
             i = XMLReport._get_first_node(self._xml, 'crash_dump')
