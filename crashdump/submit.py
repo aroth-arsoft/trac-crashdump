@@ -95,6 +95,7 @@ class CrashDumpSubmit(Component):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
         else:
+            self.log.debug('match_request: %s %s', req.method, req.path_info)
             return False
 
     def _error_response(self, req, status, body=None, content_type='text/plain', headers=None):
@@ -265,7 +266,7 @@ class CrashDumpSubmit(Component):
         return ret
 
     def pre_process_request(self, req, handler):
-        self.log.debug('CrashDumpSubmit pre_process_request: %s %s', req.method, req.path_info)
+        self.log.debug('CrashDumpSubmit pre_process_request: %s %s %s', req.method, req.path_info, handler)
         if req.method == "POST":
             # copy the requested form token from into the args to pass the CSRF test
             req.args['__FORM_TOKEN' ] = req.form_token
@@ -277,6 +278,7 @@ class CrashDumpSubmit(Component):
     def process_request(self, req):
         self.log.debug('CrashDumpSubmit process_request: %s %s', req.method, req.path_info)
         if req.path_info == '/crashdump/submit' or req.path_info == '/submit':
+            self.log.debug('CrashDumpSubmit process_request_submit: %s %s', req.method, req.path_info)
             return self.process_request_submit(req)
         elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist' or req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist':
             return self.process_request_crashlist(req)

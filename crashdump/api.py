@@ -406,10 +406,10 @@ class CrashDumpSystem(Component):
                                            'uuid',
                                            db.cast('id', 'text')], terms)
             for id, uuid, summary, description, reporter, type, \
-                crashhostname, crashusername, applicationname, systemname, \
+                crashhostname, crashusername, applicationname, applicationfile, systemname, \
                 crashtime, reporttime, status, resolution in \
                     db("""SELECT id, uuid, summary, description, reporter, type,
-                                 crashhostname, crashusername, applicationname, systemname,
+                                 crashhostname, crashusername, applicationname, applicationfile, systemname,
                                  crashtime, reporttime, status, resolution
                           FROM crashdump
                           WHERE id IN (
