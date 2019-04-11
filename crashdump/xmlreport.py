@@ -480,13 +480,16 @@ class XMLReport(object):
         @property
         def basename(self):
             if self._basename is None:
-                idx = self.name.rfind('/')
+                name = self.name
+                if name is None:
+                    return None
+                idx = name.rfind('/')
                 if idx < 0:
-                    idx = self.name.rfind('\\')
+                    idx = name.rfind('\\')
                 if idx >= 0:
-                    self._basename = self.name[idx+1:]
+                    self._basename = name[idx+1:]
                 else:
-                    self._basename = self.name
+                    self._basename = name
             return self._basename
 
     class Thread(XMLReportEntity):

@@ -1,3 +1,9 @@
+trac-crashdump (0.43) cosmic; urgency=medium
+
+  * fix issue loading the module list
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 11 Apr 2019 07:25:31 +0200
+
 trac-crashdump (0.42) cosmic; urgency=medium
 
   * fix missing variable for search
