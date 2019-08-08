@@ -4,12 +4,26 @@
 
 import sys
 import base64
-from datetime import datetime
+from datetime import datetime, tzinfo, timedelta
 from uuid import UUID
 from lxml import etree
 
 from crashdump.exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
 from crashdump.utils import format_version_number
+
+ZERO = timedelta(0)
+
+# A UTC class.
+class UTC(tzinfo):
+    """UTC"""
+    def utcoffset(self, dt):
+        return ZERO
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return ZERO
 
 class MemoryBlock(object):
     def __init__(self, memory):
@@ -689,7 +703,8 @@ class XMLReport(object):
             return value_str
         elif data_type == 'QDateTime':
             try:
-                return datetime.strptime(value_str, '%Y-%m-%d %H:%M:%S')
+                dt = datetime.strptime(value_str, '%Y-%m-%d %H:%M:%S')
+                return dt.replace(tzinfo=UTC())
             except ValueError:
                 return None
         elif data_type == 'bool':

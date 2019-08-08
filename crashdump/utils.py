@@ -472,20 +472,26 @@ def format_os_version(platform_type, os_version_number, os_build_number):
                 productName = "Windows 10";
                 marketingName = ''
             elif(build <= 10586):
-                productName = "Windows 10 Version 1511";
-                marketingName = "November Update";
+                productName = "Windows 10 Version 1511"
+                marketingName = "November Update"
             elif (build <= 14393):
-                productName = "Windows 10 Version 1607";
-                marketingName = "Anniversary Update";
+                productName = "Windows 10 Version 1607"
+                marketingName = "Anniversary Update"
             elif (build <= 15063):
-                productName = "Windows 10 Version 1703";
-                marketingName = "Creators Update";
+                productName = "Windows 10 Version 1703"
+                marketingName = "Creators Update"
             elif (build <= 16299):
-                productName = "Windows 10 Version 1709";
-                marketingName = "Fall Creators Update";
-            elif (build <= 17004):
-                productName = "Windows 10 Version 1803";
-                marketingName = ''
+                productName = "Windows 10 Version 1709"
+                marketingName = "Fall Creators Update"
+            elif (build <= 17134):
+                productName = "Windows 10 Version 1803"
+                marketingName = "April 2018 Update"
+            elif (build <= 18204:
+                productName = "Windows 10 Version 1809"
+                marketingName = "October 2018 Update"
+            elif (build <= 18362:
+                productName = "Windows 10 Version 1903"
+                marketingName = "May 2019 Update"
             else:
                 productName = 'Windows 10 Build %i' % build
         if marketingName:

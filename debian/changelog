@@ -1,3 +1,9 @@
+trac-crashdump (0.44) disco; urgency=medium
+
+  * use UTC timestamps from report
+
+ -- Andreas Roth <aroth@arsoft-online.com>  Thu, 08 Aug 2019 07:27:26 +0200
+
 trac-crashdump (0.43) cosmic; urgency=medium
 
   * fix issue loading the module list
