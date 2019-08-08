@@ -486,10 +486,10 @@ def format_os_version(platform_type, os_version_number, os_build_number):
             elif (build <= 17134):
                 productName = "Windows 10 Version 1803"
                 marketingName = "April 2018 Update"
-            elif (build <= 18204:
+            elif (build <= 18204):
                 productName = "Windows 10 Version 1809"
                 marketingName = "October 2018 Update"
-            elif (build <= 18362:
+            elif (build <= 18362):
                 productName = "Windows 10 Version 1903"
                 marketingName = "May 2019 Update"
             else:
