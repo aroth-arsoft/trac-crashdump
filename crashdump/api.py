@@ -56,7 +56,7 @@ class CrashDumpSystem(Component):
         with self.env.db_transaction as db:
             self._upgrade_db(db)
 
-    def environment_needs_upgrade(self, db):
+    def environment_needs_upgrade(self, db=None):
         schema_ver = db_default.get_current_schema_version(db)
         if schema_ver == db_default.schema_version:
             return False
@@ -67,7 +67,7 @@ class CrashDumpSystem(Component):
                       % (__name__, schema_ver, db_default.schema_version))
         return True
 
-    def upgrade_environment(self, db):
+    def upgrade_environment(self, db=None):
         self._upgrade_db(db)
 
     def _upgrade_db(self, db):
