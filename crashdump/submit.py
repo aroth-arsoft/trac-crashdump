@@ -341,16 +341,16 @@ class CrashDumpSubmit(Component):
         headers['Upload-Disabled'] = '1' if self.upload_disabled else '0'
 
         if self.upload_disabled:
-            return self._error_response(req, status=HTTPInternalError.code, body='Crashdump upload has been disabled by the administrator.', headers=headers)
+            return self._error_response(req, status=HTTPInternalServerError.code, body='Crashdump upload has been disabled by the administrator.', headers=headers)
 
         id_str = req.args.get('id')
         if not id_str or not CrashDump.uuid_is_valid(id_str):
-            return self._error_response(req, status=HTTPInternalError.code, body='Invalid crash identifier %s specified.' % id_str)
+            return self._error_response(req, status=HTTPInternalServerError.code, body='Invalid crash identifier %s specified.' % id_str)
 
         total_upload_size = self._get_total_upload_size(req)
         if self.max_upload_size > 0 and total_upload_size > self.max_upload_size:
             self.log.debug('total_upload_size %i > max_upload_size %i' % (total_upload_size, self.max_upload_size) )
-            return self._error_response(req, status=HTTPInternalError.code, body='Upload size %i bytes exceed the upload limit of %i bytes' % (total_upload_size, self.max_upload_size), headers=headers)
+            return self._error_response(req, status=HTTPInternalServerError.code, body='Upload size %i bytes exceed the upload limit of %i bytes' % (total_upload_size, self.max_upload_size), headers=headers)
         else:
             self.log.debug('total_upload_size %i <= max_upload_size %i' % (total_upload_size, self.max_upload_size) )
 
@@ -371,7 +371,7 @@ class CrashDumpSubmit(Component):
             headers['Crash-URL'] = req.abs_href('crash', str(uuid))
             headers['CrashId'] = str(crashid)
             self.log.debug('crash %s already uploaded %s' % (uuid, self.headers['Crash-URL']) )
-            return self._error_response(req, status=HTTPInternalError.code, body='Crash identifier %s already uploaded.' % id_str, headers=headers)
+            return self._error_response(req, status=HTTPInternalServerError.code, body='Crash identifier %s already uploaded.' % id_str, headers=headers)
 
         ticket_str = req.args.get('ticket') or 'no'
 
@@ -410,7 +410,7 @@ class CrashDumpSubmit(Component):
             new_ticket = Ticket(env=self.env)
             ticketobjs = [ new_ticket ]
         else:
-            return self._error_response(req, status=HTTPInternalError.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
+            return self._error_response(req, status=HTTPInternalServerError.code, body='Unrecognized ticket string %s for crash %s.' % (ticket_str, str(uuid)))
         
         #print('ticket_str=%s' % ticket_str)
         #print('ticketobjs=%s' % str(ticketobjs))
@@ -495,7 +495,7 @@ class CrashDumpSubmit(Component):
                     xmlfile = self._get_dump_filename(crashobj, 'coredumpreportxmlfile')
                     xmlreport = XMLReport(xmlfile)
             except XMLReport.XMLReportException as e:
-                return self._error_response(req, status=HTTPInternalError.code, body='Failed to process crash dump %s: %s' % (uuid, str(e)))
+                return self._error_response(req, status=HTTPInternalServerError.code, body='Failed to process crash dump %s: %s' % (uuid, str(e)))
 
             new_crash = True if crashid is None else False
             if new_crash:
@@ -649,18 +649,18 @@ application was running as part of %(productname)s (%(productcodename)s) version
 
                 return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
             elif new_crash:
-                return self._error_response(req, status=HTTPInternalError.code, body='Failed to add crash dump %s to database' % uuid)
+                return self._error_response(req, status=HTTPInternalServerError.code, body='Failed to add crash dump %s to database' % uuid)
             else:
                 headers = {}
                 headers['Crash-URL'] = req.abs_href('crash', str(uuid))
                 headers['CrashId'] = str(crashid)
-                return self._error_response(req, status=HTTPInternalError.code, body='Failed to update crash dump %s to database' % uuid, headers=headers)
+                return self._error_response(req, status=HTTPInternalServerError.code, body='Failed to update crash dump %s to database' % uuid, headers=headers)
         else:
             if failure_message is None:
                 body = 'Failed to process crash dump %s' % uuid
             else:
                 body = 'The following occured while processing the crash dump %s: %s' % (uuid, failure_message)
-            return self._error_response(req, status=HTTPInternalError.code, body=body)
+            return self._error_response(req, status=HTTPInternalServerError.code, body=body)
 
     def process_request_crashlist(self, req):
         if req.method != "GET":
