@@ -6,7 +6,13 @@ from trac.core import *
 from trac.util.html import html
 from trac.util.datefmt import utc, to_utimestamp, parse_date
 from trac.web import IRequestHandler, IRequestFilter
-from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden, HTTPInternalError
+from trac.web.api import arg_list_to_args, RequestDone, HTTPNotFound, HTTPMethodNotAllowed, HTTPForbidden
+
+try:
+    from trac.web.api import HTTPInternalError as HTTPInternalServerError
+except ImportError:  # Trac 1.3.1+
+    from trac.web.api import HTTPInternalServerError
+
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.config import Option, IntOption, BoolOption, PathOption
 from trac.resource import ResourceNotFound
