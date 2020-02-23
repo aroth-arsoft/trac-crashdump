@@ -20,7 +20,7 @@ from trac.web import (
 )
 from trac.admin.api import IAdminPanelProvider
 
-from trac.ticket.model import Milestone, Ticket, group_milestones
+from trac.ticket.model import Milestone, Ticket
 from trac.ticket.query import Query
 from trac.config import Option, PathOption
 from trac.mimeview.api import Mimeview, IContentConverter
