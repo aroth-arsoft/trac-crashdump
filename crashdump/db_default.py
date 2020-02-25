@@ -5,8 +5,8 @@
 from trac.db import Table, Column, Index
 
 name = 'crashdump'
-schema_version = 13
-schema = [
+version = 13
+tables = [
     Table('crashdump', key=('id'))[
         Column('id', type='int', auto_increment=True),
         Column('uuid', size=36),
@@ -88,18 +88,6 @@ schema = [
         Index(['crash', 'threadid', 'frameno'], unique=True),
     ],
 ]
-
-def get_current_schema_version(db):
-    """Return the current schema version for this plugin."""
-    cursor = db.cursor()
-    cursor.execute("""
-        SELECT value
-            FROM system
-            WHERE name='%s'
-    """ % (name + '_version'))
-    row = cursor.fetchone()
-    # The expected outcome for any up-to-date installation.
-    return row and int(row[0]) or 0
 
 # (table, (column1, column2), ((row1col1, row1col2), (row2col1, row2col2)))
 def get_data(db):
