@@ -1,0 +1,10 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+
+    <py:for each="dir in sysinfo_report['terra3d-dirs']">
+        <tr><th>${dir.description}</th><td>${dir.value}</td></tr>
+    </py:for>
+</table>

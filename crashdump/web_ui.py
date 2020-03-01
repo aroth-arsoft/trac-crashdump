@@ -5,13 +5,14 @@
 import subprocess
 import re
 
-from pkg_resources import resource_filename
+from pkg_resources import parse_version, resource_filename
 from genshi.builder import tag
 
+from trac import __version__ as VERSION
 from trac.core import *
 from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import (
-    Chrome, ITemplateProvider,
+    Chrome, ITemplateProvider, INavigationContributor,
     add_ctxtnav, add_link, add_notice, add_script, add_script_data,
     add_stylesheet, add_warning, auth_link, prevnext_nav, web_context
 )
@@ -47,6 +48,22 @@ from .systeminforeport import SystemInfoReport
 from .minidump import MiniDump, MiniDumpWrapper
 from .utils import *
 
+_parsed_version = parse_version(VERSION)
+
+if _parsed_version >= parse_version('1.4'):
+    _use_jinja2 = True
+elif _parsed_version >= parse_version('1.3'):
+    _use_jinja2 = hasattr(Chrome, 'jenv')
+else:
+    _use_jinja2 = False
+
+if _use_jinja2:
+    _template_dir = resource_filename(__name__, 'templates/jinja2')
+else:
+    _template_dir = resource_filename(__name__, 'templates/genshi')
+
+_htdoc_dir = resource_filename(__name__, 'htdocs')
+
 def safe_list_get_as_int (l, idx, default=None):
     try:
         try:
@@ -60,7 +77,7 @@ class CrashDumpModule(Component):
     """UI for crash dumps."""
     
     implements(IRequestHandler, IRequestFilter, ITemplateStreamFilter,
-               ITemplateProvider, IAdminPanelProvider)
+               INavigationContributor, ITemplateProvider, IAdminPanelProvider)
 
     dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='../dumpdata',
                       doc='Path to the crash dump data directory relative to the environment conf directory.')
@@ -73,6 +90,11 @@ class CrashDumpModule(Component):
             [TracQuery#UsingTracLinks Trac links].
             (''since 0.12'')""")
 
+    nav_url  = Option('crashdump', 'main_page', '/crashdump/',
+                      'The url of the crashes main page to which the trac nav '
+                      'entry should link; if empty, no entry is created in '
+                      'the nav bar. This may be a relative url.')
+
     crashdump_fields = set(['_crash'])
     crashdump_uuid_fields = set(['_crash_uuid'])
     crashdump_sysinfo_fields = set(['_crash_sysinfo'])
@@ -83,6 +105,15 @@ class CrashDumpModule(Component):
     @property
     def must_preserve_newlines(self):
         return True
+
+    # INavigationContributor methods
+    def get_active_navigation_item(self, req):
+        return 'crashes'
+
+    def get_navigation_items(self, req):
+        if self.nav_url:
+            yield ('mainnav', 'crashes',
+                   tag.a('Crashes', href=self.nav_url))
 
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
@@ -158,13 +189,10 @@ class CrashDumpModule(Component):
         """Return the absolute path of a directory containing additional
         static resources (such as images, style sheets, etc).
         """
-        return [('crashdump', resource_filename(__name__, 'htdocs'))]
+        return [('crashdump', _htdoc_dir)]
 
     def get_templates_dirs(self):
-        """Return the absolute path of the directory containing the provided
-        ClearSilver templates.
-        """
-        return [resource_filename(__name__, 'templates')]
+        return [_template_dir]
 
     # IRequestHandler methods
     def match_request(self, req):
@@ -735,5 +763,7 @@ class CrashDumpModule(Component):
             data = {
                 'datetime_hint': get_datetime_format_hint(req.lc_time),
                 'purge_threshold': purge_threshold,
+                'purge_crashes': None,
             }
+            print('crashdump_admin_%s.html' % page, data)
             return 'crashdump_admin_%s.html' % page, data

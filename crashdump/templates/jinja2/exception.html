@@ -1,0 +1,46 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<tr><th>Thread</th>
+    <td class="fullrow">
+        <a href="#thread_${exception.threadid}">Thread info ${ hex_format(exception.threadid) }</a>
+        <a href="#stackdump_${exception.threadid}">Stackdump ${ hex_format(exception.threadid) }</a>
+    </td>
+</tr>
+<tr><th>Name</th><td class="fullrow">${exception_code(system_info.platform_type, exception.code, exception.name)}</td></tr>
+<tr><th>Info</th><td class="fullrow">${exception.info}</td></tr>
+<tr><th>Address</th><td class="fullrow"><div class="address">${ addr_format(exception.address) }</div></td></tr>
+<tr><th>Flags</th><td class="fullrow">${ hex_format(exception.flags) }</td></tr>
+<tr><th>Parameters</th><td class="fullrow">
+<ol py:if="exception.params">
+    <py:for each="m in exception.params"><li>${ hex_format(m, bits=bits) }</li></py:for>
+</ol>
+</td></tr>
+<py:if test="assertion">
+<tr><th>Expression</th><td class="fullrow">${assertion.expression}</td></tr>
+<tr><th>Function</th><td class="fullrow">${assertion.function}</td></tr>
+<tr><th>Source</th><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
+</py:if>
+<py:if test="simplified_info">
+<tr><th>Missing symbols</th><td class="fullrow">
+<ol py:if="simplified_info.missing_debug_symbols">
+    <py:for each="m in simplified_info.missing_debug_symbols"><li>${m}</li></py:for>
+</ol>
+<div py:if="not simplified_info.missing_debug_symbols">N/A</div>
+</td></tr>
+<tr><th>Involved functions</th><td class="fullrow">
+<ol py:if="simplified_info.first_useful_functions">
+    <py:for each="m in simplified_info.first_useful_functions"><li>${m}</li></py:for>
+</ol>
+<div py:if="not simplified_info.first_useful_functions">N/A</div>
+</td></tr>
+<tr><th>Involved modules</th><td class="fullrow">
+<ol py:if="simplified_info.first_useful_modules">
+    <py:for each="m in simplified_info.first_useful_modules"><li>${m}</li></py:for>
+</ol>
+<div py:if="not simplified_info.first_useful_modules">N/A</div>
+</td></tr>
+</py:if>
+</table>

@@ -76,6 +76,14 @@ class CrashDumpSystem(Component):
                 dbm.upgrade(db_default.version, db_default.name,
                             'crashdump.upgrades')
 
+        try:
+            Type(name='crashdump', env=self.env)
+        except ResourceNotFound:
+            crashdump_ticket_type = Type(env=self.env)
+            crashdump_ticket_type.name = 'crashdump'
+            crashdump_ticket_type.description = 'crashdump'
+            crashdump_ticket_type.insert()
+
         custom = self.config['ticket-custom']
         config_dirty = False
         if 'linked_crash' not in custom:

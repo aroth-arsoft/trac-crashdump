@@ -1,0 +1,27 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<tr><th>Platform&nbsp;type</th><td class="fullrow">${format_platform_type(system_info.platform_type)}/${format_cpu_type(system_info.cpu_type)}</td></tr>
+<tr><th>OS&nbsp;version</th><td class="fullrow">${format_os_version(system_info.platform_type, system_info.os_version_number, system_info.os_build_number)}</td></tr>
+<py:if test="system_info.os_version_info">
+<tr><th>OS&nbsp;version&nbsp;info</th><td class="fullrow">${system_info.os_version_info}</td></tr>
+</py:if>
+<py:if test="system_info.distribution_id">
+<tr><th>Distribution&nbsp;id</th><td class="fullrow">${format_distribution_id(system_info.distribution_id)}</td></tr>
+<tr><th>Distribution&nbsp;release</th><td class="fullrow">${system_info.distribution_release}</td></tr>
+<tr><th>Distribution&nbsp;codename</th><td class="fullrow">${format_distribution_codename(system_info.distribution_id, system_info.distribution_codename)}</td></tr>
+<tr><th>Distribution&nbsp;description</th><td class="fullrow">${system_info.distribution_description}</td></tr>
+</py:if>
+<tr><th>Number&nbsp;of&nbsp;CPUs</th><td class="fullrow">${system_info.number_of_cpus}</td></tr>
+<tr><th>CPU&nbsp;vendor</th><td class="fullrow">${format_cpu_vendor(system_info.cpu_vendor)}</td></tr>
+<tr><th>CPU&nbsp;name</th><td class="fullrow">${format_cpu_name(system_info.cpu_vendor, system_info.cpu_name)}</td></tr>
+<tr><th>CPU&nbsp;level</th><td class="fullrow">${ hex_format(system_info.cpu_level) }&nbsp;<a href="http://en.wikipedia.org/wiki/Stepping_level">More info</a></td></tr>
+<tr><th>CPU&nbsp;revision</th><td class="fullrow">${ hex_format(system_info.cpu_revision) }</td></tr>
+<py:if test="fast_protect_system_info">
+<tr><td colspan="2">
+    <a href="${href('crash', object.uuid, 'systeminfo_raw')}" title="${object.uuid} system information">Download full system information</a>
+</td></tr>
+</py:if>
+</table>

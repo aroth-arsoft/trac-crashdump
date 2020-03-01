@@ -1,0 +1,46 @@
+<div class="stackdump"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<py:if test="selected_stackdump_threadid in stackdumps">
+    <?python stackdump = stackdumps[selected_stackdump_threadid] ?>
+    <div class="crashdump-nav">
+        <a href="#threads" title="Go to thread list">Thread list</a> &uarr;&nbsp;<a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
+    </div>
+    <table class="properties">
+        <tr>
+        <th width="3%">Num</th>
+        <th width="3%">Info src</th>
+        <th width="5%">Addr</th>
+        <th width="5%">RetAddr</th>
+        <th width="20%">Parameters</th>
+        <th width="15%">Module</th>
+        <th width="15%">Function</th>
+        <th width="24%">Source</th>
+        </tr>
+        <py:for each="frame in stackdump.callstack">
+        <tr>
+        <td>${frame.num}</td>
+        <td>${ format_trust_level(frame.trust_level) }</td>
+        <td><div class="address">${ addr_format(frame.addr) }</div></td>
+        <td><div class="address">${ addr_format(frame.retaddr) }</div></td>
+        <td>${ hex_format(frame.params, bits=bits) }</td>
+        <td><a py:if="frame.module" href="#module_${frame.module}">${frame.module}</a>
+            <div py:if="not frame.module">N/A</div>
+        </td>
+        <td>${format_function_plus_offset(frame.function, frame.funcoff)}</td>
+        <td>
+        ${format_source_line(frame.source, frame.line, frame.lineoff, frame.source_url)}
+        </td>
+        </tr>
+        </py:for>
+    </table>
+    <div class="crashdump-nav">
+        <a href="#threads" title="Go to thread list">Thread list</a> &uarr;&nbsp;<a href="#thread_${stackdump.threadid}" title="Go to thread ${ hex_format(stackdump.threadid) }">Thread ${ hex_format(stackdump.threadid) }</a> &uarr;
+    </div>
+</py:if>
+<py:if test="not selected_stackdump_threadid in stackdumps">
+Unable to find stack dump for thread ${ hex_format(selected_stackdump_threadid) }
+</py:if>
+</div>
+

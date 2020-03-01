@@ -1,0 +1,19 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+
+    <py:for each="item in sysinfo_report['CPU']">
+        <tr py:if="item.description">
+            <th>${item.description}</th>
+            <td>
+                <py:choose test="item.name">
+                <py:when test="'name'">${format_cpu_vendor(item.value)}</py:when>
+                <py:when test="'brand'">${format_cpu_name(sysinfo_report['CPU']['name'].value, item.value)}</py:when>
+                <py:otherwise>${item.value}</py:otherwise>
+                </py:choose>
+            </td>
+        </tr>
+    </py:for>
+</table>

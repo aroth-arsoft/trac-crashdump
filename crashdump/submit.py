@@ -13,7 +13,7 @@ try:
 except ImportError:  # Trac 1.3.1+
     from trac.web.api import HTTPInternalServerError
 
-from trac.web.chrome import INavigationContributor, ITemplateProvider
+from trac.web.chrome import ITemplateProvider
 from trac.config import Option, IntOption, BoolOption, PathOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version

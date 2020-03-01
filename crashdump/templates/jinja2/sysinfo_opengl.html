@@ -1,0 +1,42 @@
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+    <tr><th>OpenGL vendor</th><td>${fast_protect_system_info.opengl_vendor}</td></tr>
+    <tr><th>OpenGL renderer</th><td>${fast_protect_system_info.opengl_renderer}</td></tr>
+    <tr><th>OpenGL version</th><td>${fast_protect_system_info.opengl_version}</td></tr>
+    <tr><th>OpenGL vendor id</th><td>${fast_protect_system_info.opengl_vendor_id}</td></tr>
+    <tr><th>OpenGL driver id</th><td>${fast_protect_system_info.opengl_driver_id}</td></tr>
+    <tr><th>OpenGL chip class</th><td>${fast_protect_system_info.opengl_chip_class}</td></tr>
+    <tr><th>OpenGL driver</th><td>${fast_protect_system_info.opengl_driver_version}, module ${sysinfo_report['terra3d/OpenGLDriverModule']}, ${sysinfo_report['terra3d/OpenGLDriverModuleVersion']}</td></tr>
+    <tr><th>OpenGL hardware ok</th><td>${fast_protect_system_info.opengl_hardware_ok}</td></tr>
+    <tr><th>OpenGL use pbuffer</th><td>${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
+    <tr><th>OpenGL hardware error</th><td>${fast_protect_system_info.opengl_hardware_error}</td></tr>
+    <tr><th>OpenGL pbuffer error</th><td>${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
+
+    <tr><th>Primary display</th><td>${sysinfo_report['terra3d/PrimaryDisplayDeviceString']}</td></tr>
+    <tr><th>Video BIOS</th><td>${sysinfo_report['terra3d/VideoBiosVersion']}, ${sysinfo_report['terra3d/VideoBiosDate']}</td></tr>
+    <tr><th>Video memory size</th><td>${format_size(sysinfo_report['terra3d/VideoMemorySize'])}</td></tr>
+    <tr><th>Video service</th><td>${sysinfo_report['terra3d/VideoService']}</td></tr>
+
+    <tr><th>Texture compressions</th>
+        <td><ul>
+            <li>ARB:&nbsp;${format_bool_yesno(sysinfo_report['terra3d/supportsTextureCompressionARB'])}</li>
+            <li>S3:&nbsp;${format_bool_yesno(sysinfo_report['terra3d/supportsTextureCompressionS3'])}</li>
+            <li>PVR:&nbsp;${format_bool_yesno(sysinfo_report['terra3d/supportsTextureCompressionPVR'])}</li>
+            <li>Ericsson:&nbsp;${format_bool_yesno(sysinfo_report['terra3d/supportsTextureCompressionEricsson'])}</li>
+            <li>RG:&nbsp;${format_bool_yesno(sysinfo_report['terra3d/supportsTextureCompressionRG'])}</li>
+        </ul></td>
+    </tr>
+    <tr><th>OpenGL extensions</th>
+        <td>
+            <ul class="glextension">
+            <py:for each="p in sysinfo_report['OpenGLExtensions/Extension']">
+                <li>${format_gl_extension_name(p)}</li>
+            </py:for>
+            </ul>
+        </td>
+    </tr>
+
+</table>

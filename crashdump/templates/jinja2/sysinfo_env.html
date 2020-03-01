@@ -1,0 +1,9 @@
+<ul class="environment"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<?python sysinfo_report_env = sysinfo_report['Environment'] ?>
+<py:for each="k in sorted(sysinfo_report_env.keys())">
+    <li>${k}&nbsp;=&nbsp;${sysinfo_report_env[k]}</li>
+</py:for>
+</ul>
