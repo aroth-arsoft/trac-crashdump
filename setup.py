@@ -9,7 +9,7 @@ setup(
     name = 'TracCrashDump',
     version = '0.45',
     packages=find_packages(exclude=['*.tests*']),
-    package_data = { 'crashdump': ['templates/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
+    package_data = { 'crashdump': ['templates/genshi/*.html', 'templates/jinja2/*.html', 'htdocs/*.js', 'htdocs/*.css' ] },
 
     author = 'Andreas Roth',
     author_email = 'aroth@arsoft-online.com',
