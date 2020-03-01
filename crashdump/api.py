@@ -10,6 +10,7 @@ from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.perm import IPermissionRequestor, PermissionSystem
 from trac.ticket.api import ITicketChangeListener, ITicketManipulator
+from trac.ticket.model import Type
 from trac.search.api import ISearchSource, search_to_sql, shorten_result
 from trac.resource import Resource, ResourceNotFound
 from trac.util.compat import set, sorted
