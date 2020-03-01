@@ -36,6 +36,7 @@ setup(
     ],
     
     install_requires = ['Trac>=0.12'],
+    scripts=['import_crashes'],
     test_suite='crashdump.tests.test_suite',
     tests_require=[],
     entry_points = {
