@@ -202,25 +202,26 @@ class CrashDumpModule(Component):
         ret = False
         path_info = req.path_info[6:]
         action = None
-        self.log.debug('match_request %s' % path_info)
-        match = re.match(r'/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(/.+)?$', path_info)
+        #self.log.debug('match_request %s' % path_info)
+        match = re.match(r'/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?(.+)?$', path_info)
         if match:
             req.args['crashuuid'], action  = match.groups()
             ret = True
         else:
-            match = re.match(r'/([0-9]+)(/.+)?$', path_info)
+            match = re.match(r'/([0-9]+)/?(.+)?$', path_info)
             if match:
                 req.args['crashid'], action  = match.groups()
                 ret = True
         if ret:
+            #self.log.debug('match_request raw_action:\"%s\"' % action)
             if action:
-                e = action[1:].split('/')
+                e = action.split('/')
                 req.args['action'] = e[0]
                 req.args['params'] = e[1:] if len(e) > 1 else None
             else:
                 req.args['action'] = None
                 req.args['params'] = None
-        self.log.debug('match_request %s' % str(req.args))
+        self.log.debug('match_request %s -> %s' % (path_info, str(req.args)))
         return ret
 
     # IRequestFilter methods
@@ -401,6 +402,10 @@ class CrashDumpModule(Component):
         #req.perm('crash', id, version).require('TICKET_VIEW')
         action = req.args.get('action') or 'view'
         params = req.args.get('params')
+        if params is not None:
+            if isinstance(params, basestring):
+                params = [ params ]
+        self.log.debug('process_request %s:%s-%s' % (action, type(params), params))
         if action == 'view':
             data = self._prepare_data(req, crashobj)
             

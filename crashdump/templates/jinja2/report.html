@@ -13,7 +13,7 @@
         if (expanded == true) {
             var url = window.location.href;
             var path = window.location.pathname;
-            var target_url = path + '/view/' + node.id.replace('___', '/');
+            var target_url = (path + '/view/').replace('//', '/') + node.id.replace('___', '/');
             $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
             //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
             $( '#' + node.id).children('div#placeholder').load(target_url);

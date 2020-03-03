@@ -272,6 +272,9 @@ class CrashDumpSubmit(Component):
         return ret
 
     def pre_process_request(self, req, handler):
+        if req.path_info != '/crashdump/submit' and req.path_info != '/submit':
+            return handler
+
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s %s', req.method, req.path_info, handler)
         if req.method == "POST":
             # copy the requested form token from into the args to pass the CSRF test
