@@ -435,19 +435,19 @@ class CrashDumpModule(Component):
                 add_script(req, 'common/js/folding.js')
                 add_script(req, 'crashdump/crashdump.js')
 
-                return 'report.html', data, None
+                return 'report.html', data
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex',
                                  'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
-                    return params[0] + '.html', data, None
+                    return params[0] + '.html', data
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
                     data.update({'selected_memory_block_base': block_base })
-                    return 'memory_block.html', data, None
+                    return 'memory_block.html', data
                 elif params[0] == 'stackdump':
                     threadid = safe_list_get_as_int(params, 1, 0)
                     data.update({'selected_stackdump_threadid': threadid })
-                    return 'stackdump.html', data, None
+                    return 'stackdump.html', data
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'sysinfo_report':
@@ -482,11 +482,11 @@ class CrashDumpModule(Component):
                 add_stylesheet(req, 'crashdump/crashdump.css')
                 add_script(req, 'common/js/folding.js')
                 add_script(req, 'crashdump/crashdump.js')
-                return 'sysinfo_report.html', data, None
+                return 'sysinfo_report.html', data
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu',
                                  'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads', 'sysinfo_rawdata']:
-                    return params[0] + '.html', data, None
+                    return params[0] + '.html', data
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
 

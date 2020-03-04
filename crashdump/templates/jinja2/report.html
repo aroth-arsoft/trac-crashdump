@@ -1,13 +1,10 @@
-<!DOCTYPE html
-    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:i18n="http://genshi.edgewall.org/i18n"
-      xmlns:py="http://genshi.edgewall.org/"
-      xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="layout.html" />
+# extends 'layout.html'
+<!DOCTYPE html>
+<html>
   <head>
     <title>CrashId#${object.id} - ${object.uuid}</title>
+    # block head
+    ${ super() }
     <script type="text/javascript">
     function extra_click(node, expanded) {
         if (expanded == true) {
@@ -27,17 +24,19 @@
         $(".foldable").delayLoadFolding(false, true, extra_click);
       });
     </script>
+    # endblock head
   </head>
   <body>
-    <div id="content">
+    # block content
         <div id="crashdump">
             <div class="date">
-                <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object['crashtime'])}</p>
-                <p i18n:msg="report" py:if="object['reporttime']">Report generated ${pretty_dateinfo(object['reporttime'])}</p>
-                <p i18n:msg="created" py:if="object['uploadtime']">Uploaded ${pretty_dateinfo(object['uploadtime'])}</p>
-                <p i18n:msg="closed" py:if="object['closetime']">Closed ${pretty_dateinfo(object['closetime'])}</p>
-                <p i18n:msg="modified" py:if="object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']">
-                Last modified ${pretty_dateinfo(object['changetime'])}</p>
+                <p>{% trans crashtime=pretty_dateinfo(object['crashtime']) %}Crashed ${crashtime}{% endtrans %}</p>
+                {% if object['reporttime'] %}<p>{% trans reporttime=pretty_dateinfo(object['reporttime']) %}Report generated ${reporttime}{% endtrans %}</p>{% endif %}
+                {% if object['uploadtime'] %}<p>{% trans uploadtime=pretty_dateinfo(object['uploadtime']) %}Uploaded ${uploadtime}{% endtrans %}</p>{% endif %}
+                {% if object['closetime'] %}<p>{% trans closetime=pretty_dateinfo(object['closetime']) %}Closed ${closetime}{% endtrans %}</p>{% endif %}
+                {% if object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']%}
+                    <p>{% trans changetime=pretty_dateinfo(object['changetime']) %}Last modified ${changetime}{% endtrans %}</p>
+                {% endif %}
             </div>
 
             <h2>
@@ -45,20 +44,22 @@
                 <span class="trac-status">
                 ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
                 </span>
-                <span class="trac-type" py:if="object['type']">
-                ${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}
-                </span>
-                <span class="trac-resolution" py:if="object['resolution']">
+                {% if object['type'] %}
+                <span class="trac-type">${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}</span>
+                {% endif %}
+                {% if object['resolution'] %}
+                <span class="trac-resolution">
                 (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
                 </span>
+                {% endif %}
             </h2>
 <table class="properties">
 <tr>
-<py:if test="xmlfile_error">
+{% if xmlfile_error %}
 <tr>
 <th>Error:</th><td colspan="3">${xmlfile_error}</td>
 </tr>
-</py:if>
+{% endif %}
 <th>Reported by:</th><td>${object['reporter']}</td>
 <th>Owned by:</th><td>${object['owner']}</td>
 </tr>
@@ -80,11 +81,11 @@
 </tr>
 <tr>
 <th>Linked tickets:</th><td><ul>
-<py:for each="tkt in linked_tickets"><li>${tkt}</li></py:for>
+{% for tkt in linked_tickets %}<li>${tkt}</li>{% endfor %}
 </ul>
 </td>
 </tr>
-<py:if test="show_debug_info">
+{% if show_debug_info %}
 <tr>
 <th>Parse time:</th><td>${ format_seconds(parsetime) }</td>
 <th>Database time:</th><td>${ format_seconds(dbtime) }</td>
@@ -93,7 +94,7 @@
 <th>Is 64-Bit:</th><td>${is_64_bit}</td>
 <th>Bits:</th><td>${bits}</td>
 </tr>
-</py:if>
+{% endif %}
 </table>
 
 <!-- close the crashdump yellow box -->
@@ -105,159 +106,160 @@
 <table class="properties">
 <tr><th>Application&nbsp;file</th><td class="fullrow">${object['applicationfile']}</td></tr>
 <tr><th>Command&nbsp;line</th><td class="fullrow">
-    <pre py:if="crash_info" class="cmdline"><py:for each="e in crash_info.command_line">&quot;${e}&quot;</py:for></pre>
-    <div py:if="not crash_info">N/A</div>
+    {% if crash_info %}
+    <pre class="cmdline">{% for e in crash_info.command_line %}&quot;${e}&quot;{% endfor %}</pre>
+    {% else %}
+    <div>N/A</div>
+    {% endif %}
 </td></tr>
-<py:if test="object['minidumpfile']">
+{% if object['minidumpfile'] %}
     <tr><th>Minidump file</th><td class="fullrow">
         <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(minidumpfile_size) })">Download</a>
-        <py:if test="object['minidumpreporttextfile']">
+        {% if object['minidumpreporttextfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
-        </py:if>
-        <py:if test="object['minidumpreportxmlfile']">
+        {% endif %}
+        {% if object['minidumpreportxmlfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_xml')}" title="${object.uuid} (${ format_size(xmlfile_size) })">XML report</a>
-        </py:if>
-        <py:if test="object['minidumpreporthtmlfile']">
+        {% endif %}
+        {% if object['minidumpreporthtmlfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_html')}" title="${object.uuid} (${ format_size(reporthtmlfile_size) })">HTML report</a>
-        </py:if>
+        {% endif %}
     </td></tr>
-</py:if>
-<py:if test="object['coredumpfile']">
+{% endif %}
+{% if object['coredumpfile'] %}
     <tr><th>Coredump file</th><td class="fullrow">
         <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(coredumpfile_size) })">Download</a>
-        <py:if test="object['coredumpreporttextfile']">
+        {% if object['coredumpreporttextfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
-        </py:if>
-        <py:if test="object['coredumpreportxmlfile']">
+        {% endif %}
+        {% if object['coredumpreportxmlfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_xml')}" title="${object.uuid} (${ format_size(xmlfile_size) })">XML report</a>
-        </py:if>
-        <py:if test="object['coredumpreporthtmlfile']">
+        {% endif %}
+        {% if object['coredumpreporthtmlfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_html')}" title="${object.uuid} (${ format_size(reporthtmlfile_size) })">HTML report</a>
-        </py:if>
+        {% endif %}
     </td></tr>
-</py:if>
-<py:if test="fast_protect_system_info">
+{% endif %}
+{% if fast_protect_system_info %}
 <tr><th>Crash&nbsp;FQDN</th><td class="fullrow">${fast_protect_system_info.fqdn}&nbsp;<a href="${href('crash', object.uuid, 'sysinfo_report')}" title="${object.uuid} system info">Show complete system info</a>
 </td></tr>
 <tr><th>Crash&nbsp;username</th><td class="fullrow">${fast_protect_system_info.username}</td></tr>
-</py:if>
-<py:if test="crash_info">
+{% endif %}
+{% if crash_info %}
 <tr><th>Report&nbsp;FQDN</th><td class="fullrow">${crash_info.report_fqdn}</td></tr>
 <tr><th>Report&nbsp;username</th><td class="fullrow">${crash_info.report_username}</td></tr>
-<tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
-<tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist">{% for e in crash_info.symbol_directories %}<li>${e}</li>{% endfor %}</ul></td></tr>
+<tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist">{% for e in crash_info.image_directories %}<li>${e}</li>{% endfor %}</ul></td></tr>
 <tr><th>Path</th><td class="fullrow">
 <ol class="path">
-<py:for each="p in crash_info.path">
+{% for p in crash_info.path %}
     <li>${p}</li>
-</py:for>
+{% endfor %}
 </ol>
 </td></tr>
 <tr><th>Environment</th><td class="fullrow">
 <ul class="environment">
-<py:for each="k in sorted(crash_info.environment.keys())">
-    <py:if test="k.lower() != 'path'">
+{% for k in sorted(crash_info.environment.keys()) %}
+    {% if k.lower() != 'path' %}
         <li>${k}&nbsp;=&nbsp;${crash_info.environment[k]}</li>
-    </py:if>
-</py:for>
+    {% endif %}
+{% endfor %}
 </ul>
 </td></tr>
-</py:if>
+{% endif %}
 </table>
 </div>
 
-<py:if test="system_info">
+{% if system_info %}
 <div id="sysinfo">
 <h2 class="foldable" id='late_sysinfo'>System information</h2>
 <a name="system_info"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="system_info">
+{% if system_info %}
 <div id="sysinfo_ex" class="collapsed">
 <h2 class="foldable">More system information</h2>
 <a name="more_system_info"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="fast_protect_version_info">
+{% if fast_protect_version_info %}
 <div id="fast_protect_version_info">
 <h2 class="foldable">Version info</h2>
 <a name="fast_protect_version_info"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="exception">
+{% if exception %}
 <div id="exception">
-<h2 class="foldable" py:if="not assertion">Exception</h2>
-<h2 class="foldable" py:if="assertion">Assertion</h2>
+<h2 class="foldable">{% if assertion %}Assertion{% else %}Exception{% endif %}</h2>
 <a name="exception"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="modules">
+{% if modules %}
 <div id="modules" class="collapsed">
 <h2 class="foldable">Modules</h2>
 <a name="modules"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="threads">
+{% if threads %}
 <div id="threads" class="collapsed">
 <a name="threads"/>
 <h2 class="foldable">Threads</h2>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="stackdumps">
+{% if stackdumps %}
 <div id="crashdump">
 <h2>Stack dumps</h2>
-<py:for each="stackdump in stackdumps">
-<py:if test="not stackdump.simplified">
+{% for stackdump in stackdumps %}
+{% if not stackdump.simplified %}
 <a name="stackdump_${stackdump.threadid}"/>
 <div id="stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
 <h3 class="foldable">
-<py:if test="stackdump.thread.main_thread">Main thread</py:if>
-<py:if test="not stackdump.thread.main_thread and stackdump.thread.rpc_thread">RPC Thread</py:if>
-<py:if test="not stackdump.thread.main_thread and not stackdump.thread.rpc_thread">Thread</py:if>
-<py:if test="stackdump.thread.name">({stackdump.thread.name})</py:if>
-&nbsp;${ hex_format(stackdump.threadid) }<py:if test="stackdump.exception"> with exception</py:if>
+{% if stackdump.thread.main_thread %}Main thread{% endif %}
+{% if not stackdump.thread.main_thread and stackdump.thread.rpc_thread %}RPC Thread{% endif %}
+{% if not stackdump.thread.main_thread and not stackdump.thread.rpc_thread %}Thread{% endif %}
+{% if stackdump.thread.name %}({stackdump.thread.name}){% endif %}
+&nbsp;${ hex_format(stackdump.threadid) }{% if stackdump.exception %} with exception{% endif %}
 </h3>
 </div>
-</py:if>
-</py:for>
+{% endif %}
+{% endfor %}
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="memory_regions">
+{% if memory_regions %}
 <div id="memory_regions" class="collapsed">
 <h2 class="foldable">Memory regions</h2>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="memory_blocks">
+{% if memory_blocks %}
 <div id="memory_blocks">
 <h2>Memory blocks</h2>
-<py:for each="memory_block in memory_blocks">
+{% for memory_block in memory_blocks %}
 <a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
     <div id="memory_block___${memory_block.base}" class="collapsed">
     <h3 class="foldable" id="memory_block_${memory_block.base}_title">
         Memory block #${memory_block.num} at ${ addr_format(memory_block.base) } size ${ format_size(memory_block.size) }
-        <py:if test="memory_block.threadid is not None">
+        {% if memory_block.threadid %}
             (memory of thread ${ hex_format(memory_block.threadid) })
-        </py:if>
+        {% endif %}
     </h3>
     </div>
-</py:for>
+{% endfor %}
 </div>
-</py:if>
+{% endif %}
 
     <div class="trac-nav">
         <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
     </div>
 
-<!-- close the content -->
-</div>
+    # endblock content
 
   </body>
 </html>
