@@ -14,14 +14,14 @@
             $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
             //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
             $( '#' + node.id).children('div#placeholder').load(target_url);
-            //alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+            //console.log('here ' + node + ' id=' + node.id + ' exp=' + expanded + ' url=' + url);
         } else {
-            $( '#' + node.id).children('div#placeholder').text('');
+            //console.log('nno ' + node.id + ' exp=' + expanded);
+            //$( '#' + node.id).children('div#placeholder').text('');
         }
     }
       jQuery(document).ready(function($) {
-        $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
-        $(".foldable").delayLoadFolding(false, true, extra_click);
+        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click);
       });
     </script>
     # endblock head
@@ -171,30 +171,29 @@
 </div>
 
 {% if system_info %}
+<a name="fast_protect_version_info"/>
 <div id="sysinfo">
 <h2 class="foldable" id='late_sysinfo'>System information</h2>
-<a name="system_info"/>
 </div>
 {% endif %}
 
 {% if system_info %}
+<a name="fast_protect_version_info"/>
 <div id="sysinfo_ex" class="collapsed">
 <h2 class="foldable">More system information</h2>
-<a name="more_system_info"/>
 </div>
 {% endif %}
 
 {% if fast_protect_version_info %}
+<a name="fast_protect_version_info"/>
 <div id="fast_protect_version_info">
 <h2 class="foldable">Version info</h2>
-<a name="fast_protect_version_info"/>
 </div>
 {% endif %}
 
 {% if exception %}
 <div id="exception">
 <h2 class="foldable">{% if assertion %}Assertion{% else %}Exception{% endif %}</h2>
-<a name="exception"/>
 </div>
 {% endif %}
 
@@ -207,28 +206,13 @@
 
 {% if threads %}
 <div id="threads" class="collapsed">
-<a name="threads"/>
 <h2 class="foldable">Threads</h2>
 </div>
 {% endif %}
 
 {% if stackdumps %}
-<div id="stackdumps">
+<div id="stackdumps" class="collapsed">
 <h2 class="foldable">Stack dumps</h2>
-{% for stackdump in stackdumps %}
-{% if not stackdump.simplified %}
-<a name="stackdump_${stackdump.threadid}"/>
-<div id="stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
-<h3 class="foldable">
-{% if stackdump.thread.main_thread %}Main thread{% endif %}
-{% if not stackdump.thread.main_thread and stackdump.thread.rpc_thread %}RPC Thread{% endif %}
-{% if not stackdump.thread.main_thread and not stackdump.thread.rpc_thread %}Thread{% endif %}
-{% if stackdump.thread.name %}({stackdump.thread.name}){% endif %}
-&nbsp;${ hex_format(stackdump.threadid) }{% if stackdump.exception %} with exception{% endif %}
-</h3>
-</div>
-{% endif %}
-{% endfor %}
 </div>
 {% endif %}
 
@@ -241,23 +225,8 @@
 {% if memory_blocks %}
 <div id="memory_blocks" class="collapsed">
 <h2 class="foldable">Memory blocks</h2>
-{% for memory_block in memory_blocks %}
-<a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
-    <div id="memory_block___${memory_block.base}" class="collapsed">
-    <h3 class="foldable" id="memory_block_${memory_block.base}_title">
-        Memory block #${memory_block.num} at ${ addr_format(memory_block.base) } size ${ format_size(memory_block.size) }
-        {% if memory_block.threadid %}
-            (memory of thread ${ hex_format(memory_block.threadid) })
-        {% endif %}
-    </h3>
-    </div>
-{% endfor %}
 </div>
 {% endif %}
-
-    <div class="trac-nav">
-        <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
-    </div>
 
     # endblock content
 

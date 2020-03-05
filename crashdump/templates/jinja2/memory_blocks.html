@@ -1,0 +1,10 @@
+{% for memory_block in memory_blocks %}
+    <div id="memory_block___${memory_block.base}" class="collapsed">
+    <h3 class="foldable" id="memory_block_${memory_block.base}_title">
+        Memory block #${memory_block.num} at ${ addr_format(memory_block.base) } size ${ format_size(memory_block.size) }
+        {% if memory_block.threadid %}
+            (memory of thread ${ hex_format(memory_block.threadid) })
+        {% endif %}
+    </h3>
+    </div>
+{% endfor %}

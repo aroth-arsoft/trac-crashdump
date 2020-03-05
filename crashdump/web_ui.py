@@ -438,7 +438,7 @@ class CrashDumpModule(Component):
                 return 'report.html', data
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex',
-                                 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads']:
+                                 'fast_protect_version_info', 'exception', 'memory_blocks', 'memory_regions', 'modules', 'threads', 'stackdumps']:
                     return params[0] + '.html', data
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
@@ -485,7 +485,8 @@ class CrashDumpModule(Component):
                 return 'sysinfo_report.html', data
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu',
-                                 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads', 'sysinfo_rawdata']:
+                                 'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads',
+                                 'sysinfo_rawdata']:
                     return params[0] + '.html', data
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))

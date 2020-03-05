@@ -1,7 +1,7 @@
 
 (function($){
 
-  $.fn.delayLoadFolding = function(autofold, snap, click_func) {
+  $.fn.crashdump_delayLoadFolding = function(autofold, snap, click_func) {
     var fragId = document.location.hash;
     if (fragId && /^#dno\d+$/.test(fragId))
       fragId = parseInt(fragId.substr(3));
@@ -20,9 +20,7 @@
         $(this).append(trigger);
         $(this.parentNode).append("<div id='placeholder'></div>");
         var expanded = snap && !$(this.parentNode).hasClass("collapsed");
-        if(expanded == true) {
-            click_func(this.parentNode, expanded);
-        }
+        click_func(this.parentNode, expanded);
       }
 
       trigger.click(function() {
