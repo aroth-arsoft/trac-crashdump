@@ -213,8 +213,8 @@
 {% endif %}
 
 {% if stackdumps %}
-<div id="crashdump">
-<h2>Stack dumps</h2>
+<div id="stackdumps">
+<h2 class="foldable">Stack dumps</h2>
 {% for stackdump in stackdumps %}
 {% if not stackdump.simplified %}
 <a name="stackdump_${stackdump.threadid}"/>
@@ -239,8 +239,8 @@
 {% endif %}
 
 {% if memory_blocks %}
-<div id="memory_blocks">
-<h2>Memory blocks</h2>
+<div id="memory_blocks" class="collapsed">
+<h2 class="foldable">Memory blocks</h2>
 {% for memory_block in memory_blocks %}
 <a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
     <div id="memory_block___${memory_block.base}" class="collapsed">

@@ -15,7 +15,7 @@
 }
 
 /* "Yellow Ticket Box" */
-#crashdump, #sysinfo, #sysinfo_ex, #fast_protect_version_info, #exception, #modules, #threads, #memory_regions, #memory_blocks,
+#crashdump, #sysinfo, #sysinfo_ex, #fast_protect_version_info, #exception, #modules, #threads, #stackdumps, #memory_regions, #memory_blocks,
  #sysinfo_report, #sysinfo_opengl, #sysinfo_env, #sysinfo_terra4d_dirs, #sysinfo_cpu, #sysinfo_rawdata {
  background: #ffd;
  border: 1px solid #dd9;
@@ -24,10 +24,12 @@
  padding: .5em 1em;
  position: relative;
 }
-#sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #memory_regions h2, #memory_blocks h2,
+
+#sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #stackdumps h2, #memory_regions h2, #memory_blocks h2,
  #sysinfo_report h2, #sysinfo_opengl h2, #sysinfo_env h2, #sysinfo_terra4d_dirs h2, #sysinfo_cpu h2, #sysinfo_rawdata h2 {
  padding: 0px;
  border: 0px;
+ font-size: 1.2em;
 }
 
 #placeholder {
@@ -83,6 +85,7 @@ h2.foldable >  {
 
 a.delay_folding:link, a.delay_folding:visited {
  box-shadow: none;
+ border:none;
 }
 
 #crashdump > h2 .trac-id {
