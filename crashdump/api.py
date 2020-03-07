@@ -278,7 +278,7 @@ class CrashDumpSystem(Component):
     def ticket_changed(self, tkt, comment, author, old_values):
         with self.env.db_transaction as db:
             links = self._prepare_links(tkt, db)
-            links.save(author, comment, tkt.time_changed, db)
+            links.save(author, comment, tkt['changetime'], db)
             from .model import CrashDump
             if tkt['status'] == 'closed':
                 for crashid in links.crashes:
@@ -304,10 +304,10 @@ class CrashDumpSystem(Component):
                                     # No such component exists
                                     pass
                         if all_tickets_closed:
-                            crashobj['closetime'] = tkt.time_changed
+                            crashobj['closetime'] = tkt['changetime']
                             crashobj['resolution'] = tkt['resolution']
                             crashobj['status'] = 'closed'
-                            crashobj.save_changes(author=author, comment=comment, when=tkt.time_changed, db=db)
+                            crashobj.save_changes(author=author, comment=comment, when=tkt['changetime'], db=db)
 
             db.commit()
 

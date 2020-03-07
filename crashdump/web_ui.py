@@ -421,29 +421,27 @@ class CrashDumpModule(Component):
             xmlfile = data['xmlfile'] if 'xmlfile' in data else None
             data['dbtime'] = end - start
 
-            linked_tickets = []
-            for tkt_id in crashobj.linked_tickets:
-                a = self._link_ticket_by_id(req, tkt_id)
-                if a:
-                    linked_tickets.append(a)
-
             field_changes = {}
             data.update({'action': action,
                          'params': params,
                         # Store a timestamp for detecting "mid air collisions"
-                        'start_time': crashobj['changetime'],
-                        'linked_tickets':linked_tickets
+                        'start_time': crashobj['changetime']
                         })
 
             self._insert_crashdump_data(req, crashobj, data,
                                     get_reporter_id(req, 'author'), field_changes)
 
-            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
-            add_script(req, 'crashdump/crashdump.js')
             if params is None:
+                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                add_script(req, 'crashdump/crashdump.js')
                 add_stylesheet(req, 'crashdump/crashdump.css')
-                #add_script(req, 'common/js/folding.js')
-                #add_script(req, 'crashdump/crashdump.js')
+
+                linked_tickets = []
+                for tkt_id in crashobj.linked_tickets:
+                    a = self._link_ticket_by_id(req, tkt_id)
+                    if a:
+                        linked_tickets.append(a)
+                data['linked_tickets'] = linked_tickets
 
                 return 'report.html', data
             else:
@@ -471,6 +469,8 @@ class CrashDumpModule(Component):
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'sysinfo_report':
             data = self._prepare_data(req, crashobj)
+            data['dbtime'] = end - start
+
             if 'xmlreport' in data:
                 xmlfile = data['xmlreport']
                 data['sysinfo_report'] = None
@@ -482,25 +482,23 @@ class CrashDumpModule(Component):
                 else:
                     data['xmlfile_error'] = _("XML file %(file)s is unavailable", file=xmlfile)
 
+            data.update({'action': action,
+                        'params': params,
+                        # Store a timestamp for detecting "mid air collisions"
+                        'start_time': crashobj['changetime']
+                        })
+
             if params is None:
+                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                add_script(req, 'crashdump/crashdump.js')
+                add_stylesheet(req, 'crashdump/crashdump.css')
+
                 linked_tickets = []
                 for tkt_id in crashobj.linked_tickets:
                     a = self._link_ticket_by_id(req, tkt_id)
                     if a:
                         linked_tickets.append(a)
-
-                field_changes = {}
-                data.update({'action': action,
-                            'params': params,
-                            # Store a timestamp for detecting "mid air collisions"
-                            'start_time': crashobj['changetime'],
-                            'linked_tickets':linked_tickets
-                            })
-
-                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
-                add_stylesheet(req, 'crashdump/crashdump.css')
-                add_script(req, 'common/js/folding.js')
-                add_script(req, 'crashdump/crashdump.js')
+                data['linked_tickets'] = linked_tickets
                 return 'sysinfo_report.html', data
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu',

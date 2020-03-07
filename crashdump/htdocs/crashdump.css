@@ -22,7 +22,6 @@
  border-radius: .4em;
  margin-top: .2em;
  padding: .5em 1em;
- position: relative;
 }
 
 #crashdump h2, #sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #stackdumps h2, #memory_regions h2, #memory_blocks h2,

@@ -1,8 +1,4 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
+<table class="properties">
     <tr><th>OpenGL vendor</th><td>${fast_protect_system_info.opengl_vendor}</td></tr>
     <tr><th>OpenGL renderer</th><td>${fast_protect_system_info.opengl_renderer}</td></tr>
     <tr><th>OpenGL version</th><td>${fast_protect_system_info.opengl_version}</td></tr>
@@ -32,11 +28,10 @@
     <tr><th>OpenGL extensions</th>
         <td>
             <ul class="glextension">
-            <py:for each="p in sysinfo_report['OpenGLExtensions/Extension']">
+            {% for p in sysinfo_report['OpenGLExtensions/Extension'] %}
                 <li>${format_gl_extension_name(p)}</li>
-            </py:for>
+            {% endfor %}
             </ul>
         </td>
     </tr>
-
 </table>

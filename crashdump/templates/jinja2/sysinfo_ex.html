@@ -1,22 +1,16 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
-<py:if test="fast_protect_system_info">
+<table class="properties">
+{% if fast_protect_system_info %}
     <tr><th>System temp path</th><td>${fast_protect_system_info.system_temp_path}</td></tr>
     <tr><th>User temp path</th><td>${fast_protect_system_info.user_temp_path}</td></tr>
     <tr><th>User persistent path</th><td>${fast_protect_system_info.user_persistent_path}</td></tr>
-    <tr><th>Machine type</th><td>${fast_protect_system_info.machine_type}</td></tr>
-<py:if test="fast_protect_system_info.virtual_machine">
-</py:if>
+    <tr><th>Machine type</th><td>${fast_protect_system_info.machine_type}{% if fast_protect_system_info.virtual_machine %}&nbsp;Virtual{%endif%}</td></tr>
     <tr>
         <th>CPU vendor</th><td>${fast_protect_system_info.cpu_vendor}</td>
         <th>CPU name</th><td>${fast_protect_system_info.cpu_name}</td>
     </tr>
     <tr>
         <th>Number of CPUs</th><td>${fast_protect_system_info.num_logical_cpus} logical, ${fast_protect_system_info.num_physical_cpus} physical</td>
-        <th>HyperThread</th><td>${fast_protect_system_info.hyperthread}</td>
+        <th>Hyper-Threading</th><td>${fast_protect_system_info.hyperthread}</td>
     </tr>
     <tr><th>OpenGL vendor</th><td>${fast_protect_system_info.opengl_vendor}</td></tr>
     <tr><th>OpenGL renderer</th><td>${fast_protect_system_info.opengl_renderer}</td></tr>
@@ -29,36 +23,43 @@
     <tr><th>OpenGL use pbuffer</th><td>${fast_protect_system_info.opengl_use_pbuffer}</td></tr>
     <tr><th>OpenGL hardware error</th><td>${fast_protect_system_info.opengl_hardware_error}</td></tr>
     <tr><th>OpenGL pbuffer error</th><td>${fast_protect_system_info.opengl_pbuffer_error}</td></tr>
-</py:if>
-<py:if test="processstatuswin32">
+{% endif %}
+{% if processstatuswin32 %}
     <tr><th>DLL path</th><td>
-    <ol py:if="processstatuswin32.dll_path">
-        <py:for each="m in processstatuswin32.dll_path"><li>${m}</li></py:for>
+    {% if processstatuswin32.dll_path %}
+    <ol>
+        {% for m in processstatuswin32.dll_path %}<li>${m}</li>{% endfor %}
     </ol>
+    {% else %}
+        N/A
+    {% endif %}
     </td></tr>
-    <tr py:if="processstatuswin32.image_path"><th>Image path</th><td>${processstatuswin32.image_path}</td></tr>
-    <tr py:if="processstatuswin32.window_title"><th>Window title</th><td>${processstatuswin32.window_title}</td></tr>
-    <tr py:if="processstatuswin32.desktop_name"><th>Desktop name</th><td>${processstatuswin32.desktop_name}</td></tr>
-    <tr py:if="processstatuswin32.session_id"><th>Session id</th><td>${processstatuswin32.session_id}</td></tr>
-</py:if>
-<py:if test="processmemoryinfowin32">
+    {% if processstatuswin32.image_path %}<tr py:if=""><th>Image path</th><td>${processstatuswin32.image_path}</td></tr>{% endif %}
+    {% if processstatuswin32.window_title %}<tr><th>Window title</th><td>${processstatuswin32.window_title}</td></tr>{% endif %}
+    {% if processstatuswin32.desktop_name %}<tr><th>Desktop name</th><td>${processstatuswin32.desktop_name}</td></tr>{% endif %}
+    {% if processstatuswin32.session_id %}<tr><th>Session id</th><td>${processstatuswin32.session_id}</td></tr>{% endif %}
+{% endif %}
+{% if processmemoryinfowin32 %}
     <tr><th>Page fault count</th><td>${processmemoryinfowin32.page_fault_count}</td></tr>
     <tr><th>Working set size</th><td>${format_size(processmemoryinfowin32.working_set_size)}, peak at ${format_size(processmemoryinfowin32.peak_working_set_size)}</td></tr>
     <tr><th>Private usage</th><td>${format_size(processmemoryinfowin32.private_usage)}</td></tr>
     <tr><th>Quota paged pool usage</th><td>${format_size(processmemoryinfowin32.quota_paged_pool_usage)}, peak at ${format_size(processmemoryinfowin32.quota_peak_paged_pool_usage)}</td></tr>
     <tr><th>Quota non-paged pool usage</th><td>${format_size(processmemoryinfowin32.quota_non_paged_pool_usage)}, peak at ${format_size(processmemoryinfowin32.quota_peak_non_paged_pool_usage)}</td></tr>
     <tr><th>Pagefile usage</th><td>${format_size(processmemoryinfowin32.pagefile_usage)}, peak at ${format_size(processmemoryinfowin32.peak_pagefile_usage)}</td></tr>
-</py:if>
-<py:if test="processstatuslinux">
+{% endif %}
+{% if processstatuslinux %}
     <tr><th>Process name</th><td>${processstatuslinux.name} (state ${processstatuslinux.state})</td></tr>
     <tr><th>Process id</th><td>${processstatuslinux.pid} (parent ${processstatuslinux.parent_pid})</td></tr>
     <tr><th>User id</th><td>${processstatuslinux.real_uid}, ${processstatuslinux.real_gid}</td></tr>
     <tr><th>User groups</th><td>
-    <ol py:if="processstatuslinux.supplement_groups">
-        <py:for each="grp in processstatuslinux.supplement_groups"><li>${grp}</li></py:for>
+    {% if processstatuslinux.supplement_groups %}
+    <ol>
+        {% for grp in processstatuslinux.supplement_groups %}<li>${grp}</li>{% endfor %}
     </ol>
+    {% else %}
+        N/A
+    {% endif %}
     </td></tr>
-
     <tr><th>VM peak</th><td>${format_size(processstatuslinux.vmpeak)}</td></tr>
     <tr><th>VM size</th><td>${format_size(processstatuslinux.vmsize)}</td></tr>
     <tr><th>VM locked</th><td>${format_size(processstatuslinux.vmlocked)}</td></tr>
@@ -72,8 +73,8 @@
     <tr><th>VM swap</th><td>${format_size(processstatuslinux.vmswap)}</td></tr>
     <tr><th>Number of threads</th><td>${processstatuslinux.num_threads}</td></tr>
     <tr><th>Context switches</th><td>${processstatuslinux.voluntary_context_switches} voluntary, ${processstatuslinux.nonvoluntary_context_switches} non-voluntary</td></tr>
-</py:if>
-<py:if test="not fast_protect_system_info and not processstatuswin32 and not processmemoryinfowin32 and not processstatuslinux">
+{% endif %}
+{% if not fast_protect_system_info and not processstatuswin32 and not processmemoryinfowin32 and not processstatuslinux %}
     <tr><td>No additional system information available in this crashdump.</td></tr>
-</py:if>
+{% endif %}
 </table>

@@ -1,44 +1,48 @@
-<!DOCTYPE html
-    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:i18n="http://genshi.edgewall.org/i18n"
-      xmlns:py="http://genshi.edgewall.org/"
-      xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="layout.html" />
+# extends 'layout.html'
+<!DOCTYPE html>
+<html>
   <head>
+    # block head
+    ${ super() }
     <title>System information report for CrashId#${object.id} - ${object.uuid}</title>
     <script type="text/javascript">
+    function enableDelayLoadFolding(node, status) {
+        console.log('Loaded ' + this.id);
+        $(this).children("div").children(".foldable").crashdump_delayLoadFolding(false, true, extra_click, this.parentNode.id);
+    }
     function extra_click(node, expanded) {
         if (expanded == true) {
             var url = window.location.href;
             var path = window.location.pathname;
-            var target_url = path + '/' + node.id.replace('___', '/');
+            var target_url = (path + '/').replace('//', '/') + node.id.replace('___', '/');
+
             $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
             //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url);
-            //alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
+            $( '#' + node.id).children('div#placeholder').load(target_url, {}, enableDelayLoadFolding);
+
+            console.log('here node.id=' + node.id + ' exp=' + expanded + ' url=' + target_url);
         } else {
-            $( '#' + node.id).children('div#placeholder').text('');
+            //console.log('nno ' + node.id + ' exp=' + expanded);
+            //$( '#' + node.id).children('div#placeholder').text('');
         }
     }
       jQuery(document).ready(function($) {
-        $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
-        $(".foldable").delayLoadFolding(false, true, extra_click);
+        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click, '');
       });
     </script>
+    # endblock head
   </head>
   <body>
-    <div id="content">
+    # block content
         <div id="crashdump">
             <div class="date">
-                <p i18n:msg="crashed">Crashed ${pretty_dateinfo(object['crashtime'])}</p>
-                <p i18n:msg="report" py:if="object['reporttime']">Report generated ${pretty_dateinfo(object['reporttime'])}</p>
-                <p i18n:msg="created" py:if="object['uploadtime']">Uploaded ${pretty_dateinfo(object['uploadtime'])}</p>
-                <p i18n:msg="closed" py:if="object['closetime']">Closed ${pretty_dateinfo(object['closetime'])}</p>
-                <p i18n:msg="modified" py:if="object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']">
-                Last modified ${pretty_dateinfo(object['changetime'])}</p>
-                <p><a href="${href('crash', object.uuid)}" class="trac-id">Back to CrashId#${object.id}</a></p>
+                <p>{% trans crashtime=pretty_dateinfo(object['crashtime']) %}Crashed ${crashtime}{% endtrans %}</p>
+                {% if object['reporttime'] %}<p>{% trans reporttime=pretty_dateinfo(object['reporttime']) %}Report generated ${reporttime}{% endtrans %}</p>{% endif %}
+                {% if object['uploadtime'] %}<p>{% trans uploadtime=pretty_dateinfo(object['uploadtime']) %}Uploaded ${uploadtime}{% endtrans %}</p>{% endif %}
+                {% if object['closetime'] %}<p>{% trans closetime=pretty_dateinfo(object['closetime']) %}Closed ${closetime}{% endtrans %}</p>{% endif %}
+                {% if object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']%}
+                    <p>{% trans changetime=pretty_dateinfo(object['changetime']) %}Last modified ${changetime}{% endtrans %}</p>
+                {% endif %}
             </div>
 
             <h2>
@@ -46,20 +50,22 @@
                 <span class="trac-status">
                 ${'status' in fields_map and fields[fields_map['status']].rendered or object['status']}
                 </span>
-                <span class="trac-type" py:if="object['type']">
-                ${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}
-                </span>
-                <span class="trac-resolution" py:if="object['resolution']">
+                {% if object['type'] %}
+                <span class="trac-type">${'type' in fields_map and fields[fields_map['type']].rendered or object['type']}</span>
+                {% endif %}
+                {% if object['resolution'] %}
+                <span class="trac-resolution">
                 (${'resolution' in fields_map and fields[fields_map['resolution']].rendered or object['resolution']})
                 </span>
+                {% endif %}
             </h2>
 <table class="properties">
 <tr>
-<py:if test="xmlfile_error">
+{% if xmlfile_error %}
 <tr>
 <th>Error:</th><td colspan="3">${xmlfile_error}</td>
 </tr>
-</py:if>
+{% endif %}
 <th>Reported by:</th><td>${object['reporter']}</td>
 <th>Owned by:</th><td>${object['owner']}</td>
 </tr>
@@ -81,11 +87,11 @@
 </tr>
 <tr>
 <th>Linked tickets:</th><td><ul>
-<py:for each="tkt in linked_tickets"><li>${tkt}</li></py:for>
+{% for tkt in linked_tickets %}<li>${tkt}</li>{% endfor %}
 </ul>
 </td>
 </tr>
-<py:if test="show_debug_info">
+{% if show_debug_info %}
 <tr>
 <th>Parse time:</th><td>${ format_seconds(parsetime) }</td>
 <th>Database time:</th><td>${ format_seconds(dbtime) }</td>
@@ -94,61 +100,56 @@
 <th>Is 64-Bit:</th><td>${is_64_bit}</td>
 <th>Bits:</th><td>${bits}</td>
 </tr>
-</py:if>
+{% endif %}
 
+{% if system_info %}
 <tr>
-<py:if test="system_info">
 <th>FQDN:</th><td>${sysinfo_report['System/fqdn'] if sysinfo_report['System/fqdn'] else 'N/A'}</td>
 <th>Qt Library info:</th><td>${sysinfo_report['Qt/sysinfo/libraryinfobuild'] if sysinfo_report['Qt/sysinfo/libraryinfobuild'] else 'N/A'}</td>
-</py:if>
 </tr>
+{% endif %}
 </table>
 
 <!-- close the crashdump yellow box -->
 </div>
 
-<py:if test="system_info">
+{% if system_info %}
+<a name="sysinfo"/>
 <div id="sysinfo">
 <h2 class="foldable" id='sysinfo'>System information</h2>
-<a name="sysinfo"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="fast_protect_system_info">
+{% if fast_protect_system_info %}
+<a name="sysinfo_opengl"/>
 <div id="sysinfo_opengl" class="collapsed">
 <h2 class="foldable" id='sysinfo_opengl'>OpenGL information</h2>
-<a name="sysinfo_opengl"/>
 </div>
 
+<a name="sysinfo_env"/>
 <div id="sysinfo_env" class="collapsed">
 <h2 class="foldable" id='sysinfo_env'>Environment</h2>
-<a name="sysinfo_env"/>
 </div>
 
+<a name="sysinfo_terra4d_dirs"/>
 <div id="sysinfo_terra4d_dirs" class="collapsed">
 <h2 class="foldable" id='sysinfo_terra4d_dirs'>Terra4D directories</h2>
-<a name="sysinfo_terra4d_dirs"/>
 </div>
 
+<a name="sysinfo_cpu"/>
 <div id="sysinfo_cpu" class="collapsed">
 <h2 class="foldable" id='sysinfo_cpu'>CPU information</h2>
-<a name="sysinfo_cpu"/>
 </div>
-</py:if>
+{% endif %}
 
-<py:if test="system_info">
+{% if system_info %}
+<a name="sysinfo_rawdata"/>
 <div id="sysinfo_rawdata" class="collapsed">
 <h2 class="foldable" id='sysinfo_rawdata'>Raw system information data</h2>
-<a name="sysinfo_rawdata"/>
 </div>
-</py:if>
+{% endif %}
 
-    <div class="trac-nav">
-        <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
-    </div>
-
-<!-- close the content -->
-</div>
+    # endblock content
 
   </body>
 </html>
