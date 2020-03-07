@@ -1,0 +1,32 @@
+# extends 'layout.html'
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+        Crash upload
+    </title>
+  </head>
+  <body>
+    # block content
+        <a name="purge_old_data"/>
+        <h2 class="foldable" id='upload_crash'>Upload crash</h2>
+        <form enctype="multipart/form-data" action="${submit_href}" name="submit" method="post">
+            ${jmacros.form_token_input()}
+            <fieldset class="col0">
+            <input type="hidden" name="manual_upload" id="manual_upload" value="1" />
+
+            <div class="help" xml:space="preserve">
+                Upload a new crash for review:
+            </div>
+            <div>
+            <label for="files">Crash dump file(s):</label>
+            <input type="file" id="files" name="files" multiple />
+            </div>
+            <div>
+                <input type="submit" value="Upload" />
+            </div>
+            </fieldset>
+        </form>
+    # endblock content
+  </body>
+</html>

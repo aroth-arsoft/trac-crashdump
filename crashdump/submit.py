@@ -24,6 +24,7 @@ import os
 import shutil
 import time
 import datetime
+import cgi
 from xml.sax.saxutils import escape
 
 from .model import CrashDump, CrashDumpStackFrame
@@ -277,8 +278,19 @@ class CrashDumpSubmit(Component):
 
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s %s', req.method, req.path_info, handler)
         if req.method == "POST":
-            # copy the requested form token from into the args to pass the CSRF test
-            req.args['__FORM_TOKEN' ] = req.form_token
+            user_agent = req.get_header('User-Agent')
+            if user_agent is not None and '/' in user_agent:
+                user_agent, agent_ver = user_agent.split('/', 1)
+            if user_agent == 'terra3d-crashuploader':
+                # copy the requested form token from into the args to pass the CSRF test
+                req.args['__FORM_TOKEN' ] = req.form_token
+
+            manual_upload = req.args.as_int('manual_upload', 0)
+            # for testing
+            if manual_upload:
+                # copy the requested form token from into the args to pass the CSRF test
+                req.args['__FORM_TOKEN' ] = req.form_token
+
         return handler
 
     def post_process_request(self, req, template, data, content_type, method=None):
@@ -331,13 +343,17 @@ class CrashDumpSubmit(Component):
         if req.method != "POST":
             return self._error_response(req, status=HTTPMethodNotAllowed.code, body='Method %s not allowed' % req.method)
 
-        user_agent = req.get_header('User-Agent')
-        if user_agent is None:
-            return self._error_response(req, status=HTTPForbidden.code, body='No user-agent specified.')
-        if '/' in user_agent:
-            user_agent, agent_ver = user_agent.split('/', 1)
-        if user_agent != 'terra3d-crashuploader':
-            return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent)
+        manual_upload = req.args.as_int('manual_upload', 0)
+        if manual_upload == 0:
+            user_agent_full = req.get_header('User-Agent')
+            if user_agent_full is None:
+                return self._error_response(req, status=HTTPForbidden.code, body='No user-agent specified.')
+            if '/' in user_agent_full:
+                user_agent, agent_ver = user_agent_full.split('/', 1)
+            else:
+                user_agent = user_agent_full
+            if user_agent != 'terra3d-crashuploader':
+                return self._error_response(req, status=HTTPForbidden.code, body='User-agent %s not allowed' % user_agent_full)
 
         headers = {}
         headers['Max-Upload-Size'] = self.max_upload_size
@@ -347,8 +363,9 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPInternalServerError.code, body='Crashdump upload has been disabled by the administrator.', headers=headers)
 
         id_str = req.args.get('id')
-        if not id_str or not CrashDump.uuid_is_valid(id_str):
-            return self._error_response(req, status=HTTPInternalServerError.code, body='Invalid crash identifier %s specified.' % id_str)
+        if not manual_upload:
+            if not id_str or not CrashDump.uuid_is_valid(id_str):
+                return self._error_response(req, status=HTTPInternalServerError.code, body='Invalid crash identifier %s specified.' % id_str)
 
         total_upload_size = self._get_total_upload_size(req)
         if self.max_upload_size > 0 and total_upload_size > self.max_upload_size:
@@ -356,6 +373,49 @@ class CrashDumpSubmit(Component):
             return self._error_response(req, status=HTTPInternalServerError.code, body='Upload size %i bytes exceed the upload limit of %i bytes' % (total_upload_size, self.max_upload_size), headers=headers)
         else:
             self.log.debug('total_upload_size %i <= max_upload_size %i' % (total_upload_size, self.max_upload_size) )
+
+        if manual_upload:
+            self.log.debug('manual_upload')
+
+            files = req.args.getlist('files')
+            if len(files) == 0:
+                return self._error_response(req, status=HTTPInternalServerError.code, body='No files uploaded.')
+
+            import re
+
+            id_str = None
+            minidump = None
+            minidumpreportxml = None
+
+            for file in files:
+                if isinstance(file, cgi.FieldStorage):
+                    filename = os.path.basename(file.filename)
+                    self.log.debug('got file %s' % filename)
+                    match = re.match(r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.([0-9a-zA-Z\.]+)', filename)
+                    if match:
+                        new_id_str = match.groups()[0]
+                        ext = match.groups()[1]
+                        self.log.debug('got file mtach %s' % new_id_str)
+                        if id_str is None:
+                            id_str = new_id_str
+                        elif id_str == new_id_str:
+                            pass
+                        else:
+                            return self._error_response(req, status=HTTPInternalServerError.code, body='At the moment uploading multiples crashes is not supported.')
+                        if ext == 'dmp':
+                            minidump = file
+                        elif ext == 'dmp.xml':
+                            minidumpreportxml = file
+                        self.log.debug('got id %s' % id_str)
+                else:
+                    self.log.debug('skip file field %s-%s' % (type(file), file) )
+            if not id_str:
+                return self._error_response(req, status=HTTPInternalServerError.code, body='Cannot determine crash identifier from file upload.')
+            self.log.debug('got crashid %s' % id_str)
+            if minidump is not None:
+                req.args['minidump'] = minidump
+            if minidumpreportxml is not None:
+                req.args['minidumpreportxml'] = minidumpreportxml
 
         uuid = UUID(id_str)
         crashid = None

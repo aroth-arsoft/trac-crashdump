@@ -209,6 +209,11 @@ class CrashDumpModule(Component):
         if not req.path_info.startswith('/crash'):
             return False
 
+        if req.path_info.startswith('/crash_upload'):
+            req.args['action'] = 'upload'
+            req.args['params'] = None
+            return True
+
         ret = False
         path_info = req.path_info[6:]
         action = None
@@ -394,9 +399,11 @@ class CrashDumpModule(Component):
                                                  'false')}
 
     def process_request(self, req):
-        path_info = req.path_info[6:]
+        action = req.args.get('action', 'view')
         start = time.time()
-        if 'crashuuid' in req.args:
+        if action == 'upload':
+            pass
+        elif 'crashuuid' in req.args:
             crashobj = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
             if not crashobj:
                 raise ResourceNotFound(_("Crash %(id)s does not exist.",
@@ -412,7 +419,6 @@ class CrashDumpModule(Component):
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
-        action = req.args.get('action', 'view')
         params = _get_list_from_args(req.args, 'params', None)
         self.log.debug('process_request %s:%s-%s' % (action, type(params), params))
         if action is None or action == 'view':
@@ -523,6 +529,20 @@ class CrashDumpModule(Component):
                 if fast_protect_system_info.rawdata:
                     return self._send_data(req, fast_protect_system_info.rawdata.raw, filename=filename)
             raise ResourceNotFound(_("No system information available for crash %(uuid)s.", uuid=str(crashobj.uuid)))
+
+        elif action == 'upload':
+            data = {}
+            submit_href = req.href + '/submit'
+            data.update({'action': action,
+                        'params': params,
+                        'submit_href': submit_href,
+                        })
+            if params is None:
+                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                add_script(req, 'crashdump/crashdump.js')
+                add_stylesheet(req, 'crashdump/crashdump.css')
+
+            return 'upload.html', data
 
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
