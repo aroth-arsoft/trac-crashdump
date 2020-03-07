@@ -1,8 +1,4 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
+<table class="properties">
 <tr>
 <th>Base</th>
 <th>Size</th>
@@ -13,7 +9,7 @@
 <th>Name</th>
 <th>Symbol&nbsp;file</th>
 </tr>
-<py:for each="module in modules">
+{% for module in modules %}
 <tr>
 <td><a name="module_${module.basename}"/>
 <div class="address">${ addr_format(module.base)}</div>
@@ -26,5 +22,5 @@
 <td>${module.name}</td>
 <td>${module.symbol_file}</td>
 </tr>
-</py:for>
+{% endfor %}
 </table>

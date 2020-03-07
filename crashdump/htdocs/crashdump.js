@@ -1,9 +1,10 @@
 
 (function($){
 
-  $.fn.crashdump_delayLoadFolding = function(autofold, snap, click_func) {
+  $.fn.crashdump_delayLoadFolding = function(autofold, snap, click_func, prefix) {
     var fragId = document.location.hash;
-    if (fragId && /^#dno\d+$/.test(fragId))
+    var regex = new RegExp('^#dno' + prefix + '\d+$');
+    if (fragId && regex.test(fragId))
       fragId = parseInt(fragId.substr(3));
     if (snap == undefined)
       snap = false;
@@ -13,8 +14,8 @@
       // Use first child <a> as a trigger, or generate a trigger from the text
       var trigger = $(this).children("a").eq(0);
       if (trigger.length == 0) {
-        trigger = $("<a" + (snap? " class='delay_folding' id='dno" + count + "'": "")
-            + " href='#dno" + count + "'></a>");
+        trigger = $("<a" + (snap? " class='delay_folding' id='dno" + prefix + count + "'": "")
+            + " href='#dno" + prefix + count + "'></a>");
         trigger.html($(this).html());
         $(this).text("");
         $(this).append(trigger);

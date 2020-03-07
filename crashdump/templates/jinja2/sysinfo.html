@@ -1,8 +1,4 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
+<table class="properties">
 <tr><th>Platform&nbsp;type</th><td class="fullrow">${format_platform_type(system_info.platform_type)}/${format_cpu_type(system_info.cpu_type)}</td></tr>
 <tr><th>OS&nbsp;version</th><td class="fullrow">${format_os_version(system_info.platform_type, system_info.os_version_number, system_info.os_build_number)}</td></tr>
 <py:if test="system_info.os_version_info">

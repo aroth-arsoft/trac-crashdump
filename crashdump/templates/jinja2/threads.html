@@ -1,8 +1,4 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
+<table class="properties">
 <tr>
 <th>Id</th>
 <th>Name</th>
@@ -14,13 +10,13 @@
 <th>User time</th>
 <th>CPU affinity</th>
 </tr>
-<py:for each="thread in threads">
+{% for thread in threads %}
 <tr>
-<td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.mainthread">@</py:if><py:if test="thread.exception">*</py:if></a></td>
+<td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a>{% if thread.mainthread %}@{% endif %}{% if thread.exception %}*{% endif %}</a></td>
 <td>${ thread.name if thread.name else 'N/A' }</td>
 <td>
-    <py:if test="thread.memory"><a href="#memory_block_${thread.memory}"><div class="address">${ addr_format(thread.memory) }</div></a></py:if>
-    <py:if test="not thread.mainthread">N/A</py:if>
+    {% if thread.memory %}<a href="#memory_block_${thread.memory}"><div class="address">${ addr_format(thread.memory) }</div></a>{% endif %}
+    {% if not thread.mainthread %}N/A{% endif %}
 </td>
 <td><div class="address">${ addr_format(thread.start_addr) }</div></td>
 <td>${pretty_dateinfo(thread.create_time) if thread.create_time else 'N/A'}</td>
@@ -29,5 +25,5 @@
 <td>${ format_milliseconds(thread.user_time) }</td>
 <td>${ hex_format(thread.cpu_affinity) }</td>
 </tr>
-</py:for>
+{% endfor %}
 </table>

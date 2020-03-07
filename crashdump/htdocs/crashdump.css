@@ -25,11 +25,19 @@
  position: relative;
 }
 
-#sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #stackdumps h2, #memory_regions h2, #memory_blocks h2,
+#crashdump h2, #sysinfo h2, #sysinfo_ex h2, #fast_protect_version_info h2, #exception h2, #modules h2, #threads h2, #stackdumps h2, #memory_regions h2, #memory_blocks h2,
  #sysinfo_report h2, #sysinfo_opengl h2, #sysinfo_env h2, #sysinfo_terra4d_dirs h2, #sysinfo_cpu h2, #sysinfo_rawdata h2 {
  padding: 0px;
  border: 0px;
  font-size: 1.2em;
+}
+
+#environment h4 {
+ padding: 0px;
+ margin: 0;
+ font-weight: normal;
+ font-size: 80%;
+ letter-spacing: 0;
 }
 
 #placeholder {
@@ -61,7 +69,7 @@
 
 div.loading_message {
  color: #844;
- font-size: 145%;
+ font-size: 120%;
  vertical-align: middle;
  text-align: center;
 }

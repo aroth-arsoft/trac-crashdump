@@ -73,6 +73,16 @@ def safe_list_get_as_int (l, idx, default=None):
     except IndexError:
         return default
 
+def _get_list_from_args(args, name, default=None):
+    if name not in args:
+        return default
+    val = args[name]
+    if val is None:
+        return default
+    if not isinstance(val, list):
+        val = [val]
+    return val
+
 class CrashDumpModule(Component):
     """UI for crash dumps."""
     
@@ -216,8 +226,10 @@ class CrashDumpModule(Component):
             #self.log.debug('match_request raw_action:\"%s\"' % action)
             if action:
                 e = action.split('/')
+                #self.log.debug('match_request raw_action->e:\"%s\"' % e)
                 req.args['action'] = e[0]
                 req.args['params'] = e[1:] if len(e) > 1 else None
+                #self.log.debug('match_request action->params:%s->\"%s\"' % (req.args['action'], req.args['params']))
             else:
                 req.args['action'] = None
                 req.args['params'] = None
@@ -400,13 +412,10 @@ class CrashDumpModule(Component):
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
-        action = req.args.get('action') or 'view'
-        params = req.args.get('params')
-        if params is not None:
-            if isinstance(params, basestring):
-                params = [ params ]
+        action = req.args.get('action', 'view')
+        params = _get_list_from_args(req.args, 'params', None)
         self.log.debug('process_request %s:%s-%s' % (action, type(params), params))
-        if action == 'view':
+        if action is None or action == 'view':
             data = self._prepare_data(req, crashobj)
             
             xmlfile = data['xmlfile'] if 'xmlfile' in data else None
@@ -429,11 +438,12 @@ class CrashDumpModule(Component):
             self._insert_crashdump_data(req, crashobj, data,
                                     get_reporter_id(req, 'author'), field_changes)
 
+            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+            add_script(req, 'crashdump/crashdump.js')
             if params is None:
-                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
                 add_stylesheet(req, 'crashdump/crashdump.css')
-                add_script(req, 'common/js/folding.js')
-                add_script(req, 'crashdump/crashdump.js')
+                #add_script(req, 'common/js/folding.js')
+                #add_script(req, 'crashdump/crashdump.js')
 
                 return 'report.html', data
             else:
@@ -442,11 +452,20 @@ class CrashDumpModule(Component):
                     return params[0] + '.html', data
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
-                    data.update({'selected_memory_block_base': block_base })
+                    memory_block = None
+                    for b in data['memory_blocks']:
+                        if b.base == block_base:
+                            memory_block = b
+                            break
+                    data.update({'memory_block': memory_block, 'memory_block_base': block_base })
                     return 'memory_block.html', data
                 elif params[0] == 'stackdump':
                     threadid = safe_list_get_as_int(params, 1, 0)
-                    data.update({'selected_stackdump_threadid': threadid })
+                    stackdump = None
+                    if threadid in data['stackdumps']:
+                        stackdump = data['stackdumps'][threadid]
+                    self.log.debug('stackdump %s' % stackdump)
+                    data.update({'stackdump': stackdump, 'threadid': threadid })
                     return 'stackdump.html', data
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))

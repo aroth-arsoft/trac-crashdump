@@ -1,31 +1,23 @@
-<div class="memory_block"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
-<?python found_memory_block = False ?>
-<py:for each="memory_block in memory_blocks">
-    <py:if test="memory_block.base == selected_memory_block_base">
-        <?python found_memory_block = True ?>
-        <py:if test="memory_block.threadid is not None">
-            <div class="crashdump-nav">
-                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
-            </div>
-        </py:if>
-        <table class="memory_block">
-        <tr>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_offset}</pre></td>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_hex}</pre></td>
-        <td><pre class="hexdump">${memory_block.memory.hexdump.raw_ascii}</pre></td>
-        </tr>
-        </table>
-        <py:if test="memory_block.threadid is not None">
-            <div class="crashdump-nav">
-                <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
-            </div>
-        </py:if>
-    </py:if>
-</py:for>
-<py:if test="not found_memory_block">
-Unable to find any memory block at ${ addr_format(selected_memory_block_base) }
-</py:if>
+<div class="memory_block">
+{% if memory_block %}
+    {% if memory_block.threadid %}
+        <div class="crashdump-nav">
+            <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
+        </div>
+    {% endif %}
+    <table class="memory_block">
+    <tr>
+    <td><pre class="hexdump">${memory_block.memory.hexdump.raw_offset}</pre></td>
+    <td><pre class="hexdump">${memory_block.memory.hexdump.raw_hex}</pre></td>
+    <td><pre class="hexdump">${memory_block.memory.hexdump.raw_ascii}</pre></td>
+    </tr>
+    </table>
+    {% if memory_block.threadid %}
+        <div class="crashdump-nav">
+            <a href="#thread_${memory_block.threadid}" title="Go to thread ${ hex_format(memory_block.threadid) }">Thread ${ hex_format(memory_block.threadid) }</a> &uarr;
+        </div>
+    {% endif %}
+{% else %}
+Unable to find any memory block at ${ addr_format(memory_block_base) }
+{% endif %}
 </div>

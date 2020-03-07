@@ -6,22 +6,28 @@
     # block head
     ${ super() }
     <script type="text/javascript">
+    function enableDelayLoadFolding(node, status) {
+        console.log('Loaded ' + this.id);
+        $(this).children("div").children(".foldable").crashdump_delayLoadFolding(false, true, extra_click, this.parentNode.id);
+    }
     function extra_click(node, expanded) {
         if (expanded == true) {
             var url = window.location.href;
             var path = window.location.pathname;
             var target_url = (path + '/view/').replace('//', '/') + node.id.replace('___', '/');
+
             $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
             //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url);
-            //console.log('here ' + node + ' id=' + node.id + ' exp=' + expanded + ' url=' + url);
+            $( '#' + node.id).children('div#placeholder').load(target_url, {}, enableDelayLoadFolding);
+
+            console.log('here node.id=' + node.id + ' exp=' + expanded + ' url=' + target_url);
         } else {
             //console.log('nno ' + node.id + ' exp=' + expanded);
             //$( '#' + node.id).children('div#placeholder').text('');
         }
     }
       jQuery(document).ready(function($) {
-        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click);
+        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click, '');
       });
     </script>
     # endblock head
@@ -100,9 +106,9 @@
 <!-- close the crashdump yellow box -->
 </div>
 
+<a name="crashdump"/>
 <div id="crashdump">
 <h2 class="foldable" id="crash_dump_info">Crash dump information</h2>
-<a name="crash_info"/>
 <table class="properties">
 <tr><th>Application&nbsp;file</th><td class="fullrow">${object['applicationfile']}</td></tr>
 <tr><th>Command&nbsp;line</th><td class="fullrow">
@@ -158,6 +164,8 @@
 </ol>
 </td></tr>
 <tr><th>Environment</th><td class="fullrow">
+<div id="environment" class="collapsed">
+<h4 id="environment" class="foldable">Show environment</h4>
 <ul class="environment">
 {% for k in sorted(crash_info.environment.keys()) %}
     {% if k.lower() != 'path' %}
@@ -165,20 +173,21 @@
     {% endif %}
 {% endfor %}
 </ul>
+</div>
 </td></tr>
 {% endif %}
 </table>
 </div>
 
 {% if system_info %}
-<a name="fast_protect_version_info"/>
-<div id="sysinfo">
+<a name="sysinfo"/>
+<div id="sysinfo" class="collapsed">
 <h2 class="foldable" id='late_sysinfo'>System information</h2>
 </div>
 {% endif %}
 
-{% if system_info %}
-<a name="fast_protect_version_info"/>
+{% if fast_protect_version_info %}
+<a name="sysinfo_ex"/>
 <div id="sysinfo_ex" class="collapsed">
 <h2 class="foldable">More system information</h2>
 </div>
@@ -186,7 +195,7 @@
 
 {% if fast_protect_version_info %}
 <a name="fast_protect_version_info"/>
-<div id="fast_protect_version_info">
+<div id="fast_protect_version_info" class="collapsed">
 <h2 class="foldable">Version info</h2>
 </div>
 {% endif %}
@@ -198,20 +207,21 @@
 {% endif %}
 
 {% if modules %}
+<a name="modules"/>
 <div id="modules" class="collapsed">
 <h2 class="foldable">Modules</h2>
-<a name="modules"/>
 </div>
 {% endif %}
 
 {% if threads %}
+<a name="threads"/>
 <div id="threads" class="collapsed">
 <h2 class="foldable">Threads</h2>
 </div>
 {% endif %}
 
 {% if stackdumps %}
-<div id="stackdumps" class="collapsed">
+<div id="stackdumps">
 <h2 class="foldable">Stack dumps</h2>
 </div>
 {% endif %}

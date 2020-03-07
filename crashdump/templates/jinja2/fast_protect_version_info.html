@@ -1,8 +1,4 @@
-<table
-    class="properties"
-    xmlns="http://www.w3.org/1999/xhtml"
-    xmlns:i18n="http://genshi.edgewall.org/i18n"
-    xmlns:py="http://genshi.edgewall.org/">
+<table class="properties">
 <tr><th>Product name</th><td class="fullrow">${fast_protect_version_info.product_name}</td></tr>
 <tr><th>Product code name</th><td class="fullrow">${fast_protect_version_info.product_code_name}</td></tr>
 <tr><th>Product version</th><td class="fullrow">${fast_protect_version_info.product_version}</td></tr>
@@ -13,7 +9,7 @@
 <tr><th>3<sup>rd</sup> party repository revision</th><td class="fullrow">${fast_protect_version_info.third_party_revision}</td></tr>
 <tr><th>Manual repository revision</th><td class="fullrow">${fast_protect_version_info.manual_revision}</td></tr>
 <tr><th>${fast_protect_version_info.product_name} repository revision</th><td class="fullrow">${fast_protect_version_info.terra3d_revision}</td></tr>
-<py:if test="fast_protect_version_info.jenkins_job_name">
+{% if fast_protect_version_info.jenkins_job_name %}
 <tr><th>Jenkins job name</th><td class="fullrow">${fast_protect_version_info.jenkins_job_name}</td></tr>
 <tr><th>Jenkins build number</th><td class="fullrow">${fast_protect_version_info.jenkins_build_number}</td></tr>
 <tr><th>Jenkins build id</th><td class="fullrow">${fast_protect_version_info.jenkins_build_id}</td></tr>
@@ -23,5 +19,5 @@
 <tr><th>Jenkins Git branch</th><td class="fullrow">${fast_protect_version_info.jenkins_git_branch}</td></tr>
 <tr><th>Jenkins master</th><td class="fullrow">${fast_protect_version_info.jenkins_master}</td></tr>
 <tr><th>Jenkins nodename</th><td class="fullrow">${fast_protect_version_info.jenkins_nodename}</td></tr>
-</py:if>
+{% endif %}
 </table>
