@@ -167,7 +167,8 @@ class CrashDump(object):
                 if field_type == 'time':
                     pass
                 elif field_type != 'textarea':
-                    value = value.strip()
+                    if isinstance(value, basestring):
+                        value = value.strip()
 
         self.values[name] = value
 

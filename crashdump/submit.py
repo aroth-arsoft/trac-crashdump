@@ -574,14 +574,6 @@ class CrashDumpSubmit(Component):
         crashobj['osrelease'] = req.args.get('osrelease')
         crashobj['osmachine'] = req.args.get('osmachine')
 
-        # get the application name from the application file
-        if crashobj['applicationfile']:
-            appbase = os.path.basename(crashobj['applicationfile'])
-            (appbase, ext) = os.path.splitext(appbase)
-            if crashobj['buildpostfix'] and appbase.endswith(crashobj['buildpostfix']):
-                appbase = appbase[:-len(crashobj['buildpostfix'])]
-            crashobj['applicationname'] = appbase
-
         if result:
 
             xmlreport = None
@@ -594,6 +586,41 @@ class CrashDumpSubmit(Component):
                     xmlreport = XMLReport(xmlfile)
             except XMLReport.XMLReportException as e:
                 return self._error_response(req, status=HTTPInternalServerError.code, body='Failed to process crash dump %s: %s' % (uuid, str(e)))
+
+            if xmlreport and manual_upload:
+
+                if xmlreport.crash_info:
+                    crashobj['crashtime'] = xmlreport.crash_info.crash_timestamp
+                    crashobj['reporttime'] = xmlreport.crash_info.report_time
+                    crashobj['uploadhostname'] = req.remote_addr
+                    crashobj['uploadusername'] = req.remote_user
+                    crashobj['applicationfile'] = xmlreport.crash_info.application
+                if xmlreport.fast_protect_version_info:
+                    crashobj['productname'] = xmlreport.fast_protect_version_info.product_name
+                    crashobj['productcodename'] = xmlreport.fast_protect_version_info.product_code_name
+                    crashobj['productversion'] = xmlreport.fast_protect_version_info.product_version
+                    crashobj['producttargetversion'] = xmlreport.fast_protect_version_info.product_target_version
+                    crashobj['buildtype'] = xmlreport.fast_protect_version_info.product_build_type
+                    crashobj['buildpostfix'] = xmlreport.fast_protect_version_info.product_build_postfix
+
+                if xmlreport.fast_protect_system_info:
+                    crashobj['crashhostname'] = xmlreport.fast_protect_system_info.fqdn
+                    crashobj['crashusername'] = xmlreport.fast_protect_system_info.username
+                    crashobj['machinetype'] = xmlreport.fast_protect_system_info.machine_type
+
+                if xmlreport.system_info:
+                    crashobj['systemname'] = xmlreport.system_info.platform_type
+                    crashobj['osversion'] = xmlreport.system_info.os_version
+                    crashobj['osrelease'] = xmlreport.system_info.os_build_number
+                    crashobj['osmachine'] = xmlreport.system_info.cpu_type
+
+            # get the application name from the application file
+            if crashobj['applicationfile']:
+                appbase = os.path.basename(crashobj['applicationfile'])
+                (appbase, ext) = os.path.splitext(appbase)
+                if crashobj['buildpostfix'] and appbase.endswith(crashobj['buildpostfix']):
+                    appbase = appbase[:-len(crashobj['buildpostfix'])]
+                crashobj['applicationname'] = appbase
 
             new_crash = True if crashid is None else False
             if new_crash:
