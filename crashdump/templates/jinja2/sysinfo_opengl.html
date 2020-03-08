@@ -27,11 +27,14 @@
     </tr>
     <tr><th>OpenGL extensions</th>
         <td>
+            <div id="glextension" class="collapsed crashdump_expand_box">
+            <h4 class="foldable">Show extensions</h4>
             <ul class="glextension">
             {% for p in sysinfo_report['OpenGLExtensions/Extension'] %}
                 <li>${format_gl_extension_name(p)}</li>
             {% endfor %}
             </ul>
+            </div>
         </td>
     </tr>
 </table>

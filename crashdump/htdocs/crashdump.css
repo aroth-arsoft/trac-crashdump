@@ -14,9 +14,8 @@
  margin-top: 0;
 }
 
-/* "Yellow Ticket Box" */
-#crashdump, #sysinfo, #sysinfo_ex, #fast_protect_version_info, #exception, #modules, #threads, #stackdumps, #memory_regions, #memory_blocks,
- #sysinfo_report, #sysinfo_opengl, #sysinfo_env, #sysinfo_terra4d_dirs, #sysinfo_cpu, #sysinfo_rawdata {
+/* "Yellow crashdump box" */
+#crashdump, .crashdump_box {
  background: #ffd;
  border: 1px solid #dd9;
  border-radius: .4em;
@@ -31,7 +30,7 @@
  font-size: 1.2em;
 }
 
-#environment h4 {
+.crashdump_expand_box h4 {
  padding: 0px;
  margin: 0;
  font-weight: normal;
@@ -44,26 +43,6 @@
  margin: 0px;
  padding: 0px;
  position: relative;
-}
-
-/* YTB in preview mode */
-#crashdump.crashdumpdraft {
- background: #f8f8f8 url(../draft.png);
-}
-#crashdumpchange.crashdumpdraft {
- padding: 0 1em;
- margin: 1em 0;
-}
-#crashdumpchange.crashdumpdraft h3 {
- margin-top: .5em;
-}
-.preview-notice { font-weight: bold; }
-
-.crashdumpdraft {
- background: #f8f8f8 url(../draft.png);
- border: 1px solid #d7d7d7;
- border-radius: .4em;
- padding: 0 .2em;
 }
 
 div.loading_message {
@@ -79,12 +58,12 @@ div.loading_message {
  clear: right;
 }
 
-h2.foldable {
+h2.foldable, h2.delayfoldable {
  color: #844;
  margin: 0;
 }
 
-h2.foldable >  {
+h2.foldable >, h2.delayfoldable > {
  color: #844;
  margin: 0px;
  padding: .5em 1em;
@@ -93,6 +72,21 @@ h2.foldable >  {
 a.delay_folding:link, a.delay_folding:visited {
  box-shadow: none;
  border:none;
+}
+
+/* Section folding */
+.delayfoldable :link, .delayfoldable :visited {
+ background: url(../common/expanded.png) 4px 50% no-repeat;
+ border: #e4e4e4 solid 1px;
+ border-radius: .3em;
+ box-shadow: .1em .15em .3em 0 #d7d7d7;
+ color: #222;
+ text-shadow: .04em .04em #fcfcfc;
+ padding: .2em .5em .3em 20px;
+}
+.delayfoldable :link:hover, .delayfoldable :visited:hover { background-color: transparent }
+.collapsed > .delayfoldable :link, .collapsed > .delayfoldable :visited {
+ background-image: url(../common/collapsed.png);
 }
 
 #crashdump > h2 .trac-id {

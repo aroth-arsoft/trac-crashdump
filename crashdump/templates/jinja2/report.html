@@ -4,31 +4,13 @@
   <head>
     # block head
     ${ super() }
-    <title>CrashId#${object.id} - ${object.uuid}</title>
+    <title>
+    # block title
+    CrashId#${object.id} - ${object.uuid}
+    # endblock title
+    </title>
     <script type="text/javascript">
-    function enableDelayLoadFolding(node, status) {
-        console.log('Loaded ' + this.id);
-        $(this).children("div").children(".foldable").crashdump_delayLoadFolding(false, true, extra_click, this.parentNode.id);
-    }
-    function extra_click(node, expanded) {
-        if (expanded == true) {
-            var url = window.location.href;
-            var path = window.location.pathname;
-            var target_url = (path + '/view/').replace('//', '/') + node.id.replace('___', '/');
-
-            $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
-            //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url, {}, enableDelayLoadFolding);
-
-            console.log('here node.id=' + node.id + ' exp=' + expanded + ' url=' + target_url);
-        } else {
-            //console.log('nno ' + node.id + ' exp=' + expanded);
-            //$( '#' + node.id).children('div#placeholder').text('');
-        }
-    }
-      jQuery(document).ready(function($) {
-        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click, '');
-      });
+        crashdump_docReady();
     </script>
     # endblock head
   </head>
@@ -154,18 +136,27 @@
 {% if crash_info %}
 <tr><th>Report&nbsp;FQDN</th><td class="fullrow">${crash_info.report_fqdn}</td></tr>
 <tr><th>Report&nbsp;username</th><td class="fullrow">${crash_info.report_username}</td></tr>
-<tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist">{% for e in crash_info.symbol_directories %}<li>${e}</li>{% endfor %}</ul></td></tr>
-<tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist">{% for e in crash_info.image_directories %}<li>${e}</li>{% endfor %}</ul></td></tr>
+<tr><th>Symbol&nbsp;directories</th><td class="fullrow">
+<div id="symboldirs" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show symbol directories</h4>
+<ul class="dirlist">{% for e in crash_info.symbol_directories %}<li>${e}</li>{% endfor %}</ul>
+</div>
+</td></tr>
+<tr><th>Image&nbsp;directories</th><td class="fullrow">
+<div id="imagedirs" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show image directories</h4>
+<ul class="dirlist">{% for e in crash_info.image_directories %}<li>${e}</li>{% endfor %}</ul>
+</div>
+</td></tr>
 <tr><th>Path</th><td class="fullrow">
-<ol class="path">
-{% for p in crash_info.path %}
-    <li>${p}</li>
-{% endfor %}
-</ol>
+<div id="path" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show path</h4>
+<ul class="path">{% for p in crash_info.path %}{% if p %}<li>${p}</li>{% endif %}{% endfor %}</ul>
+</div>
 </td></tr>
 <tr><th>Environment</th><td class="fullrow">
-<div id="environment" class="collapsed">
-<h4 id="environment" class="foldable">Show environment</h4>
+<div id="environment" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show environment</h4>
 <ul class="environment">
 {% for k in sorted(crash_info.environment.keys()) %}
     {% if k.lower() != 'path' %}
@@ -181,60 +172,60 @@
 
 {% if system_info %}
 <a name="sysinfo"/>
-<div id="sysinfo" class="collapsed">
-<h2 class="foldable" id='late_sysinfo'>System information</h2>
+<div id="view___sysinfo" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='late_sysinfo'>System information</h2>
 </div>
 {% endif %}
 
 {% if fast_protect_version_info %}
 <a name="sysinfo_ex"/>
-<div id="sysinfo_ex" class="collapsed">
-<h2 class="foldable">More system information</h2>
+<div id="view___sysinfo_ex" class="collapsed crashdump_box">
+<h2 class="delayfoldable">More system information</h2>
 </div>
 {% endif %}
 
 {% if fast_protect_version_info %}
 <a name="fast_protect_version_info"/>
-<div id="fast_protect_version_info" class="collapsed">
-<h2 class="foldable">Version info</h2>
+<div id="view___fast_protect_version_info" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Version info</h2>
 </div>
 {% endif %}
 
 {% if exception %}
-<div id="exception">
-<h2 class="foldable">{% if assertion %}Assertion{% else %}Exception{% endif %}</h2>
+<div id="view___exception" class="crashdump_box">
+<h2 class="delayfoldable">{% if assertion %}Assertion{% else %}Exception{% endif %}</h2>
 </div>
 {% endif %}
 
 {% if modules %}
 <a name="modules"/>
-<div id="modules" class="collapsed">
-<h2 class="foldable">Modules</h2>
+<div id="view___modules" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Modules</h2>
 </div>
 {% endif %}
 
 {% if threads %}
 <a name="threads"/>
-<div id="threads" class="collapsed">
-<h2 class="foldable">Threads</h2>
+<div id="view___threads" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Threads</h2>
 </div>
 {% endif %}
 
 {% if stackdumps %}
-<div id="stackdumps">
-<h2 class="foldable">Stack dumps</h2>
+<div id="view___stackdumps" class="crashdump_box">
+<h2 class="delayfoldable">Stack dumps</h2>
 </div>
 {% endif %}
 
 {% if memory_regions %}
-<div id="memory_regions" class="collapsed">
-<h2 class="foldable">Memory regions</h2>
+<div id="view___memory_regions" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Memory regions</h2>
 </div>
 {% endif %}
 
 {% if memory_blocks %}
-<div id="memory_blocks" class="collapsed">
-<h2 class="foldable">Memory blocks</h2>
+<div id="view___memory_blocks" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Memory blocks</h2>
 </div>
 {% endif %}
 

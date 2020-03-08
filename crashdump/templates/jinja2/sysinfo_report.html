@@ -4,31 +4,13 @@
   <head>
     # block head
     ${ super() }
-    <title>System information report for CrashId#${object.id} - ${object.uuid}</title>
+    <title>
+    # block title
+    System information report for CrashId#${object.id} - ${object.uuid}
+    # endblock title
+    </title>
     <script type="text/javascript">
-    function enableDelayLoadFolding(node, status) {
-        console.log('Loaded ' + this.id);
-        $(this).children("div").children(".foldable").crashdump_delayLoadFolding(false, true, extra_click, this.parentNode.id);
-    }
-    function extra_click(node, expanded) {
-        if (expanded == true) {
-            var url = window.location.href;
-            var path = window.location.pathname;
-            var target_url = (path + '/').replace('//', '/') + node.id.replace('___', '/');
-
-            $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
-            //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url, {}, enableDelayLoadFolding);
-
-            console.log('here node.id=' + node.id + ' exp=' + expanded + ' url=' + target_url);
-        } else {
-            //console.log('nno ' + node.id + ' exp=' + expanded);
-            //$( '#' + node.id).children('div#placeholder').text('');
-        }
-    }
-      jQuery(document).ready(function($) {
-        $(".foldable").crashdump_delayLoadFolding(false, true, extra_click, '');
-      });
+        crashdump_docReady();
     </script>
     # endblock head
   </head>
@@ -115,37 +97,37 @@
 
 {% if system_info %}
 <a name="sysinfo"/>
-<div id="sysinfo">
-<h2 class="foldable" id='sysinfo'>System information</h2>
+<div id="sysinfo" class="crashdump_box">
+<h2 class="delayfoldable" id='sysinfo'>System information</h2>
 </div>
 {% endif %}
 
 {% if fast_protect_system_info %}
 <a name="sysinfo_opengl"/>
-<div id="sysinfo_opengl" class="collapsed">
-<h2 class="foldable" id='sysinfo_opengl'>OpenGL information</h2>
+<div id="sysinfo_opengl" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_opengl'>OpenGL information</h2>
 </div>
 
 <a name="sysinfo_env"/>
-<div id="sysinfo_env" class="collapsed">
-<h2 class="foldable" id='sysinfo_env'>Environment</h2>
+<div id="sysinfo_env" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_env'>Environment</h2>
 </div>
 
 <a name="sysinfo_terra4d_dirs"/>
-<div id="sysinfo_terra4d_dirs" class="collapsed">
-<h2 class="foldable" id='sysinfo_terra4d_dirs'>Terra4D directories</h2>
+<div id="sysinfo_terra4d_dirs" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_terra4d_dirs'>Terra4D directories</h2>
 </div>
 
 <a name="sysinfo_cpu"/>
-<div id="sysinfo_cpu" class="collapsed">
-<h2 class="foldable" id='sysinfo_cpu'>CPU information</h2>
+<div id="sysinfo_cpu" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_cpu'>CPU information</h2>
 </div>
 {% endif %}
 
 {% if system_info %}
 <a name="sysinfo_rawdata"/>
-<div id="sysinfo_rawdata" class="collapsed">
-<h2 class="foldable" id='sysinfo_rawdata'>Raw system information data</h2>
+<div id="sysinfo_rawdata" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_rawdata'>Raw system information data</h2>
 </div>
 {% endif %}
 
