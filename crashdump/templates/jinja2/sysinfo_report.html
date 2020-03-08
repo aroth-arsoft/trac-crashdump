@@ -25,6 +25,7 @@
                 {% if object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']%}
                     <p>{% trans changetime=pretty_dateinfo(object['changetime']) %}Last modified ${changetime}{% endtrans %}</p>
                 {% endif %}
+                <p><a href="${href('crash', object.uuid)}" class="trac-id">Back to CrashId#${object.id}</a></p>
             </div>
 
             <h2>
@@ -121,6 +122,16 @@
 <a name="sysinfo_cpu"/>
 <div id="sysinfo_cpu" class="collapsed crashdump_box">
 <h2 class="delayfoldable" id='sysinfo_cpu'>CPU information</h2>
+</div>
+
+<a name="sysinfo_locale"/>
+<div id="sysinfo_locale" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_locale'>Locale</h2>
+</div>
+
+<a name="sysinfo_network"/>
+<div id="sysinfo_network" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_network'>Network</h2>
 </div>
 {% endif %}
 

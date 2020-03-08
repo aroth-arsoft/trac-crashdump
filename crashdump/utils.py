@@ -503,3 +503,42 @@ def format_os_version(platform_type, os_version_number, os_build_number):
         return tag.a('Windows %s' % os_version_number, href='https://en.wikipedia.org/wiki/Microsoft_Windows')
     else:
         return _('unknown')
+
+def language_from_qlocale_language_enum(num):
+    _codes = {
+        0: 'Any language',
+        31: 'English',
+        42: 'German',
+    }
+    if num in _codes:
+        return _codes[num]
+    else:
+        return str(num)
+
+# See https://doc.qt.io/qt-5/qlocale.html#Country-enum
+def country_from_qlocale_country_enum(num):
+    _codes = {
+        0: 'Any country',
+        82: 'Germany',
+        224: 'United Kingdom',
+        225: 'United States',
+    }
+    if num in _codes:
+        return _codes[num]
+    else:
+        return str(num)
+
+# https://doc.qt.io/qt-5/qlocale.html#Script-enum
+def script_from_qlocale_script_enum(num):
+    _codes = {
+        0: 'Any script',
+        1: 'Arabic',
+        2: 'Cyrillic',
+        16: 'Greek',
+        7: 'Latin',
+    }
+    if num in _codes:
+        return _codes[num]
+    else:
+        return str(num)
+

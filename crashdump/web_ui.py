@@ -507,7 +507,8 @@ class CrashDumpModule(Component):
                 data['linked_tickets'] = linked_tickets
                 return 'sysinfo_report.html', data
             else:
-                if params[0] in ['sysinfo', 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu',
+                if params[0] in ['sysinfo',
+                                 'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu', 'sysinfo_locale', 'sysinfo_network',
                                  'fast_protect_version_info', 'exception', 'memory_regions', 'modules', 'threads',
                                  'sysinfo_rawdata']:
                     return params[0] + '.html', data

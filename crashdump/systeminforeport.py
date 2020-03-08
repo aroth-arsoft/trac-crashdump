@@ -10,7 +10,7 @@ from datetime import datetime
 
 from arsoft.inifile import IniFile
 from crashdump.xmlreport import XMLReport
-
+from utils import language_from_qlocale_language_enum, country_from_qlocale_country_enum, script_from_qlocale_script_enum
 
 class _Terra3DDirectories(object):
     _dirlist = [
@@ -156,6 +156,96 @@ class _SystemInfoCPU(object):
     def __iter__(self):
         return iter(self._values)
 
+class _SystemInfoLocale(object):
+    _itemlist = [
+        ('language', 'Language', int, language_from_qlocale_language_enum),
+        ('country', 'Country', int, country_from_qlocale_country_enum),
+        ('script', 'Script', int, script_from_qlocale_script_enum),
+        ('timezoneIanaId', 'Timezone', str, None),
+        ]
+
+    class _item(object):
+        def __init__(self, name, description, value, convert_func):
+            self.name = name
+            self.description = description
+            self.rawvalue = value
+            self.convert_func = convert_func
+            if self.convert_func is None:
+                self.value = value
+            else:
+                self.value = self.convert_func(value)
+
+        def __str__(self):
+            return '%s=%s' % (self.name, self.value)
+
+    def __init__(self, owner, section, key_path, default_value):
+        self._values = []
+        for name, description, itemtype, convert_func in self._itemlist:
+            if itemtype == bool:
+                value = section.getAsBoolean(name, default=False)
+            elif itemtype == int:
+                value = section.getAsInteger(name, default=0)
+            else:
+                value = section.get(name, default=default_value)
+            self._values.append(_SystemInfoLocale._item(name, description, value, convert_func))
+
+    def __getitem__(self, name):
+        for item in self._values:
+            if item.name == name:
+                return item
+        return None
+
+    def __iter__(self):
+        return iter(self._values)
+
+class _SystemInfoNetwork(object):
+    class _address(object):
+        def __init__(self, section, prefix):
+            self.addr = section.get(prefix + 'addr', None)
+            self.netmask = section.get(prefix + 'netmask', None)
+            self.broadcast = section.get(prefix + 'broadcast', None)
+            self.flags = section.getAsInteger(prefix + 'flags', default=0)
+
+        def __str__(self):
+            if self.addr is None or not self.addr:
+                return 'N/A'
+            if self.netmask is not None and self.netmask:
+                return str(self.addr) + '/' + str(self.netmask)
+            else:
+                return str(self.addr)
+
+    class _interface(object):
+        def __init__(self, section, prefix):
+            self.index = section.getAsInteger(prefix + 'index', default=0)
+            self.platform = section.getAsInteger(prefix + 'platform', default=0)
+            self.name = section.get(prefix + 'platform', default=None)
+            self.description = section.get(prefix + 'description', default=None)
+            self.type = section.getAsInteger(prefix + 'type', default=0)
+            self.status = section.getAsInteger(prefix + 'status', default=0)
+            self.hwaddr = section.get(prefix + 'hwaddr', default=None)
+            addrsize = section.getAsInteger(prefix + 'addr\\size', default=0)
+            self.addr = []
+            for i in range(1, addrsize + 1):
+                self.addr.append(_SystemInfoNetwork._address(section, prefix + 'addr\\%i\\' % i))
+
+        def __str__(self):
+            return '%s={%s, %s}' % (self.name, self.hwaddr, self.addr)
+
+    def __init__(self, owner, section, key_path, default_value):
+        self._interfaces = []
+        size = section.getAsInteger('Interface\\size', default=0)
+        for i in range(1, size + 1):
+            self._interfaces.append(_SystemInfoNetwork._interface(section, 'Interface\\%i\\' % i))
+
+    def __getitem__(self, name):
+        for item in self._interfaces:
+            if item.name == name:
+                return item
+        return None
+
+    def __iter__(self):
+        return iter(self._interfaces)
+
 class SystemInfoReport(object):
     _plain_arrays = ['OpenGLExtensions/Extension']
     _tuples = {
@@ -166,6 +256,8 @@ class SystemInfoReport(object):
 
         'terra3d-dirs': _Terra3DDirectories,
         'CPU': _SystemInfoCPU,
+        'locale': _SystemInfoLocale,
+        'Network': _SystemInfoNetwork,
         }
     _dicts = ['Environment']
 
@@ -308,7 +400,11 @@ class SystemInfoReport(object):
         self._ini.save(filename)
 
 if __name__ == '__main__':
-    if 0:
+    if len(sys.argv) < 2:
+        print('No system info report file(s) specified')
+        sys.exit(1)
+
+    if 1:
         sysinfo = SystemInfoReport(sys.argv[1])
     else:
         xmlreport = XMLReport(sys.argv[1])
@@ -330,7 +426,17 @@ if __name__ == '__main__':
     #print('Win32' if sysinfo.is_platform_windows else 'Posix')
     #for dir in sysinfo['terra3d-dirs']:
     #    print('%s=%s' % (dir.description, dir.value))
-    for item in sysinfo['CPU']:
-        print('%s=%s' % (item.description, item.value))
+    #for item in sysinfo['CPU']:
+        #if item.description is None:
+            #print('%s=%s (internal)' % (item.name, item.value))
+        #else:
+            #print('%s=%s' % (item.description, item.value))
     #print(sysinfo['terra3d-dirs']['DataFileDirectory'])
+    #for item in sysinfo['locale']:
+        #print('%s=%s' % (item.description, item.value))
+
+    for item in sysinfo['Network']:
+        print('%s=%s' % (item.description, item.hwaddr))
+        for addr in item.addr:
+            print('  %s' % (addr))
 

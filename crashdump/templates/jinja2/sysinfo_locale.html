@@ -1,0 +1,5 @@
+<table class="properties">
+    {% for item in sysinfo_report['locale'] %}
+        <tr><th>${item.description}</th><td>${item.value}</td></tr>
+    {% endfor %}
+</table>
