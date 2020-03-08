@@ -88,9 +88,9 @@
 <!-- close the crashdump yellow box -->
 </div>
 
-<a name="crashdump"/>
-<div id="crashdump">
-<h2 class="foldable" id="crash_dump_info">Crash dump information</h2>
+<a name="crash_dump_info"/>
+<div id="crash_dump_info" class="crashdump_box">
+<h2 class="foldable">Crash dump information</h2>
 <table class="properties">
 <tr><th>Application&nbsp;file</th><td class="fullrow">${object['applicationfile']}</td></tr>
 <tr><th>Command&nbsp;line</th><td class="fullrow">
@@ -173,7 +173,7 @@
 {% if system_info %}
 <a name="sysinfo"/>
 <div id="view___sysinfo" class="collapsed crashdump_box">
-<h2 class="delayfoldable" id='late_sysinfo'>System information</h2>
+<h2 class="delayfoldable">System information</h2>
 </div>
 {% endif %}
 
@@ -226,6 +226,12 @@
 {% if memory_blocks %}
 <div id="view___memory_blocks" class="collapsed crashdump_box">
 <h2 class="delayfoldable">Memory blocks</h2>
+</div>
+{% endif %}
+
+{% if file_info %}
+<div id="view___file_info" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Processing log</h2>
 </div>
 {% endif %}
 

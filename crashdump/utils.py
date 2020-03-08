@@ -47,11 +47,29 @@ def hex_format(number, prefix='0x', width=None, bits=None):
     else:
         return _hex_format(number, prefix, width, bits)
 
+def addr_format(number, prefix='0x', bits=64):
+    if number == 0:
+        return 'NULL'
+    elif number < 256:
+        return hex_format(number, 'NULL+' + prefix, bits)
+    else:
+        return hex_format(number, prefix, bits)
+
 def addr_format_64(number, prefix='0x'):
-    return hex_format(number, prefix, bits=64)
+    if number == 0:
+        return 'NULL'
+    elif number < 256:
+        return hex_format(number, 'NULL+' + prefix, bits=64)
+    else:
+        return hex_format(number, prefix, bits=64)
 
 def addr_format_32(number, prefix='0x'):
-    return hex_format(number, prefix, bits=32)
+    if number == 0:
+        return 'NULL'
+    elif number < 256:
+        return hex_format(number, 'NULL+' + prefix, bits=32)
+    else:
+        return hex_format(number, prefix, bits=32)
 
 def exception_code(platform_type, code, name):
     from genshi.builder import tag

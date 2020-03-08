@@ -1126,6 +1126,10 @@ class XMLReport(object):
     
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print('No crash report XML file(s) specified')
+        sys.exit(1)
+
     xmlreport = XMLReport(sys.argv[1])
     #print(xmlreport.crash_info)
     #print(xmlreport.system_info)
@@ -1185,7 +1189,7 @@ if __name__ == '__main__':
 
     #dump_report(xmlreport, 'crash_info')
     #dump_report(xmlreport, 'system_info')
-    #dump_report(xmlreport, 'file_info')
+    dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')
     #print('machine_type=%s' % xmlreport.fast_protect_system_info.machine_type)
@@ -1197,7 +1201,7 @@ if __name__ == '__main__':
         #print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
     #dump_report(xmlreport, 'memory_blocks')
-    dump_report(xmlreport, 'memory_regions')
+    #dump_report(xmlreport, 'memory_regions')
     
     #dump_report(xmlreport, 'exception')
 

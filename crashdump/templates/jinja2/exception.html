@@ -17,37 +17,37 @@
 {% endif %}
 </td></tr>
 {% if assertion %}
+{% if assertion.expression %}
 <tr><th>Expression</th><td class="fullrow">${assertion.expression}</td></tr>
+{% endif %}
+{% if assertion.function %}
 <tr><th>Function</th><td class="fullrow">${assertion.function}</td></tr>
+{% endif %}
+{% if assertion.source %}
 <tr><th>Source</th><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
 {% endif %}
+{% endif %}
 {% if simplified_info %}
-<tr><th>Missing symbols</th><td class="fullrow">
 {% if simplified_info.missing_debug_symbols %}
+<tr><th>Missing symbols</th><td class="fullrow">
 <ol>
     {% for m in simplified_info.missing_debug_symbols %}<li>${m}</li>{% endfor %}
 </ol>
-{% else %}
-<div>N/A</div>
-{% endif %}
 </td></tr>
-<tr><th>Involved functions</th><td class="fullrow">
+{% endif %}
 {% if simplified_info.first_useful_functions %}
+<tr><th>Involved functions</th><td class="fullrow">
 <ol>
     {% for m in simplified_info.first_useful_functions %}<li>${m}</li>{% endfor %}
 </ol>
-{% else %}
-<div>N/A</div>
-{% endif %}
 </td></tr>
-<tr><th>Involved modules</th><td class="fullrow">
+{% endif %}
 {% if simplified_info.first_useful_modules %}
+<tr><th>Involved modules</th><td class="fullrow">
 <ol>
     {% for m in simplified_info.first_useful_modules %}<li>${m}</li>{% endfor %}
 </ol>
-{% else %}
-<div>N/A</div>
-{% endif %}
 </td></tr>
+{% endif %}
 {% endif %}
 </table>

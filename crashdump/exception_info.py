@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
-from crashdump.utils import hex_format
+from crashdump.utils import hex_format, addr_format
 
 _exception_code_names_linux = {
     1: 'SIGHUP',
@@ -2173,11 +2173,11 @@ def _exception_info_linux(ex):
     ret = ex.name + '(%s)' % hex_format(ex.code)
     if ex.code == 11: # SIGSEGV
         if signal_code == 1: # SEGV_MAPERR
-            ret += ' address %s not mapped' % hex_format(ex.address)
+            ret += ' address %s not mapped' % addr_format(ex.address)
         elif signal_code == 2: # SEGV_ACCERR
-            ret += ' address %s invalid permissions' % hex_format(ex.address)
+            ret += ' address %s invalid permissions' % addr_format(ex.address)
         elif signal_code == 3: # SEGV_BNDERR
-            ret += ' address %s failed address bound checks' % hex_format(ex.address)
+            ret += ' address %s failed address bound checks' % addr_format(ex.address)
     else:
         ret += ' code %i, errno %i' % (signal_code, signal_errno)
     return ret
@@ -2195,7 +2195,7 @@ def _exception_info_win32(ex):
         ret = "access violation (%s) %s at %s flags %s" % \
             (hex_format(ex.code), 
                 ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
-                hex_format(address),
+                addr_format(address),
                 hex_format(ex.flags))
     elif ex.code == 0xC0000006: # EXCEPTION_IN_PAGE_ERROR:
         readwrite_flag = ex.params[0] if len(ex.params) >= 1 else 0
@@ -2205,12 +2205,12 @@ def _exception_info_win32(ex):
             (hex_format(ex.code), 
                 hex_format(ntstatus_code),
                 ("read" if (readwrite_flag == 0) else ('write' if (readwrite_flag == 1) else ('DEP' if readwrite_flag == 8 else "unknown"))),
-                hex_format(address),
+                addr_format(address),
                 hex_format(ex.flags))
     else:
         ret = "%s (%s) at %s flags %s" % \
             (ex.name, hex_format(ex.code), 
-                hex_format(ex.address),
+                addr_format(ex.address),
                 hex_format(ex.flags))
     return ret
 
