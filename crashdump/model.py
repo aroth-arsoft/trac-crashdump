@@ -4,6 +4,7 @@
 
 import re
 import copy
+import os
 from trac.resource import Resource, ResourceNotFound
 from trac.util.translation import _
 from trac.util.datefmt import from_utimestamp, to_utimestamp, utc, utcmax
@@ -521,6 +522,25 @@ class CrashDump(object):
                 ret = True
         return ret
 
+    def delete(self, dumpdata_dir):
+        ret = False
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+
+            ret = CrashDump._delete_crash_files(self, dumpdata_dir)
+
+            sql = "DELETE FROM crashdump_change WHERE crash='%s'" % self.id
+            cursor = db.cursor()
+            sql = "DELETE FROM crashdump_ticket WHERE crash='%s'" % self.id
+            cursor.execute(sql)
+            sql = "DELETE FROM crashdump_stack WHERE crash='%s'" % self.id
+            cursor.execute(sql)
+            # finally delete the crash itself
+            sql = "DELETE FROM crashdump WHERE uuid='%s'" % self.uuid
+            cursor.execute(sql)
+
+        return ret
+
     @property
     def changes(self):
         if self._changes is None:
@@ -543,7 +563,8 @@ class CrashDump(object):
         return CrashDump.query(env=env, threshold=(column, threshold))
 
     @staticmethod
-    def purge_old_data(env, threshold, column='crashtime'):
+    def _delete_crash_files(crashobj, dumpdata_dir):
+        ret = True
         _crash_file_fields = [
                 'minidumpfile',
                 'minidumpreporttextfile',
@@ -554,19 +575,32 @@ class CrashDump(object):
                 'coredumpreportxmlfile',
                 'coredumpreporthtmlfile',
             ]
-        dumpdata_dir = os.path.join(env.path, self.dumpdata_dir)
-        crashes = CrashDump.query(env=env, threshold=(column, threshold))
-        for crash in crashes:
-            crash_dir = os.path.join(dumpdata_dir, crash.uuid)
-            for field in _crash_file_fields:
-                if crash[field]:
-                    crash_file = os.path.join(crash_dir, crash[field])
-                    if os.path.exists(crash_file):
+        crash_dir = os.path.join(dumpdata_dir, crashobj.uuid)
+        for field in _crash_file_fields:
+            if crashobj[field]:
+                crash_file = os.path.join(crash_dir, crashobj[field])
+                if os.path.isfile(crash_file):
+                    try:
                         os.remove(crash_file)
-            if os.path.isdir(crash_dir):
+                    except:
+                        ret = False
+        if os.path.isdir(crash_dir):
+            try:
                 import shutil
                 shutil.rmtree(crash_dir)
+            except:
+                ret = False
+        return ret
 
+
+    @staticmethod
+    def purge_old_data(env, dumpdata_dir, threshold, column='crashtime'):
+        ret = True
+        crashes = CrashDump.query(env=env, threshold=(column, threshold))
+        for crashobj in crashes:
+            if not CrashDump._delete_crash_files(crashobj, dumpdata_dir):
+                ret = False
+        return ret
 
 
 class CrashDumpStackFrame(object):

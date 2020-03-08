@@ -100,7 +100,7 @@ class CrashDumpModule(Component):
             [TracQuery#UsingTracLinks Trac links].
             (''since 0.12'')""")
 
-    nav_url  = Option('crashdump', 'main_page', '/crashdump/',
+    nav_url  = Option('crashdump', 'main_page', '/crash_upload',
                       'The url of the crashes main page to which the trac nav '
                       'entry should link; if empty, no entry is created in '
                       'the nav bar. This may be a relative url.')
@@ -123,7 +123,7 @@ class CrashDumpModule(Component):
     def get_navigation_items(self, req):
         if self.nav_url:
             yield ('mainnav', 'crashes',
-                   tag.a('Crashes', href=self.nav_url))
+                   tag.a('Upload Crash', href=self.nav_url))
 
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
@@ -208,11 +208,6 @@ class CrashDumpModule(Component):
     def match_request(self, req):
         if not req.path_info.startswith('/crash'):
             return False
-
-        if req.path_info.startswith('/crash_upload'):
-            req.args['action'] = 'upload'
-            req.args['params'] = None
-            return True
 
         ret = False
         path_info = req.path_info[6:]
@@ -401,9 +396,7 @@ class CrashDumpModule(Component):
     def process_request(self, req):
         action = req.args.get('action', 'view')
         start = time.time()
-        if action == 'upload':
-            pass
-        elif 'crashuuid' in req.args:
+        if 'crashuuid' in req.args:
             crashobj = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
             if not crashobj:
                 raise ResourceNotFound(_("Crash %(id)s does not exist.",
@@ -531,20 +524,14 @@ class CrashDumpModule(Component):
                     return self._send_data(req, fast_protect_system_info.rawdata.raw, filename=filename)
             raise ResourceNotFound(_("No system information available for crash %(uuid)s.", uuid=str(crashobj.uuid)))
 
-        elif action == 'upload':
-            data = {}
-            submit_href = req.href + '/submit'
-            data.update({'action': action,
-                        'params': params,
-                        'submit_href': submit_href,
-                        })
-            if params is None:
-                add_script_data(req, {'comments_prefs': self._get_prefs(req)})
-                add_script(req, 'crashdump/crashdump.js')
-                add_stylesheet(req, 'crashdump/crashdump.css')
+        elif action == 'delete':
+            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+            add_script(req, 'crashdump/crashdump.js')
+            add_stylesheet(req, 'crashdump/crashdump.css')
 
-            return 'upload.html', data
-
+            data = {'id': crashobj.id, 'uuid': crashobj.uuid }
+            crashobj.delete(self.dumpdata_dir)
+            return 'deleted.html', data
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':

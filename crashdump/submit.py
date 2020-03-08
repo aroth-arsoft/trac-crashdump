@@ -13,7 +13,8 @@ try:
 except ImportError:  # Trac 1.3.1+
     from trac.web.api import HTTPInternalServerError
 
-from trac.web.chrome import ITemplateProvider
+from trac.web.chrome import ITemplateProvider, add_script, add_stylesheet
+
 from trac.config import Option, IntOption, BoolOption, PathOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version
@@ -101,6 +102,8 @@ class CrashDumpSubmit(Component):
         elif req.method == 'GET' and (req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities'):
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return True
+        elif (req.method == 'GET' or req.method == 'POST') and (req.path_info == '/crashdump/crash_upload' or req.path_info == '/crash_upload'):
+            return True
         else:
             self.log.debug('match_request: %s %s', req.method, req.path_info)
             return False
@@ -144,6 +147,20 @@ class CrashDumpSubmit(Component):
         if req.method != 'HEAD':
             req.write(body)
         raise RequestDone
+
+    def _manual_upload_result(self, req, error=None):
+        data = {}
+        action = 'upload'
+        params = None
+        submit_href = req.href + '/submit'
+        data.update({'action': action,
+                    'params': params,
+                    'submit_href': submit_href,
+                    'upload_error': error,
+                    })
+        add_script(req, 'crashdump/crashdump.js')
+        add_stylesheet(req, 'crashdump/crashdump.css')
+        return 'upload.html', data
 
     def _find_first_component_from_list(self, possible_components):
         ret = None
@@ -229,6 +246,8 @@ class CrashDumpSubmit(Component):
         return self._find_first_component_from_list(possible_components)
 
     def _find_milestone(self, productversion, producttargetversion):
+        if producttargetversion is None:
+            return None
         possible_versions = []
         v_elems = producttargetversion.split('.')
         while len(v_elems) < 4:
@@ -240,6 +259,8 @@ class CrashDumpSubmit(Component):
         return self._find_first_milestone_from_list(possible_versions)
 
     def _find_version(self, productversion, producttargetversion):
+        if productversion is None:
+            return None
         possible_versions = []
         v_elems = productversion.split('.')
         while len(v_elems) < 4:
@@ -255,6 +276,8 @@ class CrashDumpSubmit(Component):
         return self._find_first_version_from_list(possible_versions)
 
     def _apply_username_replacements(self, username):
+        if username is None:
+            return None
         self.log.debug('CrashDumpSubmit _apply_username_replacements in=\'%s\'' % username)
         ret = username
         ret_lower = username.lower()
@@ -273,7 +296,8 @@ class CrashDumpSubmit(Component):
         return ret
 
     def pre_process_request(self, req, handler):
-        if req.path_info != '/crashdump/submit' and req.path_info != '/submit':
+        if req.path_info != '/crashdump/submit' and req.path_info != '/submit' and \
+            req.path_info != '/crashdump/crash_upload' and req.path_info != '/crash_upload':
             return handler
 
         self.log.debug('CrashDumpSubmit pre_process_request: %s %s %s', req.method, req.path_info, handler)
@@ -301,6 +325,8 @@ class CrashDumpSubmit(Component):
         if req.path_info == '/crashdump/submit' or req.path_info == '/submit':
             self.log.debug('CrashDumpSubmit process_request_submit: %s %s', req.method, req.path_info)
             return self.process_request_submit(req)
+        elif req.path_info == '/crashdump/crash_upload' or req.path_info == '/crash_upload':
+            return self.process_request_crash_upload(req)
         elif req.path_info == '/crashdump/list' or req.path_info == '/crashlist' or req.path_info == '/crashdump/submit/crashlist' or req.path_info == '/submit/crashlist':
             return self.process_request_crashlist(req)
         elif req.path_info == '/crashdump/capabilities' or req.path_info == '/capabilities' or req.path_info == '/crashdump/submit/capabilities' or req.path_info == '/submit/capabilities':
@@ -329,6 +355,9 @@ class CrashDumpSubmit(Component):
         else:
             body = 'OK'
         return self._success_response(req, body=body.encode('utf-8'), headers=headers)
+
+    def process_request_crash_upload(self, req):
+        return self._manual_upload_result(req, error=None)
 
     def escape_ticket_values(self, values):
         ret = {}
@@ -391,11 +420,11 @@ class CrashDumpSubmit(Component):
                 if isinstance(file, cgi.FieldStorage):
                     filename = os.path.basename(file.filename)
                     self.log.debug('got file %s' % filename)
-                    match = re.match(r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.([0-9a-zA-Z\.]+)', filename)
+                    match = re.match(r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.([0-9a-zA-Z\.]+)$', filename)
                     if match:
                         new_id_str = match.groups()[0]
                         ext = match.groups()[1]
-                        self.log.debug('got file mtach %s' % new_id_str)
+                        self.log.debug('got file match %s' % new_id_str)
                         if id_str is None:
                             id_str = new_id_str
                         elif id_str == new_id_str:
@@ -406,11 +435,14 @@ class CrashDumpSubmit(Component):
                             minidump = file
                         elif ext == 'dmp.xml':
                             minidumpreportxml = file
-                        self.log.debug('got id %s' % id_str)
+                        self.log.debug('got id %s, ext %s' % (id_str, ext))
                 else:
                     self.log.debug('skip file field %s-%s' % (type(file), file) )
             if not id_str:
-                return self._error_response(req, status=HTTPInternalServerError.code, body='Cannot determine crash identifier from file upload.')
+                return self._manual_upload_result(req, error='Cannot determine crash identifier from file upload. The files uploaded must have a UUID in its name and the extentsion must either be .dmp or .dmp.xml.')
+            elif minidump is None and minidumpreportxml is None:
+                return self._manual_upload_result(req, error='Uploaded files do not contain a valid crash dump information.')
+
             self.log.debug('got crashid %s' % id_str)
             if minidump is not None:
                 req.args['minidump'] = minidump
@@ -489,6 +521,9 @@ class CrashDumpSubmit(Component):
             failure_message = errmsg
         ok, crashobj['minidumpreporttextfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreport', force)
         ok, crashobj['minidumpreportxmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
+        # accept XML crash upload only for manual uploads
+        if manual_upload and ok:
+            result = True
         ok, crashobj['minidumpreporthtmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
         ok, crashobj['coredumpfile'], errmsg = self._store_dump_file(uuid, req, 'coredump', force)
         if ok:
@@ -701,16 +736,19 @@ application was running as part of %(productname)s (%(productcodename)s) version
                             links.save(author=crashobj['reporter'], db=db)
 
             if result:
-                headers = {}
-                linked_ticket_header = []
-                for tkt_id in linked_tickets:
-                    linked_ticket_header.append('#%i:%s' % (tkt_id, req.abs_href.ticket(tkt_id)))
-                if linked_ticket_header:
-                    headers['Linked-Tickets'] = ';'.join(linked_ticket_header)
-                headers['Crash-URL'] = req.abs_href('crash', str(uuid))
-                headers['CrashId'] = str(crashid)
+                if manual_upload:
+                    req.redirect(req.abs_href('crash', str(uuid)))
+                else:
+                    headers = {}
+                    linked_ticket_header = []
+                    for tkt_id in linked_tickets:
+                        linked_ticket_header.append('#%i:%s' % (tkt_id, req.abs_href.ticket(tkt_id)))
+                    if linked_ticket_header:
+                        headers['Linked-Tickets'] = ';'.join(linked_ticket_header)
+                    headers['Crash-URL'] = req.abs_href('crash', str(uuid))
+                    headers['CrashId'] = str(crashid)
 
-                return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
+                    return self._success_response(req, body='Crash dump %s uploaded successfully.' % uuid, headers=headers)
             elif new_crash:
                 return self._error_response(req, status=HTTPInternalServerError.code, body='Failed to add crash dump %s to database' % uuid)
             else:

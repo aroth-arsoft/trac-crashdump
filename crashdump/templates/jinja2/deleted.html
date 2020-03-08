@@ -1,0 +1,31 @@
+# extends 'layout.html'
+<!DOCTYPE html>
+<html>
+  <head>
+    # block head
+    ${ super() }
+    <title>
+    # block title
+    CrashId#${id} - ${uuid} - Deleted
+    # endblock title
+    </title>
+    <script type="text/javascript">
+        crashdump_docReady();
+    </script>
+    # endblock head
+  </head>
+  <body>
+    # block content
+        <div id="crashdump">
+            <h2>
+                <a href="${href('crash', uuid)}" class="trac-id">CrashId#${id} - {${uuid}}</a>
+                <span class="trac-status">
+                Deleted
+                </span>
+            </h2>
+        </div>
+
+    # endblock content
+
+  </body>
+</html>

@@ -3,6 +3,7 @@
 <html>
   <head>
     # block head
+    ${ super() }
     <title>
         # block title
         Crash upload
@@ -11,11 +12,19 @@
     <script type="text/javascript">
         crashdump_docReady();
     </script>
-    # end block head
+    # endblock head
   </head>
   <body>
     # block content
-        <a name="purge_old_data"/>
+    {% if upload_error %}
+    <div id="content" class="error">
+      <h1>Upload Error</h1>
+      <p class="message">${upload_error}</p>
+    </div>
+    {% endif %}
+
+        <a name="upload_crash"/>
+        <div id="upload_crash" class="crashdump_box">
         <h2 class="foldable" id='upload_crash'>Upload crash</h2>
         <form enctype="multipart/form-data" action="${submit_href}" name="submit" method="post">
             ${jmacros.form_token_input()}
@@ -26,6 +35,8 @@
                 Upload a new crash for review:
             </div>
             <div>
+            <input type="checkbox" id="force" name="force" value="1">
+            <label for="force">Overwrite existing crash information</label><br>
             <label for="files">Crash dump file(s):</label>
             <input type="file" id="files" name="files" multiple />
             </div>
@@ -34,6 +45,7 @@
             </div>
             </fieldset>
         </form>
+        </div>
     # endblock content
   </body>
 </html>
