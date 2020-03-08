@@ -101,9 +101,11 @@
     <div>N/A</div>
     {% endif %}
 </td></tr>
-{% if object['minidumpfile'] %}
+{% if object.has_minidump %}
     <tr><th>Minidump file</th><td class="fullrow">
+        {% if object['minidumpfile'] %}
         <a href="${href('crash', object.uuid, 'minidump_raw')}" title="${object.uuid} (${ format_size(minidumpfile_size) })">Download</a>
+        {% endif %}
         {% if object['minidumpreporttextfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'minidump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
         {% endif %}
@@ -115,9 +117,11 @@
         {% endif %}
     </td></tr>
 {% endif %}
-{% if object['coredumpfile'] %}
+{% if object.has_coredump %}
     <tr><th>Coredump file</th><td class="fullrow">
+        {% if object['coredumpfile'] %}
         <a href="${href('crash', object.uuid, 'coredump_raw')}" title="${object.uuid} (${ format_size(coredumpfile_size) })">Download</a>
+        {% endif %}
         {% if object['coredumpreporttextfile'] %}
             &nbsp;<a href="${href('crash', object.uuid, 'coredump_text')}" title="${object.uuid} (${ format_size(reporttextfile_size) })">Text report</a>
         {% endif %}

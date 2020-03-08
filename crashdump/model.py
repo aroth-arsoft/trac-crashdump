@@ -137,6 +137,9 @@ class CrashDump(object):
 
     exists = property(lambda self: self.id is not None)
 
+    has_minidump = property(lambda self: self['minidumpfile']  or self['minidumpreporttextfile']  or self['minidumpreportxmlfile']  or self['minidumpreporthtmlfile'] )
+    has_coredump = property(lambda self: self['coredumpfile']  or self['coredumpreporttextfile']  or self['coredumpreportxmlfile']  or self['coredumpreporthtmlfile'] )
+
     def __getitem__(self, name):
         return self.values.get(name)
 
