@@ -4,6 +4,7 @@
 
 import sys
 import base64
+import struct
 from datetime import datetime, tzinfo, timedelta
 from uuid import UUID
 from lxml import etree
@@ -132,6 +133,56 @@ class MemoryBlock(object):
             offset += 16
         return ret
 
+    def __getitem__(self, index):
+        return self._memory[index]
+
+class MemObject(object):
+    def __init__(self, memory, is_64_bit):
+        self._memory = memory
+        self._is_64_bit = is_64_bit
+
+    def _read_int32(self, offset):
+        if offset >= len(self._memory):
+            raise IndexError(offset)
+        return struct.unpack('I', self._memory[offset:offset+4])[0]
+
+    def _read_ptr(self, offset):
+        if offset >= len(self._memory):
+            raise IndexError(offset)
+        if self._is_64_bit:
+            return struct.unpack('Q', self._memory[offset:offset+8])[0]
+        else:
+            d = struct.unpack('I', self._memory[offset:offset+4])[0]
+            return struct.unpack('I', self._memory[offset:offset+4])[0]
+
+# https://en.wikipedia.org/wiki/Win32_Thread_Information_Block
+class Win32_TIB(MemObject):
+    def __init__(self, memory, is_64_bit):
+        MemObject.__init__(self, memory, is_64_bit)
+
+    @property
+    def threadid(self):
+        if self._is_64_bit:
+            return self._read_int32(0x48)
+        else:
+            return self._read_int32(0x24)
+
+    @property
+    def peb_address(self):
+        if self._is_64_bit:
+            return self._read_ptr(0x60)
+        else:
+            return self._read_ptr(0x30)
+
+# https://en.wikipedia.org/wiki/Process_Environment_Block
+# https://ntopcode.wordpress.com/2018/02/26/anatomy-of-the-process-environment-block-peb-windows-internals/
+class Win32_PEB(MemObject):
+    def __init__(self, memory, is_64_bit):
+        MemObject.__init__(self, memory, is_64_bit)
+
+    @property
+    def image_base_address(self):
+        return self._read_ptr(0x10)
 
 class XMLReport(object):
 
@@ -374,6 +425,10 @@ class XMLReport(object):
         self._fast_protect_system_info = None
         self._is_64_bit = None
 
+        self._peb = None
+        self._peb_address = None
+        self._peb_memory_block = None
+
         if self._filename:
             try:
                 self._xml = etree.parse(self._filename)
@@ -509,6 +564,8 @@ class XMLReport(object):
     class Thread(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.Thread, self).__init__(owner)
+            self._teb_memory_block = None
+            self._teb = None
 
         @property
         def stackdump(self):
@@ -527,6 +584,32 @@ class XMLReport(object):
                     ret = st
                     break
             return ret
+
+        @property
+        def teb_memory_block(self):
+            if self._teb_memory_block is None:
+                self._teb_memory_block = self._owner._get_memory_block(self.teb)
+            return self._teb_memory_block
+
+        @property
+        def teb_data(self):
+            if self._teb is None:
+                m = self.teb_memory_block
+                if m is None:
+                    return None
+                data = m.get_addr(self.teb, 64)
+                if data:
+                    self._teb = Win32_TIB(data, self._owner.is_64_bit)
+            return self._teb
+
+        @property
+        def peb_address(self):
+            t = self.teb_data
+            print('t=%s' % t)
+            if t is not None:
+                return t.peb_address
+            else:
+                return None
 
     class MemoryRegion(XMLReportEntity):
         def __init__(self, owner):
@@ -563,6 +646,20 @@ class XMLReport(object):
                         self._thread_id = thread.id
                         break
             return self._thread_id
+
+        @property
+        def end_addr(self):
+            return self.base + self.size
+
+        def get_addr(self, addr, size):
+            if addr < self.base or addr > self.end_addr:
+                return None
+            offset = addr - self.base
+            actual_size = min(self.size - offset, size)
+            return self.memory[offset:offset+actual_size]
+
+        def __str__(self):
+            return 'num=%i, base=0x%x, size=%i, end=0x%x' % (self.num, self.base, self.size, self.end_addr)
 
     class Handle(XMLReportEntity):
         def __init__(self, owner):
@@ -820,6 +917,13 @@ class XMLReport(object):
     def filename(self):
         return self._filename
 
+    def _get_memory_block(self, addr):
+        for m in self.memory_blocks:
+            if addr >= m.base and addr < m.end_addr:
+                #print('got %x >= %x < %x' % (m.base, addr, m.end_addr))
+                return m
+        return None
+
     @property
     def crash_info(self):
         if self._crash_info is None:
@@ -970,6 +1074,31 @@ class XMLReport(object):
                         m.main_thread = True
                     self._threads.append(m)
         return self._threads
+
+    @property
+    def peb_address(self):
+        if self._peb_address is None:
+            for t in self.threads:
+                self._peb_address = t.peb_address
+                break
+        return self._peb_address
+
+    @property
+    def peb_memory_block(self):
+        if self._peb_memory_block is None:
+            self._peb_memory_block = self._get_memory_block(self.peb_address)
+        return self._peb_memory_block
+
+    @property
+    def peb(self):
+        if self._peb is None:
+            m = self.peb_memory_block
+            if m is None:
+                return None
+            data = m.get_addr(self.peb_address, 64)
+            if data:
+                self._peb = Win32_PEB(data, self.is_64_bit)
+        return self._peb
 
     @property
     def memory_regions(self):
@@ -1189,7 +1318,7 @@ if __name__ == '__main__':
 
     #dump_report(xmlreport, 'crash_info')
     #dump_report(xmlreport, 'system_info')
-    dump_report(xmlreport, 'file_info')
+    #dump_report(xmlreport, 'file_info')
     #dump_report(xmlreport, 'fast_protect_version_info')
     #dump_report(xmlreport, 'fast_protect_system_info')
     #print('machine_type=%s' % xmlreport.fast_protect_system_info.machine_type)
@@ -1200,6 +1329,13 @@ if __name__ == '__main__':
         #print(xmlreport.exception.involved_modules)
         #print(xmlreport.exception.params)
     #dump_report(xmlreport, 'threads')
+
+    print(xmlreport.peb.image_base_address)
+
+    for t in xmlreport.threads:
+        teb = t.teb_data
+        if teb:
+            print(t.id, teb.threadid, teb.peb_address)
     #dump_report(xmlreport, 'memory_blocks')
     #dump_report(xmlreport, 'memory_regions')
     
