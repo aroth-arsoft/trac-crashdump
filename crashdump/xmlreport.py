@@ -174,6 +174,21 @@ class Win32_TIB(MemObject):
         else:
             return self._read_ptr(0x30)
 
+    def tls_slots(self, index):
+        if index < 0 or index >= 64:
+            raise IndexError(index)
+        if self._is_64_bit:
+            return self._read_ptr(0x1480 + (index * 8))
+        else:
+            return self._read_ptr(0xE10 + (index * 4))
+
+class Win32_TLS_Slots(object):
+    def __init__(self, teb):
+        self._teb = teb
+
+    def __getitem__(self, index):
+        return self._teb.tls_slots(index)
+
 # https://en.wikipedia.org/wiki/Process_Environment_Block
 # https://ntopcode.wordpress.com/2018/02/26/anatomy-of-the-process-environment-block-peb-windows-internals/
 class Win32_PEB(MemObject):
@@ -566,6 +581,7 @@ class XMLReport(object):
             super(XMLReport.Thread, self).__init__(owner)
             self._teb_memory_block = None
             self._teb = None
+            self._tls_slots = None
 
         @property
         def stackdump(self):
@@ -597,7 +613,7 @@ class XMLReport(object):
                 m = self.teb_memory_block
                 if m is None:
                     return None
-                data = m.get_addr(self.teb, 64)
+                data = m.get_addr(self.teb, None)
                 if data:
                     self._teb = Win32_TIB(data, self._owner.is_64_bit)
             return self._teb
@@ -610,6 +626,12 @@ class XMLReport(object):
                 return t.peb_address
             else:
                 return None
+
+        @property
+        def tls_slots(self):
+            if self._tls_slots is None:
+                self._tls_slots = Win32_TLS_Slots(self.teb_data)
+            return self._tls_slots
 
     class MemoryRegion(XMLReportEntity):
         def __init__(self, owner):
@@ -651,11 +673,14 @@ class XMLReport(object):
         def end_addr(self):
             return self.base + self.size
 
-        def get_addr(self, addr, size):
+        def get_addr(self, addr, size=None):
             if addr < self.base or addr > self.end_addr:
                 return None
             offset = addr - self.base
-            actual_size = min(self.size - offset, size)
+            if size is None:
+                actual_size = self.size - offset
+            else:
+                actual_size = min(self.size - offset, size)
             return self.memory[offset:offset+actual_size]
 
         def __str__(self):
@@ -1332,10 +1357,15 @@ if __name__ == '__main__':
 
     print(xmlreport.peb.image_base_address)
 
+    slot = xmlreport.fast_protect_version_info.thread_name_tls_slot
+    print('slot index=%i'% slot)
+
     for t in xmlreport.threads:
         teb = t.teb_data
         if teb:
             print(t.id, teb.threadid, teb.peb_address)
+            for i in range(slot + 1):
+                print('  slot[%i]=%x' %(i, t.tls_slots[i]))
     #dump_report(xmlreport, 'memory_blocks')
     #dump_report(xmlreport, 'memory_regions')
     
