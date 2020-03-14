@@ -10,7 +10,7 @@ from uuid import UUID
 from lxml import etree
 
 from crashdump.exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
-from crashdump.utils import format_version_number
+from crashdump.utils import format_version_number, format_memory_usagetype
 
 ZERO = timedelta(0)
 
@@ -26,7 +26,7 @@ class UTC(tzinfo):
     def dst(self, dt):
         return ZERO
 
-class MemoryBlock(object):
+class HexDumpMemoryBlock(object):
     def __init__(self, memory):
         self._memory = memory
         self._hexdump = None
@@ -37,6 +37,9 @@ class MemoryBlock(object):
 
     @property
     def size(self):
+        return len(self._memory)
+
+    def __len__(self):
         return len(self._memory)
 
     @property
@@ -68,6 +71,8 @@ class MemoryBlock(object):
                     self.hex += '  '
                     self.ascii += ' '
                 idx += 1
+        def __str__(self):
+            return '%06x %32s %16s\n' % (self.offset, self.hex, self.ascii)
 
     class HexDump(object):
         def __init__(self, size):
@@ -119,16 +124,22 @@ class MemoryBlock(object):
                 self._generate_raw()
             return self._raw_ascii
 
+        def __str__(self):
+            ret = ''
+            for l in self._lines:
+                ret += str(l)
+            return ret
+
     def _generate_hexdump(self):
         offset = 0
         total_size = len(self._memory)
-        ret = MemoryBlock.HexDump(total_size)
+        ret = HexDumpMemoryBlock.HexDump(total_size)
         while offset < total_size:
             max_row = 16
             remain = total_size - offset
             if remain < 16:
                 max_row = remain
-            line = MemoryBlock.HexDumpLine(offset, self._memory[offset:offset + max_row], max_row)
+            line = HexDumpMemoryBlock.HexDumpLine(offset, self._memory[offset:offset + max_row], max_row)
             ret._lines.append(line)
             offset += 16
         return ret
@@ -136,8 +147,15 @@ class MemoryBlock(object):
     def __getitem__(self, index):
         return self._memory[index]
 
+    def __str__(self):
+        return str(self.hexdump)
+
+    def find(self, needle, start=0):
+        return self._memory.find(needle, start)
+
 class MemObject(object):
-    def __init__(self, memory, is_64_bit):
+    def __init__(self, owner, memory, is_64_bit):
+        self._owner = owner
         self._memory = memory
         self._is_64_bit = is_64_bit
 
@@ -152,13 +170,34 @@ class MemObject(object):
         if self._is_64_bit:
             return struct.unpack('Q', self._memory[offset:offset+8])[0]
         else:
-            d = struct.unpack('I', self._memory[offset:offset+4])[0]
             return struct.unpack('I', self._memory[offset:offset+4])[0]
 
 # https://en.wikipedia.org/wiki/Win32_Thread_Information_Block
 class Win32_TIB(MemObject):
-    def __init__(self, memory, is_64_bit):
-        MemObject.__init__(self, memory, is_64_bit)
+    def __init__(self, owner, memory, is_64_bit):
+        MemObject.__init__(self, owner, memory, is_64_bit)
+        self._tls_slots = None
+        self._tls_array_memory = None
+        self._hexdump = None
+
+    class Win32_TLS_Slots(object):
+        def __init__(self, teb):
+            self._teb = teb
+
+        def __getitem__(self, index):
+            if index < 0 or index >= 64:
+                raise IndexError(index)
+            offset = (0x1480 + (index * 8)) if self._teb._is_64_bit else (0xE10 + (index * 4))
+            #print('teb tls slot at %x' % offset)
+            return self._teb._read_ptr(offset)
+
+    class Win32_TLS_Array(MemObject):
+        def __init__(self, owner, memory, is_64_bit):
+            MemObject.__init__(self, owner, memory, is_64_bit)
+
+        def __getitem__(self, index):
+            offset = (8 * index) if self._is_64_bit else (4 * index)
+            return self._read_ptr(offset)
 
     @property
     def threadid(self):
@@ -174,26 +213,38 @@ class Win32_TIB(MemObject):
         else:
             return self._read_ptr(0x30)
 
-    def tls_slots(self, index):
-        if index < 0 or index >= 64:
-            raise IndexError(index)
+    @property
+    def thread_local_storage_array_address(self):
         if self._is_64_bit:
-            return self._read_ptr(0x1480 + (index * 8))
+            return self._read_int32(0x58)
         else:
-            return self._read_ptr(0xE10 + (index * 4))
+            return self._read_int32(0x2C)
 
-class Win32_TLS_Slots(object):
-    def __init__(self, teb):
-        self._teb = teb
+    @property
+    def thread_local_storage_array(self):
+        if self._tls_array_memory is None:
+            mem = self._owner._get_memory_block(self.thread_local_storage_array_address)
+            if mem is not None:
+                self._tls_array_memory = Win32_TIB.Win32_TLS_Array(self._owner, mem, self._is_64_bit)
+        return self._tls_array_memory
 
-    def __getitem__(self, index):
-        return self._teb.tls_slots(index)
+    @property
+    def tls_slots(self):
+        if self._tls_slots is None:
+            self._tls_slots = Win32_TIB.Win32_TLS_Slots(self)
+        return self._tls_slots
+
+    @property
+    def hexdump(self):
+        if self._hexdump is None:
+            self._hexdump = HexDumpMemoryBlock(self._memory)
+        return self._hexdump
 
 # https://en.wikipedia.org/wiki/Process_Environment_Block
 # https://ntopcode.wordpress.com/2018/02/26/anatomy-of-the-process-environment-block-peb-windows-internals/
 class Win32_PEB(MemObject):
-    def __init__(self, memory, is_64_bit):
-        MemObject.__init__(self, memory, is_64_bit)
+    def __init__(self, owner, memory, is_64_bit):
+        MemObject.__init__(self, owner, memory, is_64_bit)
 
     @property
     def image_base_address(self):
@@ -225,7 +276,7 @@ class XMLReport(object):
                       'image_name', 'module_name', 'module_id',
                       'flags' ]
 
-    _thread_fields = ['id', 'exception', 'name', 'memory', 'start_addr', 'main_thread',
+    _thread_fields = ['id', 'exception', ('name', '_name'), 'memory', 'start_addr', 'main_thread',
                       'create_time', 'exit_time', 'kernel_time', 'user_time',
                       'exit_status', 'cpu_affinity', 'stack_addr',
                       'suspend_count', 'priority_class', 'priority', 'teb', 'tls', 'tib',
@@ -580,8 +631,10 @@ class XMLReport(object):
         def __init__(self, owner):
             super(XMLReport.Thread, self).__init__(owner)
             self._teb_memory_block = None
+            self._teb_memory_region = None
             self._teb = None
             self._tls_slots = None
+            self._thread_name = None
 
         @property
         def stackdump(self):
@@ -608,6 +661,12 @@ class XMLReport(object):
             return self._teb_memory_block
 
         @property
+        def teb_memory_region(self):
+            if self._teb_memory_region is None:
+                self._teb_memory_region = self._owner._get_memory_region(self.teb)
+            return self._teb_memory_region
+
+        @property
         def teb_data(self):
             if self._teb is None:
                 m = self.teb_memory_block
@@ -615,7 +674,7 @@ class XMLReport(object):
                     return None
                 data = m.get_addr(self.teb, None)
                 if data:
-                    self._teb = Win32_TIB(data, self._owner.is_64_bit)
+                    self._teb = Win32_TIB(self._owner, data, self._owner.is_64_bit)
             return self._teb
 
         @property
@@ -629,13 +688,38 @@ class XMLReport(object):
 
         @property
         def tls_slots(self):
-            if self._tls_slots is None:
-                self._tls_slots = Win32_TLS_Slots(self.teb_data)
-            return self._tls_slots
+            return self.teb_data.tls_slots
+
+        @property
+        def name(self):
+            if self._name is not None:
+                return self._name
+            elif self._thread_name is None:
+                tls_slot_index = self._owner.thread_name_tls_slot
+                if tls_slot_index is not None:
+                    teb = self.teb_data
+                    if teb is not None:
+                        addr = teb.tls_slots[tls_slot_index]
+                        self._thread_name = self._owner._read_memory(addr, max_len=16)
+            return self._thread_name
 
     class MemoryRegion(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.MemoryRegion, self).__init__(owner)
+
+        @property
+        def base(self):
+            return self.base_addr
+
+        @property
+        def end_addr(self):
+            return self.base_addr + self.size
+
+        def __str__(self):
+            if self.base_addr != self.alloc_base:
+                return 'base=0x%x, alloc=0x%x, size=%i, end=0x%x, type=%i, protect=%x, state=%x, usage=%s' % (self.base_addr, self.alloc_base, self.size, self.end_addr, self.type, self.protect, self.state, self.usage)
+            else:
+                return 'base=0x%x, size=%i, end=0x%x, type=%i, protect=%x, state=%x, usage=%s' % (self.base_addr, self.size, self.end_addr, self.type, self.protect, self.state, self.usage)
 
     class MemoryRegionUsage(XMLReportEntity):
         def __init__(self, owner, region):
@@ -650,6 +734,12 @@ class XMLReport(object):
                     ret = thread
                     break
             return ret
+
+        def __str__(self):
+            return '(0x%x, %s)' % (self.threadid, format_memory_usagetype(self.usagetype))
+
+        def __repr__(self):
+            return str(self)
 
     class MemoryBlock(XMLReportEntity):
         def __init__(self, owner):
@@ -682,6 +772,15 @@ class XMLReport(object):
             else:
                 actual_size = min(self.size - offset, size)
             return self.memory[offset:offset+actual_size]
+
+        def find(self, needle, start=0):
+            return self.memory.find(needle, start)
+
+        def __len__(self):
+            return len(self.memory)
+
+        def __getitem__(self, index):
+            return self.memory[index]
 
         def __str__(self):
             return 'num=%i, base=0x%x, size=%i, end=0x%x' % (self.num, self.base, self.size, self.end_addr)
@@ -883,9 +982,9 @@ class XMLReport(object):
             value = r[0] if r else None
             if r:
                 if encoding_type == 'base64':
-                    ret = MemoryBlock(base64.b64decode(r[0]))
+                    ret = HexDumpMemoryBlock(base64.b64decode(r[0]))
                 else:
-                    ret = MemoryBlock(str(r[0]))
+                    ret = HexDumpMemoryBlock(str(r[0]))
             else:
                 ret = default_value
         else:
@@ -948,6 +1047,29 @@ class XMLReport(object):
                 #print('got %x >= %x < %x' % (m.base, addr, m.end_addr))
                 return m
         return None
+
+    def _get_memory_region(self, addr):
+        for m in self.memory_regions:
+            if addr >= m.base and addr < m.end_addr:
+                #print('got %x >= %x < %x' % (m.base, addr, m.end_addr))
+                return m
+        return None
+
+    def _read_memory(self, addr, max_len=None):
+        m = self._get_memory_block(addr)
+        if m is not None:
+            return m.get_addr(addr, max_len)
+        else:
+            return None
+
+    def find_in_memory_blocks(self, needle, start=0):
+        ret = []
+        for m in self.memory_blocks:
+            index = m.find(needle, start=start)
+            if index >= 0:
+                #print('got %x >= %x < %x' % (m.base, addr, m.end_addr))
+                ret.append( (m, index) )
+        return ret
 
     @property
     def crash_info(self):
@@ -1094,7 +1216,11 @@ class XMLReport(object):
                 for item in all_subitems:
                     m = XMLReport.Thread(self)
                     for f in XMLReport._thread_fields:
-                        setattr(m, f, XMLReport._get_node_value(item, f))
+                        if isinstance(f, tuple):
+                            f_xml, f_prop = f
+                            setattr(m, f_prop, XMLReport._get_node_value(item, f_xml))
+                        else:
+                            setattr(m, f, XMLReport._get_node_value(item, f))
                     if not self._threads:
                         m.main_thread = True
                     self._threads.append(m)
@@ -1122,7 +1248,7 @@ class XMLReport(object):
                 return None
             data = m.get_addr(self.peb_address, 64)
             if data:
-                self._peb = Win32_PEB(data, self.is_64_bit)
+                self._peb = Win32_PEB(self, data, self.is_64_bit)
         return self._peb
 
     @property
@@ -1264,6 +1390,13 @@ class XMLReport(object):
         return self._fast_protect_version_info
 
     @property
+    def thread_name_tls_slot(self):
+        s = self.fast_protect_version_info
+        if s is None:
+            return None
+        return s.thread_name_tls_slot
+
+    @property
     def fast_protect_system_info(self):
         if self._fast_protect_system_info is None:
             i = XMLReport._get_first_node(self._xml, 'crash_dump/fast_protect_system_info')
@@ -1360,12 +1493,27 @@ if __name__ == '__main__':
     slot = xmlreport.fast_protect_version_info.thread_name_tls_slot
     print('slot index=%i'% slot)
 
+    r = xmlreport.find_in_memory_blocks('Clt')
+    for (m, index) in r:
+        print(m)
+        #print(str(m.hexdump))
+
+
+    #for t in [ xmlreport.threads[0] ]:
     for t in xmlreport.threads:
         teb = t.teb_data
         if teb:
-            print(t.id, teb.threadid, teb.peb_address)
-            for i in range(slot + 1):
-                print('  slot[%i]=%x' %(i, t.tls_slots[i]))
+            #print('%05x - %05x, PEB %x, TLS array %x' % (t.id, teb.threadid, teb.peb_address, teb.thread_local_storage_array_address))
+            #if teb.thread_local_storage_array:
+                #print('%05x - %x' % (t.id, teb.thread_local_storage_array[slot]))
+            #print('%05x - %x' % (t.id, teb.tls_slots[1]))
+            #print('  %05x - %s' % (t.id, t.teb_memory_region))
+            print('  %05x - %s thread name at %x' % (t.id, t.name, teb.tls_slots[slot]))
+            #print(teb.hexdump)
+            #print('%i - %x, %x, %x' % (t.id, teb.threadid, teb.peb_address, teb.thread_local_storage_array))
+
+            #for i in range(slot + 1):
+                #print('  slot[%i]=%x' %(i, t.tls_slots[i]))
     #dump_report(xmlreport, 'memory_blocks')
     #dump_report(xmlreport, 'memory_regions')
     
