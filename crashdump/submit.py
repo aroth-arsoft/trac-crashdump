@@ -158,9 +158,11 @@ class CrashDumpSubmit(Component):
                     'submit_href': submit_href,
                     'upload_error': error,
                     })
+        if not crashdump_use_jinja2:
+            add_script(req, 'common/js/folding.js')
         add_script(req, 'crashdump/crashdump.js')
         add_stylesheet(req, 'crashdump/crashdump.css')
-        return 'upload.html', data
+        return 'upload.html', data, None
 
     def _find_first_component_from_list(self, possible_components):
         ret = None

@@ -19,9 +19,15 @@
 </ol>
 </td></tr>
 <py:if test="assertion">
+<py:if test="assertion.expression">
 <tr><th>Expression</th><td class="fullrow">${assertion.expression}</td></tr>
+</py:if>
+<py:if test="assertion.function">
 <tr><th>Function</th><td class="fullrow">${assertion.function}</td></tr>
+</py:if>
+<py:if test="assertion.source">
 <tr><th>Source</th><td class="fullrow">${format_source_line(assertion.source, assertion.line) }</td></tr>
+</py:if>
 </py:if>
 <py:if test="simplified_info">
 <tr><th>Missing symbols</th><td class="fullrow">

@@ -9,23 +9,7 @@
   <head>
     <title>CrashId#${object.id} - ${object.uuid}</title>
     <script type="text/javascript">
-    function extra_click(node, expanded) {
-        if (expanded == true) {
-            var url = window.location.href;
-            var path = window.location.pathname;
-            var target_url = (path + '/view/').replace('//', '/') + node.id.replace('___', '/');
-            $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
-            //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url);
-            //alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
-        } else {
-            $( '#' + node.id).children('div#placeholder').text('');
-        }
-    }
-      jQuery(document).ready(function($) {
-        $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
-        $(".foldable").delayLoadFolding(false, true, extra_click, '');
-      });
+        crashdump_docReady();
     </script>
   </head>
   <body>
@@ -99,9 +83,9 @@
 <!-- close the crashdump yellow box -->
 </div>
 
-<div id="crashdump">
-<h2 class="foldable" id="crash_dump_info">Crash dump information</h2>
-<a name="crash_info"/>
+<a name="crash_dump_info"/>
+<div id="crash_dump_info" class="crashdump_box">
+<h2 class="foldable">Crash dump information</h2>
 <table class="properties">
 <tr><th>Application&nbsp;file</th><td class="fullrow">${object['applicationfile']}</td></tr>
 <tr><th>Command&nbsp;line</th><td class="fullrow">
@@ -144,16 +128,31 @@
 <py:if test="crash_info">
 <tr><th>Report&nbsp;FQDN</th><td class="fullrow">${crash_info.report_fqdn}</td></tr>
 <tr><th>Report&nbsp;username</th><td class="fullrow">${crash_info.report_username}</td></tr>
-<tr><th>Symbol&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul></td></tr>
-<tr><th>Image&nbsp;directories</th><td class="fullrow"><ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul></td></tr>
+<tr><th>Symbol&nbsp;directories</th><td class="fullrow">
+<div id="symboldirs" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show symbol directories</h4>
+<ul class="dirlist"><py:for each="e in crash_info.symbol_directories"><li>${e}</li></py:for></ul>
+</div>
+</td></tr>
+<tr><th>Image&nbsp;directories</th><td class="fullrow">
+<div id="imagedirs" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show image directories</h4>
+<ul class="dirlist"><py:for each="e in crash_info.image_directories"><li>${e}</li></py:for></ul>
+</div>
+</td></tr>
 <tr><th>Path</th><td class="fullrow">
-<ol class="path">
+<div id="path" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show path</h4>
+<ul class="path">
 <py:for each="p in crash_info.path">
     <li>${p}</li>
 </py:for>
-</ol>
+</ul>
+</div>
 </td></tr>
 <tr><th>Environment</th><td class="fullrow">
+<div id="environment" class="collapsed crashdump_expand_box">
+<h4 class="foldable">Show environment</h4>
 <ul class="environment">
 <py:for each="k in sorted(crash_info.environment.keys())">
     <py:if test="k.lower() != 'path'">
@@ -161,94 +160,75 @@
     </py:if>
 </py:for>
 </ul>
+</div>
 </td></tr>
 </py:if>
 </table>
 </div>
 
 <py:if test="system_info">
-<div id="sysinfo">
-<h2 class="foldable" id='late_sysinfo'>System information</h2>
-<a name="system_info"/>
+<a name="sysinfo"/>
+<div id="view___sysinfo" class="collapsed crashdump_box">
+<h2 class="delayfoldable">System information</h2>
 </div>
 </py:if>
 
 <py:if test="system_info">
-<div id="sysinfo_ex" class="collapsed">
-<h2 class="foldable">More system information</h2>
-<a name="more_system_info"/>
+<a name="sysinfo_ex"/>
+<div id="view___sysinfo_ex" class="collapsed crashdump_box">
+<h2 class="delayfoldable">More system information</h2>
 </div>
 </py:if>
 
 <py:if test="fast_protect_version_info">
-<div id="fast_protect_version_info">
-<h2 class="foldable">Version info</h2>
 <a name="fast_protect_version_info"/>
+<div id="view___fast_protect_version_info" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Version info</h2>
 </div>
 </py:if>
 
 <py:if test="exception">
-<div id="exception">
-<h2 class="foldable" py:if="not assertion">Exception</h2>
-<h2 class="foldable" py:if="assertion">Assertion</h2>
-<a name="exception"/>
+<div id="view___exception" class="crashdump_box">
+<h2 class="delayfoldable" py:if="not assertion">Exception</h2>
+<h2 class="delayfoldable" py:if="assertion">Assertion</h2>
 </div>
 </py:if>
 
 <py:if test="modules">
-<div id="modules" class="collapsed">
-<h2 class="foldable">Modules</h2>
 <a name="modules"/>
+<div id="view___modules" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Modules</h2>
 </div>
 </py:if>
 
 <py:if test="threads">
-<div id="threads" class="collapsed">
 <a name="threads"/>
-<h2 class="foldable">Threads</h2>
+<div id="view___threads" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Threads</h2>
 </div>
 </py:if>
 
 <py:if test="stackdumps">
-<div id="crashdump">
-<h2>Stack dumps</h2>
-<py:for each="stackdump in stackdumps">
-<py:if test="not stackdump.simplified">
-<a name="stackdump_${stackdump.threadid}"/>
-<div id="stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
-<h3 class="foldable">
-<py:if test="stackdump.thread.main_thread">Main thread</py:if>
-<py:if test="not stackdump.thread.main_thread and stackdump.thread.rpc_thread">RPC Thread</py:if>
-<py:if test="not stackdump.thread.main_thread and not stackdump.thread.rpc_thread">Thread</py:if>
-<py:if test="stackdump.thread.name">({stackdump.thread.name})</py:if>
-&nbsp;${ hex_format(stackdump.threadid) }<py:if test="stackdump.exception"> with exception</py:if>
-</h3>
-</div>
-</py:if>
-</py:for>
+<div id="view___stackdumps" class="crashdump_box">
+<h2 class="delayfoldable">Stack dumps</h2>
 </div>
 </py:if>
 
 <py:if test="memory_regions">
-<div id="memory_regions" class="collapsed">
-<h2 class="foldable">Memory regions</h2>
+<div id="view___memory_regions" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Memory regions</h2>
 </div>
 </py:if>
 
 <py:if test="memory_blocks">
-<div id="memory_blocks">
-<h2>Memory blocks</h2>
-<py:for each="memory_block in memory_blocks">
-<a name="memory_block_${memory_block.base}" style="display: none">memory_block_${memory_block.base}</a>
-    <div id="memory_block___${memory_block.base}" class="collapsed">
-    <h3 class="foldable" id="memory_block_${memory_block.base}_title">
-        Memory block #${memory_block.num} at ${ addr_format(memory_block.base) } size ${ format_size(memory_block.size) }
-        <py:if test="memory_block.threadid is not None">
-            (memory of thread ${ hex_format(memory_block.threadid) })
-        </py:if>
-    </h3>
-    </div>
-</py:for>
+<div id="view___memory_blocks" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Memory blocks</h2>
+</div>
+</py:if>
+
+<py:if test="file_info">
+<div id="view___file_info" class="collapsed crashdump_box">
+<h2 class="delayfoldable">Processing log</h2>
 </div>
 </py:if>
 

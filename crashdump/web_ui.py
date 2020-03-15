@@ -424,6 +424,8 @@ class CrashDumpModule(Component):
 
             if params is None:
                 add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                if not crashdump_use_jinja2:
+                    add_script(req, 'common/js/folding.js')
                 add_script(req, 'crashdump/crashdump.js')
                 add_stylesheet(req, 'crashdump/crashdump.css')
 
@@ -434,7 +436,7 @@ class CrashDumpModule(Component):
                         linked_tickets.append(a)
                 data['linked_tickets'] = linked_tickets
 
-                return 'report.html', data
+                return 'report.html', data, None
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex',
                                  'fast_protect_version_info', 'exception', 'memory_blocks', 'memory_regions', 'modules', 'threads', 'stackdumps',
@@ -448,7 +450,7 @@ class CrashDumpModule(Component):
                             memory_block = b
                             break
                     data.update({'memory_block': memory_block, 'memory_block_base': block_base })
-                    return 'memory_block.html', data
+                    return 'memory_block.html', data, None
                 elif params[0] == 'stackdump':
                     threadid = safe_list_get_as_int(params, 1, 0)
                     stackdump = None
@@ -456,7 +458,7 @@ class CrashDumpModule(Component):
                         stackdump = data['stackdumps'][threadid]
                     self.log.debug('stackdump %s' % stackdump)
                     data.update({'stackdump': stackdump, 'threadid': threadid })
-                    return 'stackdump.html', data
+                    return 'stackdump.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'sysinfo_report':
@@ -482,6 +484,8 @@ class CrashDumpModule(Component):
 
             if params is None:
                 add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+                if not crashdump_use_jinja2:
+                    add_script(req, 'common/js/folding.js')
                 add_script(req, 'crashdump/crashdump.js')
                 add_stylesheet(req, 'crashdump/crashdump.css')
 
@@ -491,12 +495,12 @@ class CrashDumpModule(Component):
                     if a:
                         linked_tickets.append(a)
                 data['linked_tickets'] = linked_tickets
-                return 'sysinfo_report.html', data
+                return 'sysinfo_report.html', data, None
             else:
                 if params[0] in ['sysinfo',
                                  'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu', 'sysinfo_locale', 'sysinfo_network',
                                  'sysinfo_rawdata']:
-                    return params[0] + '.html', data
+                    return params[0] + '.html', data, None
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
 
@@ -523,7 +527,7 @@ class CrashDumpModule(Component):
 
             data = {'id': crashobj.id, 'uuid': crashobj.uuid }
             crashobj.delete(self.dumpdata_dir)
-            return 'deleted.html', data
+            return 'deleted.html', data, None
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':

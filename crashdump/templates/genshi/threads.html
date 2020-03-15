@@ -6,6 +6,7 @@
 <tr>
 <th>Id</th>
 <th>Name</th>
+<th>Location</th>
 <th>Memory</th>
 <th>Start address</th>
 <th>Create time</th>
@@ -18,6 +19,7 @@
 <tr>
 <td><a name="thread_${thread.id}"><a href="#stackdump_${thread.id}">${ hex_format(thread.id)}</a><py:if test="thread.mainthread">@</py:if><py:if test="thread.exception">*</py:if></a></td>
 <td>${ thread.name if thread.name else 'N/A' }</td>
+<td>${ format_stack_frame(thread.location) }</td>
 <td>
     <py:if test="thread.memory"><a href="#memory_block_${thread.memory}"><div class="address">${ addr_format(thread.memory) }</div></a></py:if>
     <py:if test="not thread.mainthread">N/A</py:if>

@@ -16,7 +16,7 @@
     </tr>
     <tr>
         <th>Number of CPUs</th><td>${fast_protect_system_info.num_logical_cpus} logical, ${fast_protect_system_info.num_physical_cpus} physical</td>
-        <th>HyperThread</th><td>${fast_protect_system_info.hyperthread}</td>
+        <th>Hyper-Threading</th><td>${fast_protect_system_info.hyperthread}</td>
     </tr>
     <tr><th>OpenGL vendor</th><td>${fast_protect_system_info.opengl_vendor}</td></tr>
     <tr><th>OpenGL renderer</th><td>${fast_protect_system_info.opengl_renderer}</td></tr>
@@ -58,7 +58,6 @@
         <py:for each="grp in processstatuslinux.supplement_groups"><li>${grp}</li></py:for>
     </ol>
     </td></tr>
-
     <tr><th>VM peak</th><td>${format_size(processstatuslinux.vmpeak)}</td></tr>
     <tr><th>VM size</th><td>${format_size(processstatuslinux.vmsize)}</td></tr>
     <tr><th>VM locked</th><td>${format_size(processstatuslinux.vmlocked)}</td></tr>

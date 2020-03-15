@@ -1,0 +1,12 @@
+<table class="properties">
+<tr>
+<th>Timestamp</th>
+<th>Message</th>
+</tr>
+{% for item in file_info.log %}
+<tr>
+<td>${ format_datetime(item.time) }</td>
+<td>${item.text}</td>
+</tr>
+{% endfor %}
+</table>

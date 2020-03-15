@@ -9,23 +9,7 @@
   <head>
     <title>System information report for CrashId#${object.id} - ${object.uuid}</title>
     <script type="text/javascript">
-    function extra_click(node, expanded) {
-        if (expanded == true) {
-            var url = window.location.href;
-            var path = window.location.pathname;
-            var target_url = path + '/' + node.id.replace('___', '/');
-            $( '#' + node.id).children('div#placeholder').html('<div class="loading_message">Loading...</div>');
-            //$( '#' + node.id).children('div#placeholder').html('here ' + node.id + ' exp=' + expanded + ' url=' + url + ' path=' + path);
-            $( '#' + node.id).children('div#placeholder').load(target_url);
-            //alert('here ' + node.id + ' exp=' + expanded + ' url=' + url);
-        } else {
-            $( '#' + node.id).children('div#placeholder').text('');
-        }
-    }
-      jQuery(document).ready(function($) {
-        $("div.description").find("h1,h2,h3,h4,h5,h6").addAnchor(_("Link to this section"));
-        $(".foldable").delayLoadFolding(false, true, extra_click);
-      });
+        crashdump_docReady();
     </script>
   </head>
   <body>
@@ -108,37 +92,47 @@
 </div>
 
 <py:if test="system_info">
-<div id="sysinfo">
-<h2 class="foldable" id='sysinfo'>System information</h2>
 <a name="sysinfo"/>
+<div id="sysinfo" class="crashdump_box">
+<h2 class="delayfoldable" id='sysinfo'>System information</h2>
 </div>
 </py:if>
 
 <py:if test="fast_protect_system_info">
-<div id="sysinfo_opengl" class="collapsed">
-<h2 class="foldable" id='sysinfo_opengl'>OpenGL information</h2>
 <a name="sysinfo_opengl"/>
+<div id="sysinfo_opengl" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_opengl'>OpenGL information</h2>
 </div>
 
-<div id="sysinfo_env" class="collapsed">
-<h2 class="foldable" id='sysinfo_env'>Environment</h2>
 <a name="sysinfo_env"/>
+<div id="sysinfo_env" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_env'>Environment</h2>
 </div>
 
-<div id="sysinfo_terra4d_dirs" class="collapsed">
-<h2 class="foldable" id='sysinfo_terra4d_dirs'>Terra4D directories</h2>
 <a name="sysinfo_terra4d_dirs"/>
+<div id="sysinfo_terra4d_dirs" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_terra4d_dirs'>Terra4D directories</h2>
 </div>
 
-<div id="sysinfo_cpu" class="collapsed">
-<h2 class="foldable" id='sysinfo_cpu'>CPU information</h2>
 <a name="sysinfo_cpu"/>
+<div id="sysinfo_cpu" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_cpu'>CPU information</h2>
+</div>
+
+<a name="sysinfo_locale"/>
+<div id="sysinfo_locale" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_locale'>Locale</h2>
+</div>
+
+<a name="sysinfo_network"/>
+<div id="sysinfo_network" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_network'>Network</h2>
 </div>
 </py:if>
 
 <py:if test="system_info">
-<div id="sysinfo_rawdata" class="collapsed">
-<h2 class="foldable" id='sysinfo_rawdata'>Raw system information data</h2>
+<div id="sysinfo_rawdata" class="collapsed crashdump_box">
+<h2 class="delayfoldable" id='sysinfo_rawdata'>Raw system information data</h2>
 <a name="sysinfo_rawdata"/>
 </div>
 </py:if>
