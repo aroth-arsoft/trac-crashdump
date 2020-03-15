@@ -459,13 +459,11 @@ class CrashDumpSubmit(Component):
 
         force_str = req.args.get('force') or 'false'
         force = True if force_str.lower() == 'true' else False
-        # for easy testing
-        force = True
-        if crashid is not None and not force:
+        if crashid is not None and not force and not manual_upload:
             headers = {}
             headers['Crash-URL'] = req.abs_href('crash', str(uuid))
             headers['CrashId'] = str(crashid)
-            self.log.debug('crash %s already uploaded %s' % (uuid, self.headers['Crash-URL']) )
+            self.log.debug('crash %s already uploaded %s' % (uuid, headers['Crash-URL']) )
             return self._error_response(req, status=HTTPInternalServerError.code, body='Crash identifier %s already uploaded.' % id_str, headers=headers)
 
         ticket_str = req.args.get('ticket') or 'no'
@@ -514,27 +512,66 @@ class CrashDumpSubmit(Component):
         # and any number of report files
         failure_message = None
         result = False
-        ok, crashobj['minidumpfile'], errmsg = self._store_dump_file(uuid, req, 'minidump', force)
+        ok, new_minidumpfile, errmsg = self._store_dump_file(uuid, req, 'minidump', force)
         if ok:
             result = True
         elif failure_message is None:
             failure_message = errmsg
-        ok, crashobj['minidumpreporttextfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreport', force)
-        ok, crashobj['minidumpreportxmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
+        ok, new_minidumpreporttextfile, errmsg = self._store_dump_file(uuid, req, 'minidumpreport', force)
+        ok, new_minidumpreportxmlfile, errmsg = self._store_dump_file(uuid, req, 'minidumpreportxml', force)
         # accept XML crash upload only for manual uploads
         if manual_upload and ok:
             result = True
-        ok, crashobj['minidumpreporthtmlfile'], errmsg = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
-        ok, crashobj['coredumpfile'], errmsg = self._store_dump_file(uuid, req, 'coredump', force)
+        elif failure_message is None:
+            failure_message = errmsg
+        ok, new_minidumpreporthtmlfile, errmsg = self._store_dump_file(uuid, req, 'minidumpreporthtml', force)
+        ok, new_coredumpfile, errmsg = self._store_dump_file(uuid, req, 'coredump', force)
         if ok:
             result = True
         elif failure_message is None:
             failure_message = errmsg
-        ok, crashobj['coredumpreporttextfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreport', force)
-        ok, crashobj['coredumpreportxmlfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
-        ok, crashobj['coredumpreporthtmlfile'], errmsg = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
+        ok, new_coredumpreporttextfile, errmsg = self._store_dump_file(uuid, req, 'coredumpreport', force)
+        ok, new_coredumpreportxmlfile, errmsg = self._store_dump_file(uuid, req, 'coredumpreportxml', force)
+        ok, new_coredumpreporthtmlfile, errmsg = self._store_dump_file(uuid, req, 'coredumpreporthtml', force)
 
-        crashobj['applicationfile'] = req.args.get('applicationfile')
+        self.log.debug('new_minidumpfile \'%s\'' % new_minidumpfile)
+        self.log.debug('new_minidumpreportxmlfile \'%s\'' % new_minidumpreportxmlfile)
+        self.log.debug('before crashobj[minidumpfile] \'%s\'' % crashobj['minidumpfile'])
+        self.log.debug('before crashobj[minidumpreportxmlfile] \'%s\'' % crashobj['minidumpreportxmlfile'])
+
+        if manual_upload:
+            if not crashobj['minidumpfile'] or force:
+                crashobj['minidumpfile'] = new_minidumpfile
+            if not crashobj['minidumpreporttextfile'] or force:
+                crashobj['minidumpreporttextfile'] = new_minidumpreporttextfile
+            if not crashobj['minidumpreportxmlfile'] or force:
+                crashobj['minidumpreportxmlfile'] = new_minidumpreportxmlfile
+            if not crashobj['minidumpreporthtmlfile'] or force:
+                crashobj['minidumpreporthtmlfile'] = new_minidumpreporthtmlfile
+            if not crashobj['coredumpfile'] or force:
+                crashobj['coredumpfile'] = new_coredumpfile
+            if not crashobj['coredumpreporttextfile'] or force:
+                crashobj['coredumpreporttextfile'] = new_coredumpreporttextfile
+            if not crashobj['coredumpreportxmlfile'] or force:
+                crashobj['coredumpreportxmlfile'] = new_coredumpreportxmlfile
+            if not crashobj['coredumpreporthtmlfile'] or force:
+                crashobj['coredumpreporthtmlfile'] = new_coredumpreporthtmlfile
+        else:
+            crashobj['minidumpfile'] = new_minidumpfile
+            crashobj['minidumpreporttextfile'] = new_minidumpreporttextfile
+            crashobj['minidumpreportxmlfile'] = new_minidumpreportxmlfile
+            crashobj['minidumpreporthtmlfile'] = new_minidumpreporthtmlfile
+            crashobj['coredumpfile'] = new_coredumpfile
+            crashobj['coredumpreporttextfile'] = new_coredumpreporttextfile
+            crashobj['coredumpreportxmlfile'] = new_coredumpreportxmlfile
+            crashobj['coredumpreporthtmlfile'] = new_coredumpreporthtmlfile
+
+        self.log.debug('after crashobj[minidumpfile] \'%s\'' % crashobj['minidumpfile'])
+        self.log.debug('after crashobj[minidumpreportxmlfile] \'%s\'' % crashobj['minidumpreportxmlfile'])
+
+        new_applicationfile = req.args.get('applicationfile')
+        if not crashobj['applicationfile']:
+            crashobj['applicationfile'] = new_applicationfile
 
         self.log.debug('crashtimestamp from http form \'%s\'' % req.args.get('crashtimestamp'))
         self.log.debug('reporttimestamp from http form \'%s\'' % req.args.get('reporttimestamp'))
@@ -558,21 +595,22 @@ class CrashDumpSubmit(Component):
         self.log.debug('reporttimestamp %s' % (crashobj['reporttime']))
         self.log.debug('uploadtime %s' % (crashobj['uploadtime']))
 
-        crashobj['productname'] = req.args.get('productname')
-        crashobj['productcodename'] = req.args.get('productcodename')
-        crashobj['productversion'] = req.args.get('productversion')
-        crashobj['producttargetversion'] = req.args.get('producttargetversion')
-        crashobj['uploadhostname'] = req.args.get('fqdn')
-        crashobj['uploadusername'] = req.args.get('username')
-        crashobj['crashhostname'] = req.args.get('crashfqdn')
-        crashobj['crashusername'] = req.args.get('crashusername')
-        crashobj['buildtype'] = req.args.get('buildtype')
-        crashobj['buildpostfix'] = req.args.get('buildpostfix')
-        crashobj['machinetype'] = req.args.get('machinetype')
-        crashobj['systemname'] = req.args.get('systemname')
-        crashobj['osversion'] = req.args.get('osversion')
-        crashobj['osrelease'] = req.args.get('osrelease')
-        crashobj['osmachine'] = req.args.get('osmachine')
+        if not manual_upload:
+            crashobj['productname'] = req.args.get('productname')
+            crashobj['productcodename'] = req.args.get('productcodename')
+            crashobj['productversion'] = req.args.get('productversion')
+            crashobj['producttargetversion'] = req.args.get('producttargetversion')
+            crashobj['uploadhostname'] = req.args.get('fqdn')
+            crashobj['uploadusername'] = req.args.get('username')
+            crashobj['crashhostname'] = req.args.get('crashfqdn')
+            crashobj['crashusername'] = req.args.get('crashusername')
+            crashobj['buildtype'] = req.args.get('buildtype')
+            crashobj['buildpostfix'] = req.args.get('buildpostfix')
+            crashobj['machinetype'] = req.args.get('machinetype')
+            crashobj['systemname'] = req.args.get('systemname')
+            crashobj['osversion'] = req.args.get('osversion')
+            crashobj['osrelease'] = req.args.get('osrelease')
+            crashobj['osmachine'] = req.args.get('osmachine')
 
         if result:
 
@@ -911,13 +949,14 @@ application was running as part of %(productname)s (%(productcodename)s) version
                 os.makedirs(crash_dir)
 
             flags = os.O_CREAT + os.O_WRONLY
-            if force:
-                flags += os.O_TRUNC
-            else:
-                if os.path.isfile(crash_file):
-                    errmsg = 'File %s already exists.' % crash_file
-                    return (False, item_name, errmsg)
-                flags += os.O_EXCL
+            flags += os.O_TRUNC
+            #if force:
+                #flags += os.O_TRUNC
+            #else:
+                #if os.path.isfile(crash_file):
+                    #errmsg = 'File %s already exists.' % crash_file
+                    #return (False, item_name, errmsg)
+                #flags += os.O_EXCL
             if hasattr(os, 'O_BINARY'):
                 flags += os.O_BINARY
             targetfileobj = None
