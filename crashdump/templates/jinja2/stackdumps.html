@@ -2,13 +2,7 @@
 {% if not stackdump.simplified %}
 <a name="stackdump_${stackdump.threadid}"/>
 <div id="view___stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
-<h3 class="delayfoldable">
-{% if stackdump.thread.main_thread %}Main thread{% endif %}
-{% if not stackdump.thread.main_thread and stackdump.thread.rpc_thread %}RPC Thread{% endif %}
-{% if not stackdump.thread.main_thread and not stackdump.thread.rpc_thread %}Thread{% endif %}
-{% if stackdump.thread.name %}({stackdump.thread.name}){% endif %}
-&nbsp;${ hex_format(stackdump.threadid) }{% if stackdump.exception %} with exception{% endif %}
-</h3>
+<h3 class="delayfoldable">${ format_thread(stackdump.thread) }</h3>
 </div>
 {% endif %}
 {% endfor %}

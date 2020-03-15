@@ -5,10 +5,8 @@
 import subprocess
 import re
 
-from pkg_resources import parse_version, resource_filename
-from genshi.builder import tag
+from pkg_resources import resource_filename
 
-from trac import __version__ as VERSION
 from trac.core import *
 from trac.web.api import IRequestHandler, IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import (
@@ -20,7 +18,6 @@ from trac.web import (
     arg_list_to_args, parse_arg_list
 )
 from trac.admin.api import IAdminPanelProvider
-
 from trac.ticket.model import Milestone, Ticket
 from trac.ticket.query import Query
 from trac.config import Option, PathOption
@@ -36,6 +33,7 @@ from trac.util.text import (
 from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_utimestamp, \
                               get_datetime_format_hint, user_time, parse_date
 from trac.util.compat import set, sorted, partial
+from trac.util.html import html as tag
 import os.path
 import math
 import time
@@ -48,16 +46,7 @@ from .systeminforeport import SystemInfoReport
 from .minidump import MiniDump, MiniDumpWrapper
 from .utils import *
 
-_parsed_version = parse_version(VERSION)
-
-if _parsed_version >= parse_version('1.4'):
-    _use_jinja2 = True
-elif _parsed_version >= parse_version('1.3'):
-    _use_jinja2 = hasattr(Chrome, 'jenv')
-else:
-    _use_jinja2 = False
-
-if _use_jinja2:
+if crashdump_use_jinja2:
     _template_dir = resource_filename(__name__, 'templates/jinja2')
 else:
     _template_dir = resource_filename(__name__, 'templates/genshi')
@@ -306,6 +295,9 @@ class CrashDumpModule(Component):
                 'format_memory_usagetype': format_memory_usagetype,
                 'format_gl_extension_name': format_gl_extension_name,
                 'format_version_number': format_version_number,
+                'format_thread': format_thread,
+                'thread_extra_info': thread_extra_info,
+                'format_stack_frame': format_stack_frame,
                 'context': web_context(req, crashobj.resource, absurls=absurls),
                 'preserve_newlines': self.must_preserve_newlines,
                 'emtpy': empty}

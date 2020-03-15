@@ -2,6 +2,17 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
+from trac import __version__ as VERSION
+from pkg_resources import parse_version
+_parsed_version = parse_version(VERSION)
+
+if _parsed_version >= parse_version('1.4'):
+    crashdump_use_jinja2 = True
+elif _parsed_version >= parse_version('1.3'):
+    crashdump_use_jinja2 = hasattr(Chrome, 'jenv')
+else:
+    crashdump_use_jinja2 = False
+
 def _hex_format(number, prefix='0x', width=None, bits=None):
     if isinstance(number, str) or isinstance(number, unicode):
         try:
@@ -72,7 +83,7 @@ def addr_format_32(number, prefix='0x'):
         return hex_format(number, prefix, bits=32)
 
 def exception_code(platform_type, code, name):
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     if platform_type is None:
         return 'Platform unknown'
     elif platform_type == 'Linux':
@@ -105,7 +116,7 @@ def format_source_line(source, line, line_offset=None, source_url=None):
     if source is None:
         return _('unknown')
     else:
-        from genshi.builder import tag
+        from trac.util.html import html as tag
         title = str(source) + ':' + str(line)
         if line_offset is not None:
             title += '+' + hex_format(line_offset)
@@ -175,7 +186,7 @@ def format_cpu_type(cputype):
     else:
         href = 'http://en.wikipedia.org/wiki/Central_processing_unit'
         title = cputype
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(title, title=cputype, href=href)
 
 def format_cpu_vendor(vendor):
@@ -200,7 +211,7 @@ def format_cpu_vendor(vendor):
     else:
         title = vendor
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(title, title=vendor, href=href)
 
 def format_cpu_name(vendor, name):
@@ -264,7 +275,7 @@ def format_cpu_name(vendor, name):
     else:
         title = name
         href = 'http://en.wikipedia.org/wiki/List_of_x86_manufacturers'
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(name, title=title, href=href)
 
 def format_distribution_id(distro_id):
@@ -277,7 +288,7 @@ def format_distribution_id(distro_id):
     else:
         name = distro_id
         href = 'http://distrowatch.com/' + distro_id
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(name, title=distro_id, href=href)
 
 def format_distribution_codename(distro_id, distro_codename):
@@ -290,7 +301,7 @@ def format_distribution_codename(distro_id, distro_codename):
     else:
         name = distro_id
         href = 'http://distrowatch.com/' + distro_id
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(name, title=distro_id, href=href)
 
 def format_seconds(s):
@@ -398,7 +409,7 @@ def format_gl_extension_name(ext):
             ext_name = ext
     if vendor and ext_name:
         href = khronos_extension_base_url + '/%s/%s.txt' % (vendor, ext_name)
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     return tag.a(name, title=title, href=href)
 
 def format_version_number(num):
@@ -412,7 +423,7 @@ def format_version_number(num):
     return '%i.%i.%i.%i' % (m, n, o, p)
 
 def format_platform_type(platform_type):
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     from trac.util.translation import _
     if platform_type is None:
         return _('Platform unknown')
@@ -454,7 +465,7 @@ def _get_version_from_numbers(os_version_number, os_build_number):
 
 
 def format_os_version(platform_type, os_version_number, os_build_number):
-    from genshi.builder import tag
+    from trac.util.html import html as tag
     from trac.util.translation import _
     if os_version_number is None:
         return _('unknown')
@@ -560,3 +571,46 @@ def script_from_qlocale_script_enum(num):
     else:
         return str(num)
 
+def thread_extra_info(thread):
+    if thread is None:
+        return _('N/A')
+    elif thread.main_thread:
+        return '*@' if thread.exception else '@'
+    elif thread.rpc_thread:
+        return '*[RPC]' if thread.exception else '[RPC]'
+    elif thread.exception:
+        return '*'
+    else:
+        return ''
+
+def format_thread(thread):
+    from trac.util.translation import _
+    if thread is None:
+        return _('N/A')
+    else:
+        if thread.main_thread:
+            ret = _('Main thread')
+        elif thread.rpc_thread:
+            ret = _('RPC thread')
+        else:
+            ret = _('Thread')
+        ret = ret + ' ' + hex_format(thread.id)
+        if thread.name:
+            ret = ret + ' ' + thread.name
+        if thread.exception:
+            ret = ret + ' ' + _('with exception')
+        return ret
+
+def format_stack_frame(frame):
+    from trac.util.translation import _
+    if frame is None:
+        return _('N/A')
+    else:
+        if frame.function is None:
+            offset = frame.addr - frame.module_base
+            if frame.module:
+                return frame.module + '+' + hex_format(offset)
+            else:
+                return frame.addr
+        else:
+            return format_function_plus_offset(frame.function, frame.funcoff)

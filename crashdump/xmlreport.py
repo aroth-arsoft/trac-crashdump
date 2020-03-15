@@ -288,7 +288,7 @@ class XMLReport(object):
     _handle_fields = ['handle', 'type', 'name', 'count', 'pointers' ]
 
     _stackdump_fields = ['threadid', 'simplified', 'exception']
-    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'trust_level', 'module', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
+    _stack_frame_fields = ['num', 'addr', 'retaddr', 'param0', 'param1', 'param2', 'param3', 'infosrc', 'trust_level', 'module', 'module_base', 'function', 'funcoff', 'source', 'line', 'lineoff' ]
     
     _simplified_info_fields = ['threadid', 'missing_debug_symbols', 'missing_image_files', 'first_useful_modules', 'first_useful_functions']
     
@@ -703,6 +703,14 @@ class XMLReport(object):
                         self._thread_name = self._owner._read_memory(addr, max_len=16)
             return self._thread_name
 
+        @property
+        def location(self):
+            s = self.stackdump
+            if s is not None:
+                return s.top
+            else:
+                return None
+
     class MemoryRegion(XMLReportEntity):
         def __init__(self, owner):
             super(XMLReport.MemoryRegion, self).__init__(owner)
@@ -853,6 +861,13 @@ class XMLReport(object):
                 if frm.module:
                     module_order.append(frm.module)
             return XMLReport.unique(module_order)
+
+        @property
+        def top(self):
+            if self.callstack:
+                return self.callstack[0]
+            else:
+                return None
 
     class StackFrame(XMLReportEntity):
         def __init__(self, owner, dump):
