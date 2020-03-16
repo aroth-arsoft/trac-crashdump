@@ -1,8 +1,12 @@
-{% for stackdump in stackdumps %}
-{% if not stackdump.simplified %}
+<html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+<py:for each="stackdump in stackdumps">
+<py:if test="not stackdump.simplified">
 <a name="stackdump_${stackdump.threadid}"/>
 <div id="view___stackdump___${stackdump.threadid}" class="${ '' if stackdump.exception else 'collapsed' }">
 <h3 class="delayfoldable">${ format_thread(stackdump.thread) }</h3>
 </div>
-{% endif %}
-{% endfor %}
+</py:if>
+</py:for>
+</html>

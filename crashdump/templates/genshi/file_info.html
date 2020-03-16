@@ -1,12 +1,16 @@
-<table class="properties">
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
 <tr>
 <th>Timestamp</th>
 <th>Message</th>
 </tr>
-{% for item in file_info.log %}
+<py:for each="item in file_info.log">
 <tr>
 <td>${ format_datetime(item.time) }</td>
 <td>${item.text}</td>
 </tr>
-{% endfor %}
+</py:for>
 </table>

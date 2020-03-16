@@ -1,13 +1,17 @@
-<table class="properties">
-    {% for item in sysinfo_report['Network'] %}
+<table
+    class="properties"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:i18n="http://genshi.edgewall.org/i18n"
+    xmlns:py="http://genshi.edgewall.org/">
+    <py:for each="item in sysinfo_report['Network']">
     <tr><th>${item.description}</th>
     <td>Hardware address: ${item.hwaddr}
-    {% if item.addr %}
+    <py:if test="item.addr">
     <br/><ul>
-    {% for addr in item.addr  %}<li>${ addr }</li>{% endfor %}
+    <py:for each="addr in item.addr"><li>${ addr }</li></py:for>
     </ul>
-    {% endif %}
+    </py:if>
     </td>
     </tr>
-    {% endfor %}
+    </py:for>
 </table>

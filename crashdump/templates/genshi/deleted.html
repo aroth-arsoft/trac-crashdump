@@ -1,21 +1,19 @@
-# extends 'layout.html'
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:i18n="http://genshi.edgewall.org/i18n"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="layout.html" />
   <head>
-    # block head
-    ${ super() }
-    <title>
-    # block title
-    CrashId#${id} - ${uuid} - Deleted
-    # endblock title
-    </title>
+    <title>CrashId#${id} - ${uuid} - Deleted</title>
     <script type="text/javascript">
         crashdump_docReady();
     </script>
-    # endblock head
   </head>
   <body>
-    # block content
+    <div id="content">
         <div id="crashdump">
             <h2>
                 <a href="${href('crash', uuid)}" class="trac-id">CrashId#${id} - {${uuid}}</a>
@@ -25,7 +23,8 @@
             </h2>
         </div>
 
-    # endblock content
+<!-- close the content -->
+</div>
 
   </body>
 </html>

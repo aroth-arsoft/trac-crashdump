@@ -441,7 +441,7 @@ class CrashDumpModule(Component):
                 if params[0] in ['sysinfo', 'sysinfo_ex',
                                  'fast_protect_version_info', 'exception', 'memory_blocks', 'memory_regions', 'modules', 'threads', 'stackdumps',
                                  'file_info' ]:
-                    return params[0] + '.html', data
+                    return params[0] + '.html', data, None
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
                     memory_block = None
