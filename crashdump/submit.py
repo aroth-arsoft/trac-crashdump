@@ -13,12 +13,14 @@ try:
 except ImportError:  # Trac 1.3.1+
     from trac.web.api import HTTPInternalServerError
 
-from trac.web.chrome import ITemplateProvider, add_script, add_stylesheet
+from trac.web.chrome import ITemplateProvider, INavigationContributor,add_script, add_stylesheet
 
 from trac.config import Option, IntOption, BoolOption, PathOption
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket, Component as TicketComponent, Milestone, Version
 from trac.util import get_pkginfo
+from trac.util.html import html as tag
+
 from pkg_resources import resource_filename, get_distribution
 from uuid import UUID
 import os
@@ -36,7 +38,7 @@ from .utils import *
 class CrashDumpSubmit(Component):
     """Upload/Submit new crash dumps"""
 
-    implements(IRequestHandler, IRequestFilter, ITemplateProvider)
+    implements(IRequestHandler, IRequestFilter, INavigationContributor, ITemplateProvider)
 
     dumpdata_dir = PathOption('crashdump', 'dumpdata_dir', default='../dumpdata',
                       doc='Path to the crash dump data directory relative to the environment conf directory.')
@@ -85,6 +87,21 @@ class CrashDumpSubmit(Component):
 
     upload_disabled = BoolOption('crashdump', 'upload_disabled', 'false',
                       doc="""Disable upload. No further crashdumps can be submitted.""")
+
+    disable_manual_upload = BoolOption('crashdump', 'manual_upload_disabled', 'false',
+                      doc="""Disable manual upload function. Crashes can only be uploaded automatically via the crash handler.""")
+
+    # INavigationContributor methods
+    def get_active_navigation_item(self, req):
+        self.log.debug('get_active_navigation_item %s' % req.path_info)
+        if not self.disable_manual_upload:
+            if req.path_info == '/crash_upload':
+                return 'upload_crash'
+
+    def get_navigation_items(self, req):
+        if not self.disable_manual_upload:
+            yield ('mainnav', 'upload_crash',
+                   tag.a('Upload Crash', href='/crash_upload'))
 
     # IRequestHandler methods
     def match_request(self, req):
@@ -660,7 +677,13 @@ class CrashDumpSubmit(Component):
 
             # get the application name from the application file
             if crashobj['applicationfile']:
-                appbase = os.path.basename(crashobj['applicationfile'])
+                appfile = crashobj['applicationfile']
+                if '/' in appfile:
+                    appbase = appfile.split('/')[-1]
+                elif '\\' in appfile:
+                    appbase = appfile.split('\\')[-1]
+                else:
+                    appbase = os.path.basename(appfile)
                 (appbase, ext) = os.path.splitext(appbase)
                 if crashobj['buildpostfix'] and appbase.endswith(crashobj['buildpostfix']):
                     appbase = appbase[:-len(crashobj['buildpostfix'])]
@@ -699,9 +722,12 @@ class CrashDumpSubmit(Component):
                         except ResourceNotFound:
                             # No such component exists
                             pass
-                    # If the current owner is "< default >", we need to set it to
-                    # _something_ else, even if that something else is blank.
-                    crashobj['owner'] = default_to_owner if default_to_owner else crashobj['crashusername']
+                    if default_to_owner:
+                        crashobj['owner'] = default_to_owner
+                    else:
+                        # If the current owner is "< default >", we need to set it to
+                        # _something_ else, even if that something else is blank.
+                        crashobj['owner'] = crashobj['crashusername']
                 else:
                     crashobj['owner'] = self.default_owner
                 if self.default_reporter == '< default >':

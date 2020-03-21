@@ -89,7 +89,7 @@ class CrashDumpModule(Component):
             [TracQuery#UsingTracLinks Trac links].
             (''since 0.12'')""")
 
-    nav_url  = Option('crashdump', 'main_page', '/crash_upload',
+    nav_url  = Option('crashdump', 'main_page', '/crash/list',
                       'The url of the crashes main page to which the trac nav '
                       'entry should link; if empty, no entry is created in '
                       'the nav bar. This may be a relative url.')
@@ -107,12 +107,15 @@ class CrashDumpModule(Component):
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
-        return 'crashes'
+        self.log.debug('get_active_navigation_item %s' % req.path_info)
+        if self.nav_url:
+            if req.path_info == self.nav_url:
+                return 'crash_list'
 
     def get_navigation_items(self, req):
         if self.nav_url:
-            yield ('mainnav', 'crashes',
-                   tag.a('Upload Crash', href=self.nav_url))
+            yield ('mainnav', 'crash_list',
+                   tag.a('Crashes', href=self.nav_url))
 
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
@@ -199,18 +202,22 @@ class CrashDumpModule(Component):
             return False
 
         ret = False
-        path_info = req.path_info[6:]
         action = None
-        #self.log.debug('match_request %s' % path_info)
-        match = re.match(r'/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?(.+)?$', path_info)
-        if match:
-            req.args['crashuuid'], action  = match.groups()
+        path_info = req.path_info[6:]
+        if path_info == '/list':
+            action = 'crash_list'
             ret = True
         else:
-            match = re.match(r'/([0-9]+)/?(.+)?$', path_info)
+            #self.log.debug('match_request %s' % path_info)
+            match = re.match(r'/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/?(.+)?$', path_info)
             if match:
-                req.args['crashid'], action  = match.groups()
+                req.args['crashuuid'], action  = match.groups()
                 ret = True
+            else:
+                match = re.match(r'/([0-9]+)/?(.+)?$', path_info)
+                if match:
+                    req.args['crashid'], action  = match.groups()
+                    ret = True
         if ret:
             #self.log.debug('match_request raw_action:\"%s\"' % action)
             if action:
@@ -386,7 +393,23 @@ class CrashDumpModule(Component):
                                                  'false')}
 
     def process_request(self, req):
+        if crashdump_use_jinja2:
+            metadata = {'content_type': 'text/html'}
+        else:
+            metadata = None
+
         action = req.args.get('action', 'view')
+        if action == 'crash_list':
+            data = {}
+            self._insert_crashlist_data(req, data)
+
+            add_script_data(req, {'comments_prefs': self._get_prefs(req)})
+            if not crashdump_use_jinja2:
+                add_script(req, 'common/js/folding.js')
+            add_script(req, 'crashdump/crashdump.js')
+            add_stylesheet(req, 'crashdump/crashdump.css')
+            return 'list.html', data, metadata
+
         start = time.time()
         if 'crashuuid' in req.args:
             crashobj = CrashDump.find_by_uuid(self.env, req.args['crashuuid'])
@@ -402,10 +425,6 @@ class CrashDumpModule(Component):
             raise ResourceNotFound(_("No crash identifier specified."))
         end = time.time()
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
-        if crashdump_use_jinja2:
-            metadata = {'content_type': 'text/html'}
-        else:
-            metadata = None
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
         params = _get_list_from_args(req.args, 'params', None)
@@ -532,6 +551,7 @@ class CrashDumpModule(Component):
             data = {'id': crashobj.id, 'uuid': crashobj.uuid }
             crashobj.delete(self.dumpdata_dir)
             return 'deleted.html', data, metadata
+
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':
@@ -616,6 +636,12 @@ class CrashDumpModule(Component):
                 data['%s_link' % user] = self._query_link(req, user,
                                                           crashobj[user])
         data['context'] = context
+
+    def _insert_crashlist_data(self, req, data):
+
+        req_status = req.args.get('status') or 'active'
+        crashlist = CrashDump.query(env=self.env, status=req_status)
+        data['crashlist'] = crashlist
 
     def _format_datetime(self, req, timestamp):
         return format_datetime(from_utimestamp(long(timestamp)))
