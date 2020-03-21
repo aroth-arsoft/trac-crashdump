@@ -1,27 +1,24 @@
-# extends 'layout.html'
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:i18n="http://genshi.edgewall.org/i18n"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="layout.html" />
   <head>
-    # block head
-    ${ super() }
-    <title>
-    # block title
-    List of crashes
-    # endblock title
-    </title>
+    <title>List of crashes</title>
     <script type="text/javascript">
         crashdump_docReady();
     </script>
-    # endblock head
   </head>
   <body>
-    # block content
     <div id="content" class="report">
       <h1>${title}
-        # if numrows:
+        <py:if test="numrows">
         <span class="numrows">(${ngettext('%(num)s match', '%(num)s matches',
           numrows)})</span>
-        # endif
+        </py:if>
       </h1>
 
       <form method="get" id="trac-report-prefs" action="#">
@@ -31,70 +28,48 @@
               ${_("Max items per page")}
               <input type="text" name="max" size="10" value="${max}" />
             </label>
-            # if show_args_form:
+            <py:if test="show_args_form">
             <fieldset id="reportfilters">
               <legend class="foldable">${_("Arguments")}</legend>
               <table>
                 <tbody>
                   <tr style="height: 1px"><td colspan="2"></td></tr>
                 </tbody>
-                # if name != 'USER':
-                #   for (name, value) in sorted(args.items()):
-                <tbody>
+                <tbody py:for="(name, value) in sorted(args.items())" py:if="name != 'USER'">
                   <tr>
                     <th scope="row"><label>${name}</label></th>
                     <td class="filter">
-                      <input type="text" size="42"${
-                           {'name': name, 'value': value}|htmlattr}/>
+                      <input type="text" name="${name}" value="${value or None}" size="42" />
                     </td>
                   </tr>
                 </tbody>
-                #   endfor
-                # endif
               </table>
             </fieldset>
-            # endif
+            </py:if>
           </div>
           <div class="buttons">
             <input type="hidden" name="sort" value="${sort}" />
-            # if asc:
+            <py:if test="asc">
             <input type="hidden" name="asc" value="1" />
-            # endif
+            </py:if>
             <input type="submit" value="${_('Update')}" />
           </div>
         </div>
       </form>
 
-      # if description:
+      <py:if test="description">
       <div id="description">
         ${wiki_to_html(context, description)}
       </div>
-      # endif
+      </py:if>
 
-      # if paginator.has_more_pages:
+      <py:if test="paginator.has_more_pages">
       <h2 class="report-result">
         ${_("Results")}
         <span class="numresults">(${paginator.displayed_items()})</span>
       </h2>
-      #   include 'page_index.html'
-      # endif
 
-      # macro group_heading(value_for_group, row_group)
-      #   if value_for_group is not none:
-      <h2 class="report-result">
-        #   if row_group and '__grouplink__' in row_group[0]:
-        <a href="${row_group[0]['__grouplink__']}">${value_for_group or _("(empty)")}</a>
-        #   else:
-        ${value_for_group or _("(empty)")}
-        #   endif
-        #   set cnt = row_group|length
-        <span class="numrows">
-          (${ngettext('%(num)s match', '%(num)s matches', cnt) if cnt
-          else _("No matches found.")})
-        </span>
-      </h2>
-      #   endif
-      # endmacro
+      </py:if>
 
       <table class="listing tickets">
         <thead><tr>
@@ -113,7 +88,7 @@
             <th>Linked Tickets</th>
         </tr></thead>
         <tbody>
-        # for object in results
+        <py:for each="object in results">
         <tr>
             <td><a href="${href('crash', object.uuid)}" class="trac-id">CrashId#${object.id} - {${object.uuid}}</a></td>
             <td>${ pretty_dateinfo(object['crashtime']) }</td>
@@ -127,21 +102,26 @@
             <td>${object['applicationname']}</td>
             <td>${object['systemname']}/${object['osversion']}</td>
             <td>${object['buildtype']}</td>
-            <td>{% for tkt in object.linked_tickets %}<a href="${href('ticket', tkt)}" title="${tkt}">#${tkt}</a>{% endfor %}</td>
+            <td><py:for each="tkt in object.linked_tickets"><a href="${href('ticket', tkt)}" title="${tkt}">#${tkt}</a></py:for></td>
         </tr>
 
-        # endfor
+        </py:for>
         </tbody>
       </table>
 
-      # if message:
+      <py:if test="message">
       <div class="system-message">${message}</div>
-      # endif
-      # if numrows == 0:
+      </py:if>
+      <py:if test="numrows == 0">
       <div id="report-notfound">${_("No matches found.")}</div>
-      # endif
+      </py:if>
+
+<!-- close the content -->
+</div>
+
+    <div class="trac-nav">
+        <a href="#content" id="trac-up-view" title="Go to the top">Top</a> &uarr;
     </div>
-    ${ super() }
-    # endblock content
+
   </body>
 </html>

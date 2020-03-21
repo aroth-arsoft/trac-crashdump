@@ -20,7 +20,7 @@ from trac.web import (
 from trac.admin.api import IAdminPanelProvider
 from trac.ticket.model import Milestone, Ticket
 from trac.ticket.query import Query
-from trac.config import Option, PathOption
+from trac.config import Option, PathOption, BoolOption, IntOption
 from trac.mimeview.api import Mimeview, IContentConverter
 from trac.resource import Resource, ResourceNotFound
 from trac.util import to_unicode, as_bool, as_int, get_reporter_id
@@ -29,7 +29,7 @@ from trac.util.text import (
     exception_to_unicode, empty, shorten_line,
     to_unicode
 )
-
+from trac.util.presentation import Paginator
 from trac.util.datefmt import format_datetime, format_time, from_utimestamp, to_utimestamp, \
                               get_datetime_format_hint, user_time, parse_date
 from trac.util.compat import set, sorted, partial
@@ -93,6 +93,14 @@ class CrashDumpModule(Component):
                       'The url of the crashes main page to which the trac nav '
                       'entry should link; if empty, no entry is created in '
                       'the nav bar. This may be a relative url.')
+
+    items_per_page = IntOption('crashdump', 'items_per_page', 100,
+        """Number of crashes displayed per page in default report,
+        by default. Set to `0` to specify no limit.
+        """)
+
+    show_delete_crash = BoolOption('crashdump', 'show_delete_crash', 'false',
+                      doc="""Show button to delete a crash from the system.""")
 
     crashdump_fields = set(['_crash'])
     crashdump_uuid_fields = set(['_crash_uuid'])
@@ -400,8 +408,58 @@ class CrashDumpModule(Component):
 
         action = req.args.get('action', 'view')
         if action == 'crash_list':
-            data = {}
-            self._insert_crashlist_data(req, data)
+            page = req.args.getint('page', 1)
+            default_max = self.items_per_page
+            max = req.args.getint('max')
+            limit = as_int(max, default_max, min=0)  # explict max takes precedence
+            offset = (page - 1) * limit
+
+            sort_col = req.args.get('sort', '')
+            asc = req.args.getint('asc', 0, min=0, max=1)
+
+            title = ''
+            description = ''
+
+            data = {'action': 'crash_list',
+                'max': limit,
+                'numrows': 0,
+                'title': title,
+                'description': description,
+                'message': None, 'paginator': None }
+
+            req_status = req.args.get('status') or 'active'
+            #results = CrashDump.query(env=self.env, status=req_status)
+            results = CrashDump.query(env=self.env, status=None)
+            data['results'] = results
+
+            limit_offset = 0
+            need_paginator = limit > 0 and limit_offset
+            need_reorder = limit_offset is None
+            numrows = len(results)
+
+            paginator = None
+            if need_paginator:
+                paginator = Paginator(results, page - 1, limit, num_items)
+                data['paginator'] = paginator
+                if paginator.has_next_page:
+                    add_link(req, 'next', report_href(page=page + 1),
+                            _('Next Page'))
+                if paginator.has_previous_page:
+                    add_link(req, 'prev', report_href(page=page - 1),
+                            _('Previous Page'))
+
+                pagedata = []
+                shown_pages = paginator.get_shown_pages(21)
+                for p in shown_pages:
+                    pagedata.append([report_href(page=p), None, str(p),
+                                    _('Page %(num)d', num=p)])
+                fields = ['href', 'class', 'string', 'title']
+                paginator.shown_pages = [dict(zip(fields, p)) for p in pagedata]
+                paginator.current_page = {'href': None, 'class': 'current',
+                                        'string': str(paginator.page + 1),
+                                        'title': None}
+                numrows = paginator.num_items
+            data['paginator'] = paginator
 
             add_script_data(req, {'comments_prefs': self._get_prefs(req)})
             if not crashdump_use_jinja2:
@@ -452,6 +510,7 @@ class CrashDumpModule(Component):
                 add_script(req, 'crashdump/crashdump.js')
                 add_stylesheet(req, 'crashdump/crashdump.css')
 
+                data['show_delete_crash'] = self.show_delete_crash
                 linked_tickets = []
                 for tkt_id in crashobj.linked_tickets:
                     a = self._link_ticket_by_id(req, tkt_id)
@@ -636,12 +695,6 @@ class CrashDumpModule(Component):
                 data['%s_link' % user] = self._query_link(req, user,
                                                           crashobj[user])
         data['context'] = context
-
-    def _insert_crashlist_data(self, req, data):
-
-        req_status = req.args.get('status') or 'active'
-        crashlist = CrashDump.query(env=self.env, status=req_status)
-        data['crashlist'] = crashlist
 
     def _format_datetime(self, req, timestamp):
         return format_datetime(from_utimestamp(long(timestamp)))

@@ -22,6 +22,9 @@
                 <p i18n:msg="closed" py:if="object['closetime']">Closed ${pretty_dateinfo(object['closetime'])}</p>
                 <p i18n:msg="modified" py:if="object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']">
                 Last modified ${pretty_dateinfo(object['changetime'])}</p>
+                <py:if test="show_delete_crash">
+                <p><a href="${href('crash', object.uuid, 'delete')}" class="trac-id">Delete CrashId#${object.id}</a></p>
+                </py:if>
             </div>
 
             <h2>

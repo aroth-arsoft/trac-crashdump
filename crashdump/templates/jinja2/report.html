@@ -25,7 +25,9 @@
                 {% if object['changetime'] != object['uploadtime'] and object['changetime'] != object['closetime']%}
                     <p>{% trans changetime=pretty_dateinfo(object['changetime']) %}Last modified ${changetime}{% endtrans %}</p>
                 {% endif %}
+                {% if show_delete_crash %}
                 <p><a href="${href('crash', object.uuid, 'delete')}" class="trac-id">Delete CrashId#${object.id}</a></p>
+                {% endif %}
             </div>
 
             <h2>
