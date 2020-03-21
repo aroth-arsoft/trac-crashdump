@@ -31,6 +31,7 @@ from xml.sax.saxutils import escape
 from .model import CrashDump, CrashDumpStackFrame
 from .links import CrashDumpTicketLinks
 from .xmlreport import XMLReport
+from .utils import *
 
 class CrashDumpSubmit(Component):
     """Upload/Submit new crash dumps"""
@@ -158,11 +159,14 @@ class CrashDumpSubmit(Component):
                     'submit_href': submit_href,
                     'upload_error': error,
                     })
-        if not crashdump_use_jinja2:
+        if crashdump_use_jinja2:
+            metadata = {'content_type': 'text/html'}
+        else:
             add_script(req, 'common/js/folding.js')
+            metadata = None
         add_script(req, 'crashdump/crashdump.js')
         add_stylesheet(req, 'crashdump/crashdump.css')
-        return 'upload.html', data, None
+        return 'upload.html', data, metadata
 
     def _find_first_component_from_list(self, possible_components):
         ret = None

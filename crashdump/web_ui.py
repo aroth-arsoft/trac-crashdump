@@ -233,7 +233,7 @@ class CrashDumpModule(Component):
         if req.path_info.startswith('/ticket/'):
             # In case of an invalid ticket, the data is invalid
             if not data:
-                return template, data, content_type
+                return template, data, content_type, method
             tkt = data['ticket']
             with self.env.db_query as db:
                 links = CrashDumpTicketLinks(self.env, tkt, db=db)
@@ -402,6 +402,10 @@ class CrashDumpModule(Component):
             raise ResourceNotFound(_("No crash identifier specified."))
         end = time.time()
         xhr = req.get_header('X-Requested-With') == 'XMLHttpRequest'
+        if crashdump_use_jinja2:
+            metadata = {'content_type': 'text/html'}
+        else:
+            metadata = None
 
         #req.perm('crash', id, version).require('TICKET_VIEW')
         params = _get_list_from_args(req.args, 'params', None)
@@ -436,12 +440,12 @@ class CrashDumpModule(Component):
                         linked_tickets.append(a)
                 data['linked_tickets'] = linked_tickets
 
-                return 'report.html', data, None
+                return 'report.html', data, metadata
             else:
                 if params[0] in ['sysinfo', 'sysinfo_ex',
                                  'fast_protect_version_info', 'exception', 'memory_blocks', 'memory_regions', 'modules', 'threads', 'stackdumps',
                                  'file_info' ]:
-                    return params[0] + '.html', data, None
+                    return params[0] + '.html', data, metadata
                 elif params[0] == 'memory_block':
                     block_base = safe_list_get_as_int(params, 1, 0)
                     memory_block = None
@@ -450,7 +454,7 @@ class CrashDumpModule(Component):
                             memory_block = b
                             break
                     data.update({'memory_block': memory_block, 'memory_block_base': block_base })
-                    return 'memory_block.html', data, None
+                    return 'memory_block.html', data, metadata
                 elif params[0] == 'stackdump':
                     threadid = safe_list_get_as_int(params, 1, 0)
                     stackdump = None
@@ -458,7 +462,7 @@ class CrashDumpModule(Component):
                         stackdump = data['stackdumps'][threadid]
                     self.log.debug('stackdump %s' % stackdump)
                     data.update({'stackdump': stackdump, 'threadid': threadid })
-                    return 'stackdump.html', data, None
+                    return 'stackdump.html', data, metadata
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
         elif action == 'sysinfo_report':
@@ -495,12 +499,12 @@ class CrashDumpModule(Component):
                     if a:
                         linked_tickets.append(a)
                 data['linked_tickets'] = linked_tickets
-                return 'sysinfo_report.html', data, None
+                return 'sysinfo_report.html', data, metadata
             else:
                 if params[0] in ['sysinfo',
                                  'sysinfo_ex', 'sysinfo_opengl', 'sysinfo_env', 'sysinfo_terra4d_dirs', 'sysinfo_cpu', 'sysinfo_locale', 'sysinfo_network',
                                  'sysinfo_rawdata']:
-                    return params[0] + '.html', data, None
+                    return params[0] + '.html', data, metadata
                 else:
                     raise ResourceNotFound(_("Invalid sub-page request %(param)s for crash %(uuid)s.", param=str(params[0]), uuid=str(crashobj.uuid)))
 
@@ -527,7 +531,7 @@ class CrashDumpModule(Component):
 
             data = {'id': crashobj.id, 'uuid': crashobj.uuid }
             crashobj.delete(self.dumpdata_dir)
-            return 'deleted.html', data, None
+            return 'deleted.html', data, metadata
         elif action == 'minidump_raw':
             return self._send_file(req, crashobj, 'minidumpfile')
         elif action == 'minidump_text':
