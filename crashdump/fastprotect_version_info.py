@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 from StringIO import StringIO
-from arsoft.inifile import IniFile
+from inifile import IniFile
 
 class FastprotectVersionInfo(object):
     def __init__(self, rawdata):

@@ -9,8 +9,8 @@ from datetime import datetime, tzinfo, timedelta
 from uuid import UUID
 from lxml import etree
 
-from crashdump.exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
-from crashdump.utils import format_version_number, format_memory_usagetype
+from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
+from utils import format_version_number, format_memory_usagetype
 
 ZERO = timedelta(0)
 

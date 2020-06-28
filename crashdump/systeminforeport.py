@@ -8,8 +8,8 @@ import posixpath
 import ntpath
 from datetime import datetime
 
-from arsoft.inifile import IniFile
-from crashdump.xmlreport import XMLReport
+from inifile import IniFile
+from xmlreport import XMLReport
 from utils import language_from_qlocale_language_enum, country_from_qlocale_country_enum, script_from_qlocale_script_enum
 
 class _Terra3DDirectories(object):
@@ -420,7 +420,7 @@ if __name__ == '__main__':
 
     #print(sysinfo['OpenGLExtensions/Extension'])
     #print(sysinfo['System/Path'])
-    #print(sysinfo['Environment'])
+    print(sysinfo['Environment'])
     sysinfo.save('/tmp/sysinfo.ini')
     #print(sysinfo['Network/Interface'])
     #print('Win32' if sysinfo.is_platform_windows else 'Posix')

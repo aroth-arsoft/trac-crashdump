@@ -4,11 +4,10 @@
 
 import struct
 from datetime import datetime,timedelta
-from arsoft.timestamp import FixedOffset
 from fastprotect_version_info import FastprotectVersionInfo
 
 from exception_info import exception_code_names_per_platform_type, exception_info_per_platform_type
-from utils import format_version_number
+from utils import format_version_number, FixedOffset
 
 class Structure(object):
     def __init__(self):

@@ -6,6 +6,8 @@ from trac import __version__ as VERSION
 from pkg_resources import parse_version
 _parsed_version = parse_version(VERSION)
 
+from datetime import datetime, timedelta, tzinfo
+
 if _parsed_version >= parse_version('1.4'):
     crashdump_use_jinja2 = True
 elif _parsed_version >= parse_version('1.3'):
@@ -614,3 +616,98 @@ def format_stack_frame(frame):
                 return frame.addr
         else:
             return format_function_plus_offset(frame.function, frame.funcoff)
+
+# Yoinked from python docs
+ZERO = timedelta(0)
+class Utc(tzinfo):
+    """UTC
+
+    """
+    def utcoffset(self, dt):
+        return ZERO
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return ZERO
+UTC = Utc()
+
+class FixedOffset(tzinfo):
+    """Fixed offset in hours and minutes from UTC
+
+    """
+    def __init__(self, offset_hours, offset_minutes, name):
+        self.__offset = timedelta(hours=offset_hours, minutes=offset_minutes)
+        self.__name = name
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return self.__name
+
+    def dst(self, dt):
+        return ZERO
+
+    def __repr__(self):
+        return "<FixedOffset %r>" % self.__name
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+def timestamp_from_datetime(datetime_obj):
+    "Return POSIX timestamp as float"
+    if datetime_obj.tzinfo is None:
+        return time.mktime((datetime_obj.year, datetime_obj.month, datetime_obj.day,
+                                datetime_obj.hour, datetime_obj.minute, datetime_obj.second,
+                                -1, -1, -1)) + datetime_obj.microsecond / 1e6
+    else:
+        return (datetime_obj - _EPOCH).total_seconds()
+
+def is_quoted_string(str):
+    if len(str) > 1 and ((str[0] == '"' and str[-1] == '"') or (str[0] == '\'' and str[-1] == '\'')):
+        return True
+    else:
+        return False
+
+def unquote_string(str):
+    if is_quoted_string(str):
+        return str[1:-1]
+    else:
+        return str
+
+def quote_string(str, quote_char='\''):
+    return quote_char + str + quote_char
+
+def escape_string_for_c(str):
+    tmap = {"'":  r"\'",
+            "\"":  r"\"",
+            "\\": r"\\",
+            "\r": r"\r",
+            "\n": r"\n",
+            "\t": r"\t",
+            }
+    ret = ''
+    for c in str:
+        ret += tmap.get(c, c)
+    return ret
+
+def unescape_string_from_c(str):
+    tmap = {"'":  "'",
+            "\"":  "\"",
+            "\\": "\\",
+            "r": "\r",
+            "n": "\n",
+            "t": "\t",
+            }
+    ret = ''
+    i = 0
+    l = len(str)
+    while i < l:
+        if str[i] == '\\':
+            ret += tmap.get(str[i+1], str[i+1])
+            i = i + 2
+        else:
+            ret += str[i]
+            i = i + 1
+    return ret
