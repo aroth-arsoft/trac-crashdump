@@ -4,7 +4,7 @@
 
 from trac.db import Table, Column, Index
 
-name = 'crashdump'
+name = 'crashdump_version'
 version = 13
 tables = [
     Table('crashdump', key=('id'))[
