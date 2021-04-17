@@ -25,6 +25,7 @@ from pkg_resources import resource_filename, get_distribution
 from uuid import UUID
 import os
 import shutil
+import re
 import time
 import datetime
 import cgi
@@ -95,13 +96,14 @@ class CrashDumpSubmit(Component):
     def get_active_navigation_item(self, req):
         self.log.debug('get_active_navigation_item %s' % req.path_info)
         if not self.disable_manual_upload:
-            if req.path_info == '/crash_upload':
+            val = re.search('/crash_upload$', req.path_info)
+            if val and val.start() == 0:
                 return 'upload_crash'
 
     def get_navigation_items(self, req):
         if not self.disable_manual_upload:
             yield ('mainnav', 'upload_crash',
-                   tag.a('Upload Crash', href='/crash_upload'))
+                   tag.a('Upload Crash', href=req.href('crash_upload')))
 
     # IRequestHandler methods
     def match_request(self, req):

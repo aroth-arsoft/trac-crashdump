@@ -89,7 +89,7 @@ class CrashDumpModule(Component):
             [TracQuery#UsingTracLinks Trac links].
             (''since 0.12'')""")
 
-    nav_url  = Option('crashdump', 'main_page', '/crash/list',
+    nav_url  = Option('crashdump', 'main_page', 'crash/list',
                       'The url of the crashes main page to which the trac nav '
                       'entry should link; if empty, no entry is created in '
                       'the nav bar. This may be a relative url.')
@@ -123,7 +123,7 @@ class CrashDumpModule(Component):
     def get_navigation_items(self, req):
         if self.nav_url:
             yield ('mainnav', 'crash_list',
-                   tag.a('Crashes', href=self.nav_url))
+                   tag.a('Crashes', href=req.href(self.nav_url)))
 
     # ITemplateStreamFilter methods
     def filter_stream(self, req, method, filename, stream, data):
@@ -697,7 +697,11 @@ class CrashDumpModule(Component):
         data['context'] = context
 
     def _format_datetime(self, req, timestamp):
-        return format_datetime(from_utimestamp(long(timestamp)))
+        try:
+            utimestamp = long(timestamp)
+            return format_datetime(from_utimestamp(utimestamp))
+        except ValueError:
+            return str(timestamp)
 
     def _get_dump_filename(self, crashobj, name):
         item_name = crashobj[name]
