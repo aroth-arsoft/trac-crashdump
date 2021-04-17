@@ -729,7 +729,13 @@ class CrashDumpModule(Component):
     def _link_tickets(self, req, tickets):
         if tickets is None:
             return None
-        print(tickets)
+
+        if not isinstance(tickets, str) and not isinstance(tickets, unicode):
+            self.log.debug('_link_tickets %s invalid type (%s)' % (tickets, type(tickets)))
+            return None
+
+        if not tickets:
+            return None
 
         items = []
         for i, word in enumerate(re.split(r'([;,\s]+)', tickets)):
