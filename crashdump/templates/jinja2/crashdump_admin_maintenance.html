@@ -30,6 +30,7 @@
         <a name="purge_old_data"/>
 
       <form name="form_purge_old_data" method="post">
+        ${jmacros.form_token_input()}
         <fieldset class="col0">
 
         {% if not purge_crashes %}
