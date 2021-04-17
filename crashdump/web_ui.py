@@ -727,10 +727,11 @@ class CrashDumpModule(Component):
         return ret
 
     def _link_tickets(self, req, tickets):
-        items = []
-
+        if tickets is None:
+            return None
         print(tickets)
 
+        items = []
         for i, word in enumerate(re.split(r'([;,\s]+)', tickets)):
             if i % 2:
                 items.append(word)
